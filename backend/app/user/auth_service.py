@@ -106,7 +106,7 @@ class Admin(User):
 # MovieGoer Class
 # ==========================
 class MovieGoer(User):
-    def __init__(self, username, password=None, password_hash=None, email="", date_of_birth="", user_rank="Slime", date_created=None, last_login=None):
+    def __init__(self, username, password=None, password_hash=None, email="", date_of_birth="", user_rank="Slime", date_created=None, last_login=None, bookmarks= None):
         super().__init__(
             user_id=str(uuid.uuid4()),
             username=username,
@@ -136,7 +136,7 @@ class MovieGoer(User):
     def to_dict(self) -> dict:
         data = super().to_dict()
         data["user_rank"] = self.user_rank
-         data["bookmarks"] = self, movie_title
+        data["bookmarks"] = self.bookmarks
         return data
 
     def review_movie(self):
@@ -220,7 +220,8 @@ class AuthService:
                         password_hash=u["password_hash"],
                         user_rank=u.get("user_rank", "Slime"),
                         date_created=u.get("date_created"),
-                        last_login=u.get("last_login")
+                        last_login=u.get("last_login"),
+                        bookmarks = u.get("bookmarks", [])
                     )
 
                 if user.verify_password(password):
