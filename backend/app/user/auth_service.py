@@ -119,6 +119,7 @@ class MovieGoer(User):
             last_login=last_login
         )
         self.user_rank = user_rank
+        self.bookmarks = bookmarks or [] #new attr.
 
     def get_role(self) -> str:
         return "MovieGoer"
@@ -135,6 +136,7 @@ class MovieGoer(User):
     def to_dict(self) -> dict:
         data = super().to_dict()
         data["user_rank"] = self.user_rank
+         data["bookmarks"] = self, movie_title
         return data
 
     def review_movie(self):
@@ -142,6 +144,32 @@ class MovieGoer(User):
 
     def rate_movie(self):
         return "Movie rated"
+
+#bookmark methods
+    def add_bookmark(self, movie_title: str):
+        if movie_title in self.bookmarks: 
+            print(f" '{movie_title}' is already bookmarked.")
+            return False
+        self.bookmarks.append(movie_title)
+        print(f"'{movie_title}' has been added to your bookmarked movies.")
+        return True
+    
+    def remove_bookmark(self, movie_title: str):
+        if movie_title not in self.bookmarks:
+            print(f"'{movie_title}' not found in bookmarks")
+            return False
+        self.bookmarks.remove(movie_title)
+        print(f" '{movie_title}' removed from bookmarked movies.")
+        return True
+    
+    def view_bookmarks(self):
+        if not self.bookmarks:
+            print(" No bookmarks yet.")
+            return []
+        print ("\n Bookmarked Movies:")
+        for i, movie in enumerate(self.bookmarks, start = 1):
+            print(f"{i}. {movie}")
+        return self.bookmarks
 
 
 # ==========================
