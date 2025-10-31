@@ -146,7 +146,7 @@ class MovieGoer(User):
         return "Movie rated"
 
 #bookmark methods
-    def add_bookmark(self, movie_title: str):
+    def add_bookmark(self, movie_title: str) -> bool:
         if movie_title in self.bookmarks: 
             print(f" '{movie_title}' is already bookmarked.")
             return False

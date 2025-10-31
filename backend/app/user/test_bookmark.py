@@ -1,48 +1,40 @@
-from auth_server import AuthService, AccountManager, MovieGoer
-from movie_database import MovieDatabase
+import pytest 
+import os
 
-auth = AuthService("users.json")
-manager = AccountManager(auth)
-db = MovieDatabase("Banana_Slugs/database/archive")
+from auth_service import MovieGoer, AuthService, AccountManager
 
-#log in attempt
-user = auth.login ("ABC", "1234")
-if not user:
-    manager.create_account("ABC", "1234", "ABC@gmail.com", "2000-04-01")
-    user = auth.login("grayson", "1234")
+TEST_JSON = "test_users.json"
 
-#interface
-while True:
-    print("\nMenu")
-    print("1. Search for movie")
-    print("2. View bookmarks")
-    print("3. Logout")
+@pytest.fixture
+def auth_service():
+    # Ensure clean JSON file
+    if os.path.exists(TEST_JSON):
+        os.remove(TEST_JSON)
+    service = AuthService(TEST_JSON)
+    yield service
+    # Cleanup after tests
+    if os.path.exists(TEST_JSON):
+        os.remove(TEST_JSON)
 
-    answer = input("Choose: ")
-    
-    if answer == "1":
-        keyword = input ("Enter search keyword: ")
-        results = db.search_movies(keyword)
-        if not results:
-            print("No results.")
-            continue
-        for i, title in enumerate(results, 1):
-            print(f"{i}. {title}")
-        pick = input("Select a movie to bookmark (number): ")
-        if pick.isdigit() and 1 <= int(pick) <= len(results):
-            movie_title = results[int(pick)-1]
-            if user.add_bookmark(movie_title):
-                users = auth._load_users()
-                for u in users:
-                    if u["username"] == user.username:
-                        u["bookmarks"] = user.bookmarks
-                auth._save_users(users)
+@pytest.fixture
+def account_manager(auth_service):
+    return AccountManager(auth_service)
 
-    elif answer == "2":
-        user.view_bookmarks()
-    elif answer == "3":
-        print("Logged out")
-        break
-
+@pytest.fixture
+def movie_goer(account_manager, auth_service):
+    account_manager.create_account(
+        username="john_doe",
+        password="password123",
+        email="john@example.com",
+        date_of_birth="2000-01-01",
+        role="MovieGoer"
+        )
+    return  auth_service.login("john_doe", "password123")
     
 
+def test_add(movie_goer):
+    user = movie_goer
+
+    result = user.add_bookmark("Avengers")
+
+    assert result == True
