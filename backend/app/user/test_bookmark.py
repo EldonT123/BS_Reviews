@@ -20,6 +20,7 @@ def auth_service():
 def account_manager(auth_service):
     return AccountManager(auth_service)
 
+#Set up user
 @pytest.fixture
 def movie_goer(account_manager, auth_service):
     account_manager.create_account(
@@ -31,10 +32,20 @@ def movie_goer(account_manager, auth_service):
         )
     return  auth_service.login("john_doe", "password123")
     
+#Test cases
 
 def test_add(movie_goer):
     user = movie_goer
-
     result = user.add_bookmark("Avengers")
-
     assert result == True
+
+def test_remove(movie_goer):
+    user = movie_goer
+    result = user.remove_bookmark("Avengers")
+    assert result == False
+
+def test_view(movie_goer):
+    user = movie_goer
+    user.add_bookmark("Avengers")
+    result = user.view_bookmarks()
+    assert result == ["Avengers"]
