@@ -1,6 +1,13 @@
 # Banana_Slugs
 Class Project for COSC 310
 Link for Kanban board on Trello: https://trello.com/invite/accept-board
+## Start up commands
+### Frontend: 
+cd 'Where you store your project'\Banana_Slugs\frontend\bs_reviews
+npm run dev 
+### Backend: 'Where you store your project'\Banana_Slugs
+uvicorn backend:main --reload
+// There apears to be an issue  with this startup method and the frontend not connecting with the backend properly. However I can confirm it was working the other nigh so I will provide an updated startup later. 
 
 
 # Backend Code
