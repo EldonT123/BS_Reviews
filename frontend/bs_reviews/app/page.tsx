@@ -19,7 +19,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchTopMovies() {
       try {
-        const res = await fetch("http://localhost:5000/movies/top");
+        const res = await fetch("http://localhost:8000/movies/top");
         const data = await res.json();
         setTopMovies(data);
       } catch (error) {
