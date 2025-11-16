@@ -24,7 +24,6 @@ def temp_database_dir(tmp_path):
     file_service.DATABASE_PATH = original_path
 
 
-@pytest.fixture(scope="function")
 def temp_real_data_copy(tmp_path):
     """Copy real database archive to temp dir for integration tests."""
     real_data_path = Path('./database/archive')

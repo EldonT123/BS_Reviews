@@ -87,6 +87,7 @@
     "exit-x": "^0.2.2",
     "expect": "^30.2.0",
     "fast-json-stable-stringify": "^2.1.0",
+    "fastapi": "^0.0.8",
     "fb-watchman": "^2.0.2",
     "fill-range": "^7.1.1",
     "find-up": "^4.1.0",

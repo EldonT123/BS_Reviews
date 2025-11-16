@@ -78,7 +78,6 @@ def recalc_average_rating(movie_name):
     
     # Handle both possible column names
     rating_key = "User's Rating out of 10" if "User's Rating out of 10" in reviews[0] else "rating"
-    
     valid_ratings = []
     for review in reviews:
         rating_str = review.get(rating_key, "").strip()
@@ -89,10 +88,8 @@ def recalc_average_rating(movie_name):
             except ValueError:
                 # Skip invalid ratings
                 continue
-    
     if not valid_ratings:
         return 0
-    
     return sum(valid_ratings) / len(valid_ratings)
 
 
