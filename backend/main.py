@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.routes import movie_routes, review_routes
+from backend.routes import movie_routes, review_routes, user_routes
+
 
 app = FastAPI()
 
@@ -17,6 +18,7 @@ app.add_middleware(
 # Register routers from routes folder
 app.include_router(movie_routes.router, prefix="/movies", tags=["Movies"])
 app.include_router(review_routes.router, prefix="/reviews", tags=["Reviews"])
+app.include_router(user_routes.router, prefix="/api")  # add this line
 
 
 @app.get("/")

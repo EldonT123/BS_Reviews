@@ -1,0 +1,50 @@
+# Create .gitignore in BANANA_SLUGS/
+```
+
+Add this content to `.gitignore`:
+```
+# Dependencies
+node_modules/
+*/node_modules/
+frontend/bs_reviews/node_modules/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+.coverage
+

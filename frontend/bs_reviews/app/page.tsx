@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { redirect } from "next/navigation";
 
 type Movie = {
   title: string;
@@ -10,6 +11,7 @@ type Movie = {
 };
 
 export default function Home() {
+  
   const [topMovies, setTopMovies] = useState<Movie[]>([]);
   const [mostCommentedMovies, setMostCommentedMovies] = useState<Movie[]>([]);
   const [loadingTop, setLoadingTop] = useState(true);
@@ -31,7 +33,7 @@ export default function Home() {
 
     async function fetchMostCommentedMovies() {
       try {
-        const res = await fetch("http://localhost:5000/movies/most_commented");
+        const res = await fetch("http://localhost:8000/movies/most_commented");
         const data = await res.json();
         setMostCommentedMovies(data);
       } catch (error) {
@@ -65,7 +67,7 @@ export default function Home() {
           .fill(null)
           .map((_, i) => topMovies[(currentIndex + i + 1) % topMovies.length])
       : [];
-
+  redirect("/login");
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans">
       {/* Header */}
