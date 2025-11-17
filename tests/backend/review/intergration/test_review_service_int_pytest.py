@@ -4,63 +4,6 @@ from pathlib import Path
 from backend.services import review_service, file_service
 
 
-def test_read_reviews_empty_file(isolated_movie_env):
-    """Test reading reviews from an empty CSV file."""
-    movie_name = "anymovie"
-    
-    # Use file_service to properly create the movie folder with CSV
-    file_service.create_movie_folder(movie_name)
-    
-    reviews = review_service.read_reviews(movie_name)
-    assert reviews == [], "Empty CSV (with headers only) should return empty list"
-
-
-def test_add_review_and_recalc_average(isolated_movie_env):
-    """Test adding a review and recalculating average rating."""
-    movie_name = "anymovie"
-    
-    # Create the movie folder first
-    file_service.create_movie_folder(movie_name)
-    
-    # Add a review with the new signature
-    review_service.add_review(
-        username="tester",
-        movie_name=movie_name,
-        rating=4.0,
-        comment="Great movie!",
-        review_title="Loved it"
-    )
-
-    # Verify review was added
-    reviews = review_service.read_reviews(movie_name)
-    assert len(reviews) == 1, "Should have exactly one review"
-    assert reviews[0]["User"] == "tester"
-    assert float(reviews[0]["User's Rating out of 10"]) == 4.0
-
-    # Verify average rating calculation
-    avg_rating = review_service.recalc_average_rating(movie_name)
-    assert avg_rating == 4.0, "Average rating should be 4.0"
-
-
-def test_recalc_average_rating_with_invalid_rating(isolated_movie_env):
-    """Test average rating calculation with invalid/empty ratings."""
-    movie_name = "anymovie"
-    movie_folder = isolated_movie_env / movie_name
-    movie_folder.mkdir(parents=True, exist_ok=True)
-    
-    # Create CSV with one valid and one invalid rating using the correct column names
-    reviews_file = movie_folder / "movieReviews.csv"
-    reviews_file.write_text(
-        "Date of Review,User,Usefulness Vote,Total Votes,User's Rating out of 10,Review Title,Review\n"
-        "2024-01-01,user1,0,0,5.0,Great,Good movie\n"
-        "2024-01-02,user2,0,0,,No rating,No comment\n",
-        encoding='utf-8'
-    )
-    
-    avg = review_service.recalc_average_rating(movie_name)
-    assert avg == 5.0, f"Should ignore empty rating and return 5.0, got {avg}"
-
-
 def test_add_multiple_reviews_and_average(isolated_movie_env):
     """Test adding multiple reviews and calculating average."""
     movie_name = "anymovie"

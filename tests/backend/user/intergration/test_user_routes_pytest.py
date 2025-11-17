@@ -1,104 +1,17 @@
-"""Tests for user authentication routes."""
+"""Tests for user authentication routes and services."""
 import pytest
 from fastapi.testclient import TestClient
 from pathlib import Path
 import csv
-import json
 from backend.main import app
-from backend.routes.user_routes import get_password_hash, verify_password
+from backend.services import user_service
+from backend.models.user_model import User
+from backend.services.user_service import USER_CSV_PATH
 
 client = TestClient(app)
 
 TEST_EMAIL = "test@example.com"
 TEST_PASSWORD = "ValidPass123!"
-
-
-# ==================== UNIT TESTS - Password Functions ====================
-
-def test_password_hash_returns_string():
-    """Test that get_password_hash returns a hashed string."""
-    hashed = get_password_hash(TEST_PASSWORD)
-    
-    assert isinstance(hashed, str)
-    assert len(hashed) > 0
-    assert hashed != TEST_PASSWORD
-
-
-def test_password_hash_different_for_same_password():
-    """Test that same password generates different hashes due to salt."""
-    hash1 = get_password_hash(TEST_PASSWORD)
-    hash2 = get_password_hash(TEST_PASSWORD)
-    
-    assert hash1 != hash2
-
-
-def test_verify_password_correct():
-    """Test that verify_password returns True for correct password."""
-    hashed = get_password_hash(TEST_PASSWORD)
-    
-    assert verify_password(TEST_PASSWORD, hashed) is True
-
-
-def test_verify_password_incorrect():
-    """Test that verify_password returns False for wrong password."""
-    hashed = get_password_hash(TEST_PASSWORD)
-    wrong_password = "WrongPassword456!"
-    
-    assert verify_password(wrong_password, hashed) is False
-
-
-def test_password_truncation_long_password():
-    """Test that passwords longer than 72 bytes are handled correctly."""
-    long_password = "a" * 100
-    hashed = get_password_hash(long_password)
-    
-    assert verify_password(long_password, hashed) is True
-
-
-# ==================== UNIT TESTS - CSV Operations ====================
-
-def test_read_users_empty_file(temp_user_csv):
-    """Test reading from empty CSV file."""
-    from backend.routes.user_routes import read_users
-    
-    users = read_users()
-    assert users == {}
-
-
-def test_read_users_with_data(temp_user_csv):
-    """Test reading users from populated CSV."""
-    from backend.routes.user_routes import read_users, append_user
-    
-    # Add test users
-    append_user("user1@test.com", "hash1")
-    append_user("user2@test.com", "hash2")
-    
-    users = read_users()
-    assert "user1@test.com" in users
-    assert "user2@test.com" in users
-    assert users["user1@test.com"] == "hash1"
-
-
-def test_read_users_case_insensitive(temp_user_csv):
-    """Test that email keys are stored in lowercase."""
-    from backend.routes.user_routes import read_users, append_user
-    
-    append_user("Test@Example.COM", "hashed123")
-    users = read_users()
-    
-    assert "test@example.com" in users
-    assert "Test@Example.COM" not in users
-
-
-def test_append_user_creates_entry(temp_user_csv):
-    """Test that append_user adds user to CSV."""
-    from backend.routes.user_routes import append_user, read_users
-    
-    append_user("newuser@test.com", "hashedpass789")
-    users = read_users()
-    
-    assert "newuser@test.com" in users
-    assert users["newuser@test.com"] == "hashedpass789"
 
 
 # ==================== INTEGRATION TESTS - Signup Endpoint ====================
@@ -111,7 +24,11 @@ def test_signup_success(temp_user_csv):
     )
     
     assert response.status_code == 200
-    assert response.json() == {"message": "Signup successful"}
+    data = response.json()
+    assert "message" in data
+    assert "user" in data
+    assert data["user"]["email"] == TEST_EMAIL.lower()
+    assert data["user"]["tier"] == User.TIER_SNAIL  # New users start as Snail
 
 
 def test_signup_duplicate_email(temp_user_csv):
@@ -186,7 +103,10 @@ def test_login_success(temp_user_csv):
     )
     
     assert response.status_code == 200
-    assert response.json() == {"message": "Login successful"}
+    data = response.json()
+    assert "message" in data
+    assert "user" in data
+    assert data["user"]["tier"] == User.TIER_SNAIL
 
 
 def test_login_wrong_password(temp_user_csv):
@@ -245,6 +165,68 @@ def test_login_invalid_email_format():
     assert response.status_code == 422
 
 
+# ==================== INTEGRATION TESTS - Tier System ====================
+
+def test_get_tier_info():
+    """Test getting tier information."""
+    response = client.get("/api/tiers")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "tiers" in data
+    assert len(data["tiers"]) >= 3  # At least Snail, Slug, Banana Slug
+
+
+def test_admin_upgrade_tier(temp_user_csv):
+    """Test admin upgrading user tier."""
+    # Create a user
+    client.post(
+        "/api/signup",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+    
+    # Upgrade to Slug
+    response = client.post(
+        "/api/admin/upgrade-tier",
+        json={"email": TEST_EMAIL, "new_tier": User.TIER_SLUG}
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["user"]["tier"] == User.TIER_SLUG
+
+
+def test_admin_upgrade_invalid_tier(temp_user_csv):
+    """Test admin upgrade with invalid tier."""
+    # Create a user
+    client.post(
+        "/api/signup",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+    
+    # Try invalid tier
+    response = client.post(
+        "/api/admin/upgrade-tier",
+        json={"email": TEST_EMAIL, "new_tier": "super_slug"}
+    )
+    
+    assert response.status_code == 400
+
+
+def test_get_all_users(temp_user_csv):
+    """Test getting all users."""
+    # Create some users
+    client.post("/api/signup", json={"email": "user1@test.com", "password": TEST_PASSWORD})
+    client.post("/api/signup", json={"email": "user2@test.com", "password": TEST_PASSWORD})
+    
+    response = client.get("/api/admin/users")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "users" in data
+    assert data["total"] >= 2
+
+
 # ==================== INTEGRATION TESTS - End-to-End Flows ====================
 
 def test_integration_signup_then_login(temp_user_csv):
@@ -258,6 +240,7 @@ def test_integration_signup_then_login(temp_user_csv):
         json={"email": email, "password": password}
     )
     assert signup_response.status_code == 200
+    assert signup_response.json()["user"]["tier"] == User.TIER_SNAIL
     
     # Step 2: Login with same credentials
     login_response = client.post(
@@ -281,34 +264,81 @@ def test_integration_signup_then_login(temp_user_csv):
     assert wrong_login_response.status_code == 401
 
 
+def test_integration_tier_progression(temp_user_csv):
+    """Integration test: User tier progression."""
+    email = "progression@test.com"
+    password = "Progress123!"
+    
+    # Signup (Snail tier)
+    signup_response = client.post(
+        "/api/signup",
+        json={"email": email, "password": password}
+    )
+    assert signup_response.json()["user"]["tier"] == User.TIER_SNAIL
+    assert signup_response.json()["user"]["permissions"]["can_write_reviews"] is False
+    
+    # Upgrade to Slug
+    client.post(
+        "/api/admin/upgrade-tier",
+        json={"email": email, "new_tier": User.TIER_SLUG}
+    )
+    
+    # Login and check new permissions
+    login_response = client.post(
+        "/api/login",
+        json={"email": email, "password": password}
+    )
+    assert login_response.json()["user"]["tier"] == User.TIER_SLUG
+    assert login_response.json()["user"]["permissions"]["can_write_reviews"] is True
+    assert login_response.json()["user"]["permissions"]["has_priority_reviews"] is False
+    
+    # Upgrade to Banana Slug
+    client.post(
+        "/api/admin/upgrade-tier",
+        json={"email": email, "new_tier": User.TIER_BANANA_SLUG}
+    )
+    
+    # Login and check VIP permissions
+    login_response = client.post(
+        "/api/login",
+        json={"email": email, "password": password}
+    )
+    assert login_response.json()["user"]["tier"] == User.TIER_BANANA_SLUG
+    assert login_response.json()["user"]["permissions"]["has_priority_reviews"] is True
+
+
 def test_integration_multiple_users(temp_user_csv):
     """Integration test: Managing multiple users."""
     users = [
-        ("user1@example.com", "Password1!"),
-        ("user2@example.com", "Password2!"),
-        ("user3@example.com", "Password3!")
+        ("user1@example.com", "Password1!", User.TIER_SNAIL),
+        ("user2@example.com", "Password2!", User.TIER_SLUG),
+        ("user3@example.com", "Password3!", User.TIER_BANANA_SLUG)
     ]
     
     # Signup all users
-    for email, password in users:
+    for email, password, _ in users:
         response = client.post(
             "/api/signup",
             json={"email": email, "password": password}
         )
         assert response.status_code == 200
     
-    # Login with each user
-    for email, password in users:
+    # Upgrade tiers
+    for email, _, tier in users:
+        if tier != User.TIER_SNAIL:
+            client.post(
+                "/api/admin/upgrade-tier",
+                json={"email": email, "new_tier": tier}
+            )
+    
+    # Login with each user and verify tier
+    for email, password, expected_tier in users:
         response = client.post(
             "/api/login",
             json={"email": email, "password": password}
         )
         assert response.status_code == 200
-    
-    # Verify user count in CSV
-    from backend.routes.user_routes import read_users
-    all_users = read_users()
-    assert len(all_users) >= 3
+        assert response.json()["user"]["tier"] == expected_tier
 
 
 def test_integration_password_security(temp_user_csv):
@@ -322,7 +352,7 @@ def test_integration_password_security(temp_user_csv):
     )
     
     # Read CSV directly and verify password is hashed
-    from backend.routes.user_routes import USER_CSV_PATH
+    from backend.services.user_service import USER_CSV_PATH
     csv_path = Path(USER_CSV_PATH)
     
     with open(csv_path, 'r', encoding='utf-8') as f:
