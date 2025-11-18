@@ -14,12 +14,6 @@ class UserAuth(BaseModel):
     password: str
 
 
-class TierUpgrade(BaseModel):
-    """Request model for tier upgrades."""
-    email: EmailStr
-    new_tier: str  # Changed from new_role
-
-
 # ==================== Public Routes ====================
 
 @router.post("/signup")
@@ -29,7 +23,7 @@ async def signup(user: UserAuth):
         new_user = user_service.create_user(
             email=user.email,
             password=user.password,
-            tier=User.TIER_SNAIL  # Changed from role to tier
+            tier=User.TIER_SNAIL
         )
         
         return {
@@ -108,42 +102,19 @@ async def get_tier_info():
     }
 
 
-# ==================== Admin Routes ====================
+# ==================== User Profile ====================
 
-@router.post("/admin/upgrade-tier")
-async def upgrade_user_tier(upgrade: TierUpgrade):
-    """
-    Upgrade a user's tier (admin only for now).
-    Later: Add authentication middleware here
-    """
-    valid_tiers = [User.TIER_SNAIL, User.TIER_SLUG, User.TIER_BANANA_SLUG, User.TIER_ADMIN]
+@router.get("/profile/{email}")
+async def get_user_profile(email: str):
+    """Get user profile information."""
+    user = user_service.get_user_by_email(email)
     
-    if upgrade.new_tier not in valid_tiers:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid tier. Must be one of: {valid_tiers}"
-        )
-    
-    success = user_service.update_user_tier(upgrade.email, upgrade.new_tier)
-    
-    if not success:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
     
-    user = user_service.get_user_by_email(upgrade.email)
     return {
-        "message": f"User upgraded to {user.get_tier_display_name()}!",
         "user": user.to_dict()
-    }
-
-
-@router.get("/admin/users")
-async def get_all_users():
-    """Get all users with their tiers (admin only)."""
-    users = user_service.get_all_users()
-    return {
-        "users": [user.to_dict() for user in users],
-        "total": len(users)
     }

@@ -147,7 +147,7 @@ def user_exists(email: str) -> bool:
 
 
 def get_all_users() -> list[User]:
-    """Get all users (admin function)."""
+    """Get all users."""
     users_data = read_users()
     return [
         User(email, password_hash, tier)

@@ -58,27 +58,21 @@ def test_user_tier_checks():
     snail = User("snail@test.com", "hash", User.TIER_SNAIL)
     slug = User("slug@test.com", "hash", User.TIER_SLUG)
     banana = User("banana@test.com", "hash", User.TIER_BANANA_SLUG)
-    admin = User("admin@test.com", "hash", User.TIER_ADMIN)
     
     # Snail checks
     assert snail.is_snail() is True
     assert snail.is_slug() is False
-    assert snail.is_admin() is False
+    assert snail.is_banana_slug() is False
 
     # Slug checks
     assert slug.is_slug() is True
     assert slug.is_snail() is False
-    assert slug.is_admin() is False
+    assert slug.is_banana_slug() is False
 
     # Banana Slug checks
     assert banana.is_banana_slug() is True
-    assert banana.is_slug() is False  # Should not report as regular slug
-    assert banana.is_admin() is False
-
-    # Admin checks
-    assert admin.is_admin() is True
-    assert admin.is_snail() is False
-    assert admin.is_slug() is False
+    assert banana.is_slug() is False
+    assert banana.is_snail() is False
 
 
 def test_user_permissions():

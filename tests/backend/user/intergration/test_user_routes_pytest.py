@@ -174,8 +174,34 @@ def test_get_tier_info():
     assert response.status_code == 200
     data = response.json()
     assert "tiers" in data
-    assert len(data["tiers"]) >= 3  # At least Snail, Slug, Banana Slug
+    assert len(data["tiers"]) == 3  # Snail, Slug, Banana Slug
 
+
+def test_get_user_profile(temp_user_csv):
+    """Test getting user profile."""
+    # Create a user
+    client.post(
+        "/api/signup",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+    
+    # Get profile
+    response = client.get(f"/api/profile/{TEST_EMAIL}")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "user" in data
+    assert data["user"]["email"] == TEST_EMAIL.lower()
+
+
+def test_get_user_profile_not_found(temp_user_csv):
+    """Test getting profile for non-existent user."""
+    response = client.get("/api/profile/nonexistent@test.com")
+    
+    assert response.status_code == 404
+
+
+# ==================== INTEGRATION TESTS - Admin Routes (moved from user_routes) ====================
 
 def test_admin_upgrade_tier(temp_user_csv):
     """Test admin upgrading user tier."""
@@ -187,7 +213,7 @@ def test_admin_upgrade_tier(temp_user_csv):
     
     # Upgrade to Slug
     response = client.post(
-        "/api/admin/upgrade-tier",
+        "/api/admin/users/upgrade-tier",
         json={"email": TEST_EMAIL, "new_tier": User.TIER_SLUG}
     )
     
@@ -206,7 +232,7 @@ def test_admin_upgrade_invalid_tier(temp_user_csv):
     
     # Try invalid tier
     response = client.post(
-        "/api/admin/upgrade-tier",
+        "/api/admin/users/upgrade-tier",
         json={"email": TEST_EMAIL, "new_tier": "super_slug"}
     )
     
@@ -265,7 +291,7 @@ def test_integration_signup_then_login(temp_user_csv):
 
 
 def test_integration_tier_progression(temp_user_csv):
-    """Integration test: User tier progression."""
+    """Integration test: User tier progression through admin actions."""
     email = "progression@test.com"
     password = "Progress123!"
     
@@ -277,9 +303,9 @@ def test_integration_tier_progression(temp_user_csv):
     assert signup_response.json()["user"]["tier"] == User.TIER_SNAIL
     assert signup_response.json()["user"]["permissions"]["can_write_reviews"] is False
     
-    # Upgrade to Slug
+    # Upgrade to Slug (via admin endpoint)
     client.post(
-        "/api/admin/upgrade-tier",
+        "/api/admin/users/upgrade-tier",
         json={"email": email, "new_tier": User.TIER_SLUG}
     )
     
@@ -294,7 +320,7 @@ def test_integration_tier_progression(temp_user_csv):
     
     # Upgrade to Banana Slug
     client.post(
-        "/api/admin/upgrade-tier",
+        "/api/admin/users/upgrade-tier",
         json={"email": email, "new_tier": User.TIER_BANANA_SLUG}
     )
     
@@ -323,11 +349,11 @@ def test_integration_multiple_users(temp_user_csv):
         )
         assert response.status_code == 200
     
-    # Upgrade tiers
+    # Upgrade tiers via admin
     for email, _, tier in users:
         if tier != User.TIER_SNAIL:
             client.post(
-                "/api/admin/upgrade-tier",
+                "/api/admin/users/upgrade-tier",
                 json={"email": email, "new_tier": tier}
             )
     

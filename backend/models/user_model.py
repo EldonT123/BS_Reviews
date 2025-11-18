@@ -8,7 +8,6 @@ class User:
     TIER_SNAIL = "snail"
     TIER_SLUG = "slug"
     TIER_BANANA_SLUG = "banana_slug"
-    TIER_ADMIN = "admin"
     
     def __init__(self, email: str, password_hash: str, tier: str = TIER_SNAIL):
         self.email = email
@@ -29,10 +28,6 @@ class User:
         """Check if user is Banana Slug tier (VIP features)."""
         return self.tier == self.TIER_BANANA_SLUG
     
-    def is_admin(self) -> bool:
-        """Check if user has admin privileges."""
-        return self.tier == self.TIER_ADMIN
-    
     # ==================== Permission Checks ====================
     
     def can_browse(self) -> bool:
@@ -41,19 +36,19 @@ class User:
     
     def can_write_reviews(self) -> bool:
         """Only Slug tier and above can write reviews."""
-        return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG, self.TIER_ADMIN]
+        return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG]
     
     def can_rate_movies(self) -> bool:
         """Only Slug tier and above can rate movies."""
-        return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG, self.TIER_ADMIN]
+        return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG]
     
     def can_edit_own_reviews(self) -> bool:
         """Only Slug tier and above can edit their own reviews."""
-        return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG, self.TIER_ADMIN]
+        return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG]
     
     def has_priority_reviews(self) -> bool:
         """Banana Slugs get their reviews shown first."""
-        return self.tier in [self.TIER_BANANA_SLUG, self.TIER_ADMIN]
+        return self.tier == self.TIER_BANANA_SLUG
     
     def get_tier_display_name(self) -> str:
         """Get user-friendly tier name."""
@@ -61,7 +56,6 @@ class User:
             self.TIER_SNAIL: "🐌 Snail",
             self.TIER_SLUG: "🐌 Slug",
             self.TIER_BANANA_SLUG: "🍌 Banana Slug",
-            self.TIER_ADMIN: "👑 Admin"
         }
         return tier_names.get(self.tier, "Unknown")
     
@@ -80,7 +74,7 @@ class User:
     
     def upgrade_tier(self, new_tier: str) -> bool:
         """Upgrade user to a new tier (admin function)."""
-        valid_tiers = [self.TIER_SNAIL, self.TIER_SLUG, self.TIER_BANANA_SLUG, self.TIER_ADMIN]
+        valid_tiers = [self.TIER_SNAIL, self.TIER_SLUG, self.TIER_BANANA_SLUG]
         if new_tier not in valid_tiers:
             return False
         self.tier = new_tier
