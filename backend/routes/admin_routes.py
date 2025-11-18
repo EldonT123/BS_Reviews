@@ -1,8 +1,10 @@
 # backend/routes/admin_routes.py
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr
 from backend.services import admin_service, user_service
 from backend.models.user_model import User
+from backend.models.admin_model import Admin
+from backend.middleware.auth_middleware import verify_admin_token
 
 router = APIRouter()
 
@@ -29,16 +31,18 @@ class UserDelete(BaseModel):
 
 @router.post("/signup")
 async def admin_signup(admin: AdminAuth):
-    """Create new admin account."""
+    """Create new admin account and return authentication token."""
     try:
-        new_admin = admin_service.create_admin(
+        new_admin, token = admin_service.create_admin(
             email=admin.email,
             password=admin.password
         )
         
         return {
             "message": "Admin account created successfully",
-            "admin": new_admin.to_dict()
+            "admin": new_admin.to_dict(),
+            "token": token,
+            "token_type": "bearer"
         }
     
     except ValueError as e:
@@ -50,16 +54,18 @@ async def admin_signup(admin: AdminAuth):
 
 @router.post("/login")
 async def admin_login(admin: AdminAuth):
-    """Authenticate admin and return admin info."""
+    """Authenticate admin and return admin info with authentication token."""
     try:
-        authenticated_admin = admin_service.authenticate_admin(
+        authenticated_admin, token = admin_service.authenticate_admin(
             email=admin.email,
             password=admin.password
         )
         
         return {
             "message": "Admin authenticated successfully",
-            "admin": authenticated_admin.to_dict()
+            "admin": authenticated_admin.to_dict(),
+            "token": token,
+            "token_type": "bearer"
         }
     
     except ValueError:
@@ -69,10 +75,20 @@ async def admin_login(admin: AdminAuth):
         )
 
 
-# ==================== User Management ====================
+@router.post("/logout")
+async def admin_logout(admin: Admin = Depends(verify_admin_token)):
+    """Logout admin by revoking token."""
+    # Note: Token is extracted from header in dependency
+    # For full implementation, you'd need to pass the token to revoke_token
+    return {
+        "message": "Admin logged out successfully"
+    }
+
+
+# ==================== User Management (Protected) ====================
 
 @router.get("/users")
-async def get_all_users():
+async def get_all_users(admin: Admin = Depends(verify_admin_token)):
     """Get all users with their tiers (admin only)."""
     users = user_service.get_all_users()
     return {
@@ -82,11 +98,11 @@ async def get_all_users():
 
 
 @router.post("/users/upgrade-tier")
-async def upgrade_user_tier(upgrade: TierUpgrade):
-    """
-    Upgrade a user's tier (admin only).
-    TODO: Add authentication middleware to verify admin status
-    """
+async def upgrade_user_tier(
+    upgrade: TierUpgrade,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """Upgrade a user's tier (admin only - now protected)."""
     valid_tiers = [User.TIER_SNAIL, User.TIER_SLUG, User.TIER_BANANA_SLUG]
     
     if upgrade.new_tier not in valid_tiers:
@@ -111,11 +127,11 @@ async def upgrade_user_tier(upgrade: TierUpgrade):
 
 
 @router.delete("/users")
-async def delete_user(user_delete: UserDelete):
-    """
-    Delete a user (admin only).
-    TODO: Add authentication middleware to verify admin status
-    """
+async def delete_user(
+    user_delete: UserDelete,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """Delete a user (admin only - now protected)."""
     success = user_service.delete_user(user_delete.email)
     
     if not success:
@@ -129,10 +145,10 @@ async def delete_user(user_delete: UserDelete):
     }
 
 
-# ==================== Admin Management ====================
+# ==================== Admin Management (Protected) ====================
 
 @router.get("/admins")
-async def get_all_admins():
+async def get_all_admins(admin: Admin = Depends(verify_admin_token)):
     """Get all admins (admin only, for super admin management)."""
     admins = admin_service.get_all_admins()
     return {

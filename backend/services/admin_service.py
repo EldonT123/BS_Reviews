@@ -3,6 +3,8 @@
 import csv
 import os
 import bcrypt
+import secrets
+from datetime import datetime, timedelta
 from typing import Optional, Dict
 from backend.models.admin_model import Admin
 
@@ -10,6 +12,10 @@ from backend.models.admin_model import Admin
 ADMIN_CSV_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../../database/admins/admin_information.csv")
 )
+
+# In-memory token storage (consider Redis or database for production)
+admin_tokens: Dict[str, tuple[str, datetime]] = {}  # token -> (email, expiry)
+TOKEN_EXPIRY_HOURS = 24
 
 # ==================== CSV Operations ====================
 
@@ -80,12 +86,94 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password_bytes, hash_bytes)
 
 
+# ==================== Token Operations ====================
+
+def _generate_token() -> str:
+    """Generate a secure random token."""
+    return secrets.token_urlsafe(32)
+
+
+def generate_admin_token(email: str) -> str:
+    """
+    Generate an authentication token for an admin.
+    
+    Args:
+        email: Admin email address
+        
+    Returns:
+        Authentication token string
+    """
+    token = _generate_token()
+    expiry = datetime.now() + timedelta(hours=TOKEN_EXPIRY_HOURS)
+    admin_tokens[token] = (email.lower(), expiry)
+    return token
+
+
+def verify_admin_token(token: str) -> Optional[Admin]:
+    """
+    Verify admin token and return admin if valid.
+    
+    Args:
+        token: Authentication token
+        
+    Returns:
+        Admin object if token is valid, None otherwise
+    """
+    if token not in admin_tokens:
+        return None
+    
+    email, expiry = admin_tokens[token]
+    
+    # Check if token is expired
+    if datetime.now() > expiry:
+        del admin_tokens[token]  # Clean up expired token
+        return None
+    
+    return get_admin_by_email(email)
+
+
+def revoke_token(token: str) -> bool:
+    """
+    Revoke an admin token (for logout).
+    
+    Args:
+        token: Authentication token to revoke
+        
+    Returns:
+        True if token was revoked, False if token didn't exist
+    """
+    if token in admin_tokens:
+        del admin_tokens[token]
+        return True
+    return False
+
+
+def cleanup_expired_tokens():
+    """Remove all expired tokens from memory."""
+    now = datetime.now()
+    expired_tokens = [
+        token for token, (_, expiry) in admin_tokens.items()
+        if now > expiry
+    ]
+    for token in expired_tokens:
+        del admin_tokens[token]
+
+
 # ==================== Business Logic ====================
 
-def create_admin(email: str, password: str) -> Admin:
+def create_admin(email: str, password: str) -> tuple[Admin, str]:
     """
-    Create a new admin account.
-    Raises ValueError if admin already exists.
+    Create a new admin account and generate authentication token.
+    
+    Args:
+        email: Admin email address
+        password: Admin password (will be hashed)
+        
+    Returns:
+        Tuple of (Admin object, authentication token)
+        
+    Raises:
+        ValueError: If admin already exists
     """
     existing_admin = get_admin_by_email(email)
     if existing_admin:
@@ -94,13 +182,25 @@ def create_admin(email: str, password: str) -> Admin:
     password_hash = hash_password(password)
     save_admin(email, password_hash)
     
-    return Admin(email.lower(), password_hash)
+    admin = Admin(email.lower(), password_hash)
+    token = generate_admin_token(email)
+    
+    return admin, token
 
 
-def authenticate_admin(email: str, password: str) -> Admin:
+def authenticate_admin(email: str, password: str) -> tuple[Admin, str]:
     """
-    Authenticate an admin with email and password.
-    Raises ValueError if credentials are invalid.
+    Authenticate an admin with email and password, and generate token.
+    
+    Args:
+        email: Admin email address
+        password: Admin password
+        
+    Returns:
+        Tuple of (Admin object, authentication token)
+        
+    Raises:
+        ValueError: If credentials are invalid
     """
     admin = get_admin_by_email(email)
     
@@ -110,7 +210,8 @@ def authenticate_admin(email: str, password: str) -> Admin:
     if not verify_password(password, admin.password_hash):
         raise ValueError("Invalid credentials")
     
-    return admin
+    token = generate_admin_token(email)
+    return admin, token
 
 
 def admin_exists(email: str) -> bool:
@@ -129,8 +230,13 @@ def get_all_admins() -> list[Admin]:
 
 def delete_admin(email: str) -> bool:
     """
-    Delete an admin by email.
-    Returns True if admin was deleted, False if admin not found.
+    Delete an admin by email and revoke all their tokens.
+    
+    Args:
+        email: Admin email address
+        
+    Returns:
+        True if admin was deleted, False if admin not found
     """
     admins = read_admins()
     email_lower = email.lower()
@@ -138,6 +244,15 @@ def delete_admin(email: str) -> bool:
     if email_lower not in admins:
         return False
     
+    # Revoke all tokens for this admin
+    tokens_to_revoke = [
+        token for token, (token_email, _) in admin_tokens.items()
+        if token_email == email_lower
+    ]
+    for token in tokens_to_revoke:
+        del admin_tokens[token]
+    
+    # Remove from CSV
     del admins[email_lower]
     
     ensure_admin_csv_exists()

@@ -16,6 +16,29 @@ TEST_USER_EMAIL = "user@example.com"
 TEST_USER_PASSWORD = "UserPass123!"
 
 
+# ==================== HELPER FUNCTIONS ====================
+
+def create_admin_and_get_token(email=TEST_ADMIN_EMAIL, password=TEST_ADMIN_PASSWORD):
+    """Helper function to create admin and return authentication token."""
+    response = client.post(
+        "/api/admin/signup",
+        json={"email": email, "password": password}
+    )
+    if response.status_code == 200:
+        return response.json()["token"]
+    # If signup fails (already exists), try login
+    response = client.post(
+        "/api/admin/login",
+        json={"email": email, "password": password}
+    )
+    return response.json()["token"]
+
+
+def get_auth_headers(token):
+    """Helper function to create authentication headers."""
+    return {"X-Admin-Token": token}
+
+
 # ==================== INTEGRATION TESTS - Admin Signup Endpoint ====================
 
 def test_admin_signup_success(temp_admin_csv):
@@ -29,6 +52,7 @@ def test_admin_signup_success(temp_admin_csv):
     data = response.json()
     assert "message" in data
     assert "admin" in data
+    assert "token" in data
     assert data["admin"]["email"] == TEST_ADMIN_EMAIL.lower()
     assert data["admin"]["role"] == "admin"
 
@@ -98,6 +122,7 @@ def test_admin_login_success(temp_admin_csv):
     data = response.json()
     assert "message" in data
     assert "admin" in data
+    assert "token" in data
     assert data["admin"]["role"] == "admin"
     assert data["admin"]["permissions"]["can_manage_users"] is True
 
@@ -151,11 +176,15 @@ def test_admin_login_case_insensitive_email(temp_admin_csv):
 
 def test_admin_get_all_users(temp_admin_csv, temp_user_csv):
     """Test admin can view all users."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
     # Create some users
     client.post("/api/signup", json={"email": "user1@test.com", "password": TEST_USER_PASSWORD})
     client.post("/api/signup", json={"email": "user2@test.com", "password": TEST_USER_PASSWORD})
     
-    response = client.get("/api/admin/users")
+    response = client.get("/api/admin/users", headers=headers)
     
     assert response.status_code == 200
     data = response.json()
@@ -165,6 +194,10 @@ def test_admin_get_all_users(temp_admin_csv, temp_user_csv):
 
 def test_admin_upgrade_user_tier(temp_admin_csv, temp_user_csv):
     """Test admin upgrading user tier."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
     # Create a user
     client.post(
         "/api/signup",
@@ -174,6 +207,7 @@ def test_admin_upgrade_user_tier(temp_admin_csv, temp_user_csv):
     # Upgrade to Slug
     response = client.post(
         "/api/admin/users/upgrade-tier",
+        headers=headers,
         json={"email": TEST_USER_EMAIL, "new_tier": User.TIER_SLUG}
     )
     
@@ -184,15 +218,20 @@ def test_admin_upgrade_user_tier(temp_admin_csv, temp_user_csv):
 
 def test_admin_upgrade_invalid_tier(temp_admin_csv, temp_user_csv):
     """Test admin upgrade with invalid tier."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
     # Create a user
     client.post(
-        "/api/users/signup",
+        "/api/signup",
         json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
     )
     
     # Try invalid tier
     response = client.post(
         "/api/admin/users/upgrade-tier",
+        headers=headers,
         json={"email": TEST_USER_EMAIL, "new_tier": "super_slug"}
     )
     
@@ -201,8 +240,13 @@ def test_admin_upgrade_invalid_tier(temp_admin_csv, temp_user_csv):
 
 def test_admin_upgrade_nonexistent_user(temp_admin_csv):
     """Test admin upgrade fails for non-existent user."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
     response = client.post(
         "/api/admin/users/upgrade-tier",
+        headers=headers,
         json={"email": "nonexistent@test.com", "new_tier": User.TIER_SLUG}
     )
     
@@ -212,19 +256,23 @@ def test_admin_upgrade_nonexistent_user(temp_admin_csv):
 
 def test_admin_delete_user(temp_admin_csv, temp_user_csv):
     """Test admin deleting a user."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
     # Create a user
     client.post(
         "/api/signup",
         json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
     )
     
-    # Delete the user (using request with content, not json)
+    # Delete the user
     import json
     response = client.request(
         "DELETE",
         "/api/admin/users",
         content=json.dumps({"email": TEST_USER_EMAIL}),
-        headers={"Content-Type": "application/json"}
+        headers={**headers, "Content-Type": "application/json"}
     )
     
     assert response.status_code == 200
@@ -237,12 +285,16 @@ def test_admin_delete_user(temp_admin_csv, temp_user_csv):
 
 def test_admin_delete_nonexistent_user(temp_admin_csv):
     """Test admin delete fails for non-existent user."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
     import json
     response = client.request(
         "DELETE",
         "/api/admin/users",
         content=json.dumps({"email": "nonexistent@test.com"}),
-        headers={"Content-Type": "application/json"}
+        headers={**headers, "Content-Type": "application/json"}
     )
     
     assert response.status_code == 404
@@ -252,11 +304,14 @@ def test_admin_delete_nonexistent_user(temp_admin_csv):
 
 def test_admin_get_all_admins(temp_admin_csv):
     """Test getting all admins."""
-    # Create some admins
-    client.post("/api/admin/signup", json={"email": "admin1@test.com", "password": TEST_ADMIN_PASSWORD})
+    # Create first admin and get token
+    token = create_admin_and_get_token("admin1@test.com", TEST_ADMIN_PASSWORD)
+    headers = get_auth_headers(token)
+    
+    # Create another admin
     client.post("/api/admin/signup", json={"email": "admin2@test.com", "password": TEST_ADMIN_PASSWORD})
     
-    response = client.get("/api/admin/admins")
+    response = client.get("/api/admin/admins", headers=headers)
     
     assert response.status_code == 200
     data = response.json()
@@ -278,6 +333,7 @@ def test_integration_admin_signup_then_login(temp_admin_csv):
     )
     assert signup_response.status_code == 200
     assert signup_response.json()["admin"]["role"] == "admin"
+    assert "token" in signup_response.json()
     
     # Step 2: Login with same credentials
     login_response = client.post(
@@ -285,6 +341,7 @@ def test_integration_admin_signup_then_login(temp_admin_csv):
         json={"email": email, "password": password}
     )
     assert login_response.status_code == 200
+    assert "token" in login_response.json()
     
     # Step 3: Try to signup again (should fail)
     duplicate_response = client.post(
@@ -296,6 +353,10 @@ def test_integration_admin_signup_then_login(temp_admin_csv):
 
 def test_integration_admin_manages_multiple_users(temp_admin_csv, temp_user_csv):
     """Integration test: Admin managing multiple users."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
     users = [
         ("user1@example.com", "Password1!"),
         ("user2@example.com", "Password2!"),
@@ -311,11 +372,19 @@ def test_integration_admin_manages_multiple_users(temp_admin_csv, temp_user_csv)
         assert response.status_code == 200
     
     # Admin upgrades different users to different tiers
-    client.post("/api/admin/users/upgrade-tier", json={"email": users[0][0], "new_tier": User.TIER_SLUG})
-    client.post("/api/admin/users/upgrade-tier", json={"email": users[1][0], "new_tier": User.TIER_BANANA_SLUG})
+    client.post(
+        "/api/admin/users/upgrade-tier",
+        headers=headers,
+        json={"email": users[0][0], "new_tier": User.TIER_SLUG}
+    )
+    client.post(
+        "/api/admin/users/upgrade-tier",
+        headers=headers,
+        json={"email": users[1][0], "new_tier": User.TIER_BANANA_SLUG}
+    )
     
     # Verify all users exist with correct tiers
-    response = client.get("/api/admin/users")
+    response = client.get("/api/admin/users", headers=headers)
     assert response.status_code == 200
     user_list = response.json()["users"]
     
@@ -330,11 +399,11 @@ def test_integration_admin_manages_multiple_users(temp_admin_csv, temp_user_csv)
         "DELETE",
         "/api/admin/users",
         content=json.dumps({"email": users[2][0]}),
-        headers={"Content-Type": "application/json"}
+        headers={**headers, "Content-Type": "application/json"}
     )
     
     # Verify user count decreased
-    response = client.get("/api/admin/users")
+    response = client.get("/api/admin/users", headers=headers)
     assert response.json()["total"] == 2
 
 
@@ -379,3 +448,19 @@ def test_integration_separate_admin_and_user_accounts(temp_admin_csv, temp_user_
     # Verify both exist independently
     assert user_service.user_exists(email) is True
     assert admin_service.admin_exists(email) is True
+
+
+def test_admin_authentication_required(temp_admin_csv, temp_user_csv):
+    """Test that protected endpoints require authentication."""
+    # Try to access protected endpoints without token
+    response = client.get("/api/admin/users")
+    assert response.status_code == 401
+    
+    response = client.get("/api/admin/admins")
+    assert response.status_code == 401
+    
+    response = client.post(
+        "/api/admin/users/upgrade-tier",
+        json={"email": "test@test.com", "new_tier": "slug"}
+    )
+    assert response.status_code == 401

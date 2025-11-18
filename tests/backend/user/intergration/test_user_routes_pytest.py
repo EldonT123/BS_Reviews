@@ -12,7 +12,29 @@ client = TestClient(app)
 
 TEST_EMAIL = "test@example.com"
 TEST_PASSWORD = "ValidPass123!"
+TEST_ADMIN_PASSWORD = "AdminPass123!"
 
+# ==================== HELPER FUNCTIONS ====================
+
+def create_admin_and_get_token(email="admin@example.com", password=TEST_ADMIN_PASSWORD):
+    """Helper function to create admin and return authentication token."""
+    response = client.post(
+        "/api/admin/signup",
+        json={"email": email, "password": password}
+    )
+    if response.status_code == 200:
+        return response.json()["token"]
+    # If signup fails (already exists), try login
+    response = client.post(
+        "/api/admin/login",
+        json={"email": email, "password": password}
+    )
+    return response.json()["token"]
+
+
+def get_auth_headers(token):
+    """Helper function to create authentication headers."""
+    return {"X-Admin-Token": token}
 
 # ==================== INTEGRATION TESTS - Signup Endpoint ====================
 
@@ -201,29 +223,14 @@ def test_get_user_profile_not_found(temp_user_csv):
     assert response.status_code == 404
 
 
-# ==================== INTEGRATION TESTS - Admin Routes (moved from user_routes) ====================
+# ==================== INTEGRATION TESTS - Admin Routes ====================
 
-def test_admin_upgrade_tier(temp_user_csv):
-    """Test admin upgrading user tier."""
-    # Create a user
-    client.post(
-        "/api/signup",
-        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
-    )
-    
-    # Upgrade to Slug
-    response = client.post(
-        "/api/admin/users/upgrade-tier",
-        json={"email": TEST_EMAIL, "new_tier": User.TIER_SLUG}
-    )
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert data["user"]["tier"] == User.TIER_SLUG
-
-
-def test_admin_upgrade_invalid_tier(temp_user_csv):
+def test_admin_upgrade_invalid_tier(temp_user_csv, temp_admin_csv):
     """Test admin upgrade with invalid tier."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
     # Create a user
     client.post(
         "/api/signup",
@@ -233,19 +240,24 @@ def test_admin_upgrade_invalid_tier(temp_user_csv):
     # Try invalid tier
     response = client.post(
         "/api/admin/users/upgrade-tier",
+        headers=headers,
         json={"email": TEST_EMAIL, "new_tier": "super_slug"}
     )
     
     assert response.status_code == 400
 
 
-def test_get_all_users(temp_user_csv):
+def test_get_all_users(temp_user_csv, temp_admin_csv):
     """Test getting all users."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
     # Create some users
     client.post("/api/signup", json={"email": "user1@test.com", "password": TEST_PASSWORD})
     client.post("/api/signup", json={"email": "user2@test.com", "password": TEST_PASSWORD})
     
-    response = client.get("/api/admin/users")
+    response = client.get("/api/admin/users", headers=headers)
     
     assert response.status_code == 200
     data = response.json()
@@ -290,8 +302,12 @@ def test_integration_signup_then_login(temp_user_csv):
     assert wrong_login_response.status_code == 401
 
 
-def test_integration_tier_progression(temp_user_csv):
+def test_integration_tier_progression(temp_user_csv, temp_admin_csv):
     """Integration test: User tier progression through admin actions."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
     email = "progression@test.com"
     password = "Progress123!"
     
@@ -304,10 +320,12 @@ def test_integration_tier_progression(temp_user_csv):
     assert signup_response.json()["user"]["permissions"]["can_write_reviews"] is False
     
     # Upgrade to Slug (via admin endpoint)
-    client.post(
+    upgrade_response = client.post(
         "/api/admin/users/upgrade-tier",
+        headers=headers,
         json={"email": email, "new_tier": User.TIER_SLUG}
     )
+    assert upgrade_response.status_code == 200
     
     # Login and check new permissions
     login_response = client.post(
@@ -319,10 +337,12 @@ def test_integration_tier_progression(temp_user_csv):
     assert login_response.json()["user"]["permissions"]["has_priority_reviews"] is False
     
     # Upgrade to Banana Slug
-    client.post(
+    upgrade_response = client.post(
         "/api/admin/users/upgrade-tier",
+        headers=headers,
         json={"email": email, "new_tier": User.TIER_BANANA_SLUG}
     )
+    assert upgrade_response.status_code == 200
     
     # Login and check VIP permissions
     login_response = client.post(
@@ -333,8 +353,12 @@ def test_integration_tier_progression(temp_user_csv):
     assert login_response.json()["user"]["permissions"]["has_priority_reviews"] is True
 
 
-def test_integration_multiple_users(temp_user_csv):
+def test_integration_multiple_users(temp_user_csv, temp_admin_csv):
     """Integration test: Managing multiple users."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
     users = [
         ("user1@example.com", "Password1!", User.TIER_SNAIL),
         ("user2@example.com", "Password2!", User.TIER_SLUG),
@@ -352,10 +376,12 @@ def test_integration_multiple_users(temp_user_csv):
     # Upgrade tiers via admin
     for email, _, tier in users:
         if tier != User.TIER_SNAIL:
-            client.post(
+            upgrade_response = client.post(
                 "/api/admin/users/upgrade-tier",
+                headers=headers,
                 json={"email": email, "new_tier": tier}
             )
+            assert upgrade_response.status_code == 200
     
     # Login with each user and verify tier
     for email, password, expected_tier in users:
@@ -365,7 +391,6 @@ def test_integration_multiple_users(temp_user_csv):
         )
         assert response.status_code == 200
         assert response.json()["user"]["tier"] == expected_tier
-
 
 def test_integration_password_security(temp_user_csv):
     """Integration test: Verify passwords are hashed in storage."""
