@@ -10,6 +10,7 @@ router = APIRouter()
 
 # ==================== Request Models ====================
 
+
 class AdminAuth(BaseModel):
     """Request model for admin login/signup."""
     email: EmailStr
@@ -37,14 +38,14 @@ async def admin_signup(admin: AdminAuth):
             email=admin.email,
             password=admin.password
         )
-        
+
         return {
             "message": "Admin account created successfully",
             "admin": new_admin.to_dict(),
             "token": token,
             "token_type": "bearer"
         }
-    
+
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -60,14 +61,14 @@ async def admin_login(admin: AdminAuth):
             email=admin.email,
             password=admin.password
         )
-        
+
         return {
             "message": "Admin authenticated successfully",
             "admin": authenticated_admin.to_dict(),
             "token": token,
             "token_type": "bearer"
         }
-    
+
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -104,21 +105,21 @@ async def upgrade_user_tier(
 ):
     """Upgrade a user's tier (admin only - now protected)."""
     valid_tiers = [User.TIER_SNAIL, User.TIER_SLUG, User.TIER_BANANA_SLUG]
-    
+
     if upgrade.new_tier not in valid_tiers:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid tier. Must be one of: {valid_tiers}"
         )
-    
+
     success = user_service.update_user_tier(upgrade.email, upgrade.new_tier)
-    
+
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     user = user_service.get_user_by_email(upgrade.email)
     return {
         "message": f"User upgraded to {user.get_tier_display_name()}!",
@@ -133,13 +134,13 @@ async def delete_user(
 ):
     """Delete a user (admin only - now protected)."""
     success = user_service.delete_user(user_delete.email)
-    
+
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     return {
         "message": f"User {user_delete.email} deleted successfully"
     }

@@ -2,8 +2,9 @@
 from backend.services.metadata_service import read_metadata
 from backend.services.review_service import read_reviews, recalc_average_rating
 
+
 class Movie:
-    
+
     def __init__(self, name: str):
         self.name = name
         self.metadata = read_metadata(name) or {}

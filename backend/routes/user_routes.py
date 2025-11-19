@@ -8,6 +8,7 @@ router = APIRouter()
 
 # ==================== Request Models ====================
 
+
 class UserAuth(BaseModel):
     """Request model for login/signup."""
     email: EmailStr
@@ -25,12 +26,13 @@ async def signup(user: UserAuth):
             password=user.password,
             tier=User.TIER_SNAIL
         )
-        
+
         return {
-            "message": f"Welcome {new_user.get_tier_display_name()}! You can now browse movies and reviews.",
+            "message": (f"Welcome {new_user.get_tier_display_name()}! "
+                        f"You can now browse movies and reviews."),
             "user": new_user.to_dict()
         }
-    
+
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -46,12 +48,13 @@ async def login(user: UserAuth):
             email=user.email,
             password=user.password
         )
-        
+
         return {
-            "message": f"Welcome back, {authenticated_user.get_tier_display_name()}!",
-            "user": authenticated_user.to_dict()
+            "message": (f"Welcome back, "
+                        f"{authenticated_user.get_tier_display_name()}!"),
+            "user": authenticated_user.to_dict(),
         }
-    
+
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -108,13 +111,13 @@ async def get_tier_info():
 async def get_user_profile(email: str):
     """Get user profile information."""
     user = user_service.get_user_by_email(email)
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     return {
         "user": user.to_dict()
     }

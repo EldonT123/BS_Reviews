@@ -2,7 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from backend.routes import movie_routes, review_routes, user_routes, admin_routes
+from backend.routes import (
+                    movie_routes,
+                    review_routes,
+                    user_routes,
+                    admin_routes
+                    )
 from backend.services import admin_service
 
 
@@ -12,9 +17,9 @@ async def lifespan(app: FastAPI):
     admin_service.ensure_admin_csv_exists()
     print("✅ Admin CSV initialized")
     print("🚀 Server started successfully")
-    
+
     yield
-    
+
     # Shutdown: runs after the application stops
     admin_service.cleanup_expired_tokens()
     print("🧹 Cleaned up expired tokens")

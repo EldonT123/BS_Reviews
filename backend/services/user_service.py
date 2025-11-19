@@ -8,13 +8,18 @@ from backend.models.user_model import User
 
 # Path configuration
 USER_CSV_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../database/users/user_information.csv")
+    os.path.join(
+            os.path.dirname(__file__),
+            "../../database/users/user_information.csv"
+        )
 )
 
 # ==================== CSV Operations ====================
 
+
 def ensure_user_csv_exists():
-    """Ensure the directory and CSV file exist, and create headers if missing."""
+    """Ensure the directory and CSV file exist,"""
+    """and create headers if missing."""
     os.makedirs(os.path.dirname(USER_CSV_PATH), exist_ok=True)
     if not os.path.exists(USER_CSV_PATH):
         with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
@@ -30,7 +35,7 @@ def read_users() -> Dict[str, tuple[str, str]]:
     users = {}
     if not os.path.exists(USER_CSV_PATH):
         return users
-    
+
     with open(USER_CSV_PATH, newline="", encoding="utf-8") as csvfile:
         reader = csv.reader(csvfile)
         next(reader, None)  # Skip header row
@@ -38,9 +43,9 @@ def read_users() -> Dict[str, tuple[str, str]]:
             if len(row) >= 2:
                 email = row[0].lower()
                 password_hash = row[1]
-                tier = row[2] if len(row) >= 3 else User.TIER_SNAIL  # Default to snail
+                tier = row[2] if len(row) >= 3 else User.TIER_SNAIL
                 users[email] = (password_hash, tier)
-    
+
     return users
 
 
@@ -56,10 +61,10 @@ def get_user_by_email(email: str) -> Optional[User]:
     """Retrieve a user by email, returns None if not found."""
     users = read_users()
     user_data = users.get(email.lower())
-    
+
     if not user_data:
         return None
-    
+
     password_hash, tier = user_data
     return User(email.lower(), password_hash, tier)
 
@@ -71,14 +76,14 @@ def update_user_tier(email: str, new_tier: str) -> bool:
     """
     users = read_users()
     email_lower = email.lower()
-    
+
     if email_lower not in users:
         return False
-    
+
     # Update tier
     password_hash, _ = users[email_lower]
     users[email_lower] = (password_hash, new_tier)
-    
+
     # Rewrite CSV
     ensure_user_csv_exists()
     with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
@@ -86,7 +91,7 @@ def update_user_tier(email: str, new_tier: str) -> bool:
         writer.writerow(["user_email", "user_password", "user_tier"])
         for user_email, (pwd_hash, tier) in users.items():
             writer.writerow([user_email, pwd_hash, tier])
-    
+
     return True
 
 
@@ -110,7 +115,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 # ==================== Business Logic ====================
 
-def create_user(email: str, password: str, tier: str = User.TIER_SNAIL) -> User:
+def create_user(
+        email: str,
+        password: str,
+        tier: str = User.TIER_SNAIL
+        ) -> User:
     """
     Create a new user account.
     Raises ValueError if user already exists.
@@ -118,10 +127,10 @@ def create_user(email: str, password: str, tier: str = User.TIER_SNAIL) -> User:
     existing_user = get_user_by_email(email)
     if existing_user:
         raise ValueError("User already exists")
-    
+
     password_hash = hash_password(password)
     save_user(email, password_hash, tier)
-    
+
     return User(email.lower(), password_hash, tier)
 
 
@@ -131,13 +140,13 @@ def authenticate_user(email: str, password: str) -> User:
     Raises ValueError if credentials are invalid.
     """
     user = get_user_by_email(email)
-    
+
     if not user:
         raise ValueError("Invalid credentials")
-    
+
     if not verify_password(password, user.password_hash):
         raise ValueError("Invalid credentials")
-    
+
     return user
 
 
@@ -162,17 +171,17 @@ def delete_user(email: str) -> bool:
     """
     users = read_users()
     email_lower = email.lower()
-    
+
     if email_lower not in users:
         return False
-    
+
     del users[email_lower]
-    
+
     ensure_user_csv_exists()
     with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["user_email", "user_password", "user_tier"])
         for user_email, (password_hash, tier) in users.items():
             writer.writerow([user_email, password_hash, tier])
-    
+
     return True

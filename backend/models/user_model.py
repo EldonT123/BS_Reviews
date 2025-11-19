@@ -1,7 +1,7 @@
 # backend/models/user_model.py
 
 class User:
-    
+
     """Represents a user with tiered permissions."""
 
     # Tier constants
