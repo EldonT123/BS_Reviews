@@ -1,7 +1,10 @@
 """Tests for admin service CSV operations."""
 import pytest
+from unittest.mock import Mock, patch, mock_open, MagicMock
 from backend.services import admin_service
 from backend.models.admin_model import Admin
+import csv
+from io import StringIO
 
 
 TEST_ADMIN_EMAIL = "admin@example.com"
@@ -10,68 +13,119 @@ TEST_ADMIN_PASSWORD = "AdminPass123!"
 
 # ==================== UNIT TESTS - CSV Operations ====================
 
-def test_read_admins_empty_file(temp_admin_csv):
-    """Test reading from empty CSV file."""
+@patch('os.path.exists')
+def test_read_admins_empty_file(mock_exists):
+    """Test reading from non-existent CSV file returns empty dict."""
+    # Arrange
+    mock_exists.return_value = False
+    
+    # Act
     admins = admin_service.read_admins()
+    
+    # Assert
     assert admins == {}
 
 
-def test_read_admins_with_data(temp_admin_csv):
+@patch('builtins.open', new_callable=mock_open, read_data='admin_email,admin_password\nadmin1@test.com,hash1\nadmin2@test.com,hash2\n')
+@patch('os.path.exists', return_value=True)
+def test_read_admins_with_data(mock_exists, mock_file):
     """Test reading admins from populated CSV."""
-    # Add test admins
-    admin_service.save_admin("admin1@test.com", "hash1")
-    admin_service.save_admin("admin2@test.com", "hash2")
-    
+    # Act
     admins = admin_service.read_admins()
+    
+    # Assert
     assert "admin1@test.com" in admins
     assert "admin2@test.com" in admins
     assert admins["admin1@test.com"] == "hash1"
     assert admins["admin2@test.com"] == "hash2"
+    mock_file.assert_called_once()
 
 
-def test_read_admins_case_insensitive(temp_admin_csv):
+@patch('builtins.open', new_callable=mock_open, read_data='admin_email,admin_password\nAdmin@Example.COM,hashed123\n')
+@patch('os.path.exists', return_value=True)
+def test_read_admins_case_insensitive(mock_exists, mock_file):
     """Test that admin email keys are stored in lowercase."""
-    admin_service.save_admin("Admin@Example.COM", "hashed123")
+    # Act
     admins = admin_service.read_admins()
     
+    # Assert
     assert "admin@example.com" in admins
     assert "Admin@Example.COM" not in admins
+    assert admins["admin@example.com"] == "hashed123"
 
 
-def test_save_admin_creates_entry(temp_admin_csv):
-    """Test that save_admin adds admin to CSV."""
+@patch('builtins.open', new_callable=mock_open)
+@patch('backend.services.admin_service.ensure_admin_csv_exists')
+def test_save_admin_creates_entry(mock_ensure, mock_file):
+    """Test that save_admin writes to CSV."""
+    # Act
     admin_service.save_admin("newadmin@test.com", "hashedpass789")
-    admins = admin_service.read_admins()
     
-    assert "newadmin@test.com" in admins
-    assert admins["newadmin@test.com"] == "hashedpass789"
+    # Assert
+    mock_ensure.assert_called_once()
+    mock_file.assert_called_once()
+    
+    # Verify write was called
+    handle = mock_file()
+    assert handle.write.called
 
 
-def test_get_admin_by_email(temp_admin_csv):
+@patch('backend.services.admin_service.read_admins')
+def test_get_admin_by_email_found(mock_read_admins):
     """Test retrieving an admin by email."""
-    admin_service.create_admin("findme@test.com", TEST_ADMIN_PASSWORD)
+    # Arrange
+    mock_read_admins.return_value = {"findme@test.com": "hashed_password"}
     
+    # Act
     admin = admin_service.get_admin_by_email("findme@test.com")
     
+    # Assert
     assert admin is not None
     assert admin.email == "findme@test.com"
+    assert admin.password_hash == "hashed_password"
+    mock_read_admins.assert_called_once()
 
 
-def test_get_admin_by_email_not_found(temp_admin_csv):
+@patch('backend.services.admin_service.read_admins')
+def test_get_admin_by_email_not_found(mock_read_admins):
     """Test that get_admin_by_email returns None for non-existent admin."""
+    # Arrange
+    mock_read_admins.return_value = {}
+    
+    # Act
     admin = admin_service.get_admin_by_email("doesnotexist@test.com")
+    
+    # Assert
     assert admin is None
+    mock_read_admins.assert_called_once()
 
 
-def test_ensure_admin_csv_exists(temp_admin_csv):
+@patch('os.makedirs')
+@patch('os.path.exists', return_value=False)
+@patch('builtins.open', new_callable=mock_open)
+def test_ensure_admin_csv_exists_creates_file(mock_file, mock_exists, mock_makedirs):
     """Test that ensure_admin_csv_exists creates file with headers."""
-    from backend.services.admin_service import ADMIN_CSV_PATH
-    import os
+    # Act
+    admin_service.ensure_admin_csv_exists()
     
-    # CSV should exist after fixture setup
-    assert os.path.exists(ADMIN_CSV_PATH)
+    # Assert
+    mock_makedirs.assert_called_once()
+    mock_file.assert_called()
     
-    # Read and verify headers
-    with open(ADMIN_CSV_PATH, 'r', encoding='utf-8') as f:
-        first_line = f.readline().strip()
-        assert first_line == "admin_email,admin_password"
+    # Verify headers were written
+    handle = mock_file()
+    assert handle.write.called
+
+
+@patch('os.path.exists', return_value=True)
+@patch('os.makedirs')
+@patch('builtins.open', new_callable=mock_open)
+def test_ensure_admin_csv_exists_skips_if_exists(mock_file, mock_makedirs, mock_exists):
+    """Test that ensure_admin_csv_exists doesn't recreate existing file."""
+    # Act
+    admin_service.ensure_admin_csv_exists()
+    
+    # Assert - makedirs called to ensure directory exists
+    mock_makedirs.assert_called_once()
+    # File should not be opened for writing since it exists
+    mock_file.assert_not_called()

@@ -7,7 +7,7 @@ TEST_ADMIN_EMAIL = "admin@example.com"
 TEST_ADMIN_PASSWORD = "AdminPass123!"
 
 
-# ==================== UNIT TESTS - Admin Service Business Logic ====================
+# ==================== INTEGRATION TESTS - Admin Service Business Logic ====================
 
 def test_create_admin(temp_admin_csv):
     """Test admin creation."""

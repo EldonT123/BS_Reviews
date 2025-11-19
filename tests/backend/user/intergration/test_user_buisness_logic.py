@@ -13,7 +13,7 @@ client = TestClient(app)
 TEST_EMAIL = "test@example.com"
 TEST_PASSWORD = "ValidPass123!"
 
-# ==================== UNIT TESTS - User Service Business Logic ====================
+# ==================== INTEGRATION TESTS - User Service Business Logic ====================
 
 def test_create_user(temp_user_csv):
     """Test user creation."""
