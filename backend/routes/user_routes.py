@@ -1,84 +1,149 @@
+# backend/routes/user_routes.py
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr
-import csv
-import os
-import bcrypt
+from backend.services import user_service
+from backend.models.user_model import User
 
 router = APIRouter()
 
-# Safer path resolution (handles relative paths properly)
-USER_CSV_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../database/users/user_information.csv")
-)
+# ==================== Request Models ====================
 
 class UserAuth(BaseModel):
+    """Request model for login/signup."""
     email: EmailStr
     password: str
 
 
-def ensure_user_csv_exists():
-    """Ensure the directory and CSV file exist, and create headers if missing."""
-    os.makedirs(os.path.dirname(USER_CSV_PATH), exist_ok=True)
-    if not os.path.exists(USER_CSV_PATH):
-        with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(["user_email", "user_password"])  # Add headers
+class TierUpgrade(BaseModel):
+    """Request model for tier upgrades."""
+    email: EmailStr
+    new_tier: str  # Changed from new_role
 
 
-def read_users():
-    users = {}
-    if not os.path.exists(USER_CSV_PATH):
-        return users
-    with open(USER_CSV_PATH, newline="", encoding="utf-8") as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader, None)  # Skip header row
-        for row in reader:
-            if len(row) >= 2:
-                users[row[0].lower()] = row[1]
-    return users
-
-def append_user(email: str, hashed_password: str):
-    with open(USER_CSV_PATH, "a", newline="", encoding="utf-8") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow([email.lower(), hashed_password])
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its bcrypt hash."""
-    # Encode the password to bytes (bcrypt requires bytes)
-    password_bytes = plain_password[:72].encode('utf-8')
-    # Encode the stored hash to bytes
-    hash_bytes = hashed_password.encode('utf-8')
-    return bcrypt.checkpw(password_bytes, hash_bytes)
-
-
-def get_password_hash(password: str) -> str:
-    """Hash a password using bcrypt."""
-    # Truncate to 72 bytes (bcrypt's limit)
-    truncated_password = password[:72]
-    # Encode to bytes
-    password_bytes = truncated_password.encode('utf-8')
-    # Generate salt and hash
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password_bytes, salt)
-    # Return as string for storage
-    return hashed.decode('utf-8')
+# ==================== Public Routes ====================
 
 @router.post("/signup")
 async def signup(user: UserAuth):
-    users = read_users()
-    if user.email.lower() in users:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
+    """Create new user account - starts as Snail tier."""
+    try:
+        new_user = user_service.create_user(
+            email=user.email,
+            password=user.password,
+            tier=User.TIER_SNAIL  # Changed from role to tier
+        )
+        
+        return {
+            "message": f"Welcome {new_user.get_tier_display_name()}! You can now browse movies and reviews.",
+            "user": new_user.to_dict()
+        }
     
-    # Hash the plain password before storing
-    hashed_password = get_password_hash(user.password)
-    append_user(user.email, hashed_password)
-    return {"message": "Signup successful"}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
 
 @router.post("/login")
 async def login(user: UserAuth):
-    users = read_users()
-    hashed_password = users.get(user.email.lower())
-    if not hashed_password or not verify_password(user.password, hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    """Authenticate user and return user info with permissions."""
+    try:
+        authenticated_user = user_service.authenticate_user(
+            email=user.email,
+            password=user.password
+        )
+        
+        return {
+            "message": f"Welcome back, {authenticated_user.get_tier_display_name()}!",
+            "user": authenticated_user.to_dict()
+        }
     
-    return {"message": "Login successful"}
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials"
+        )
+
+
+# ==================== Tier Information ====================
+
+@router.get("/tiers")
+async def get_tier_info():
+    """Get information about all available tiers."""
+    return {
+        "tiers": [
+            {
+                "name": "Snail",
+                "tier": User.TIER_SNAIL,
+                "emoji": "🐌",
+                "permissions": [
+                    "Browse movies",
+                    "View reviews",
+                    "Read ratings"
+                ]
+            },
+            {
+                "name": "Slug",
+                "tier": User.TIER_SLUG,
+                "emoji": "🐌",
+                "permissions": [
+                    "All Snail permissions",
+                    "Write reviews",
+                    "Edit own reviews",
+                    "Rate movies"
+                ]
+            },
+            {
+                "name": "Banana Slug",
+                "tier": User.TIER_BANANA_SLUG,
+                "emoji": "🍌",
+                "permissions": [
+                    "All Slug permissions",
+                    "Reviews appear first",
+                    "Special cosmetics (coming soon)",
+                    "VIP status"
+                ]
+            }
+        ]
+    }
+
+
+# ==================== Admin Routes ====================
+
+@router.post("/admin/upgrade-tier")
+async def upgrade_user_tier(upgrade: TierUpgrade):
+    """
+    Upgrade a user's tier (admin only for now).
+    Later: Add authentication middleware here
+    """
+    valid_tiers = [User.TIER_SNAIL, User.TIER_SLUG, User.TIER_BANANA_SLUG, User.TIER_ADMIN]
+    
+    if upgrade.new_tier not in valid_tiers:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid tier. Must be one of: {valid_tiers}"
+        )
+    
+    success = user_service.update_user_tier(upgrade.email, upgrade.new_tier)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    user = user_service.get_user_by_email(upgrade.email)
+    return {
+        "message": f"User upgraded to {user.get_tier_display_name()}!",
+        "user": user.to_dict()
+    }
+
+
+@router.get("/admin/users")
+async def get_all_users():
+    """Get all users with their tiers (admin only)."""
+    users = user_service.get_all_users()
+    return {
+        "users": [user.to_dict() for user in users],
+        "total": len(users)
+    }

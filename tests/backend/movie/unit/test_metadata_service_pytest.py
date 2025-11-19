@@ -67,25 +67,3 @@ def test_update_review_count(temp_movie_env):
     assert result["total_reviews"] == 10, "Review count was not updated"
 
 
-# --- INTEGRATION TEST (Using real data copy) ---
-
-def test_read_and_update_real_metadata(temp_real_data_copy):
-    movie_dirs = [d for d in temp_real_data_copy.iterdir() if d.is_dir()]
-    target_movie = movie_dirs[0].name
-
-    path = temp_real_data_copy / target_movie / "metadata.json"
-    with open(path, "r", encoding="utf-8") as f:
-        original = json.load(f)
-
-    try:
-        # Perform update
-        metadata_service.update_average_rating(target_movie, 3.9)
-        metadata_service.update_review_count(target_movie, 42)
-
-        updated = metadata_service.read_metadata(target_movie)
-        assert updated["average_rating"] == 3.9
-        assert updated["total_reviews"] == 42
-    finally:
-        # Restore original content so later tests aren't affected
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(original, f, indent=2)

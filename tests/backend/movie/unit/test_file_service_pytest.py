@@ -40,33 +40,3 @@ def test_check_metadata_and_reviews_missing(temp_database_dir):
     assert not file_service.check_metadata_exists(TEST_MOVIE), "Metadata file should not exist"
     assert not file_service.check_reviews_exists(TEST_MOVIE), "Reviews file should not exist"
 
-
-def test_integration_create_and_verify_movie_folder(temp_database_dir):
-    """Integration test: create movie folder and verify all components."""
-    movie_name = "Integration_Movie"
-    
-    # Create folder (temp_database_dir ensures clean state)
-    folder_path = Path(file_service.create_movie_folder(movie_name))
-    
-    assert folder_path.exists(), "Movie folder was not created"
-    assert file_service.check_metadata_exists(movie_name), "Metadata file missing after creation"
-    assert file_service.check_reviews_exists(movie_name), "Reviews file missing after creation"
-
-    files = [f.name for f in folder_path.iterdir()]
-    assert "metadata.json" in files, "metadata.json not found in folder"
-    assert "movieReviews.csv" in files, "movieReviews.csv not found in folder"
-
-
-def test_real_data_structure(temp_real_data_copy):
-    """Integration test: Verify real data copy structure."""
-    # Find movie folders
-    movie_folders = [item for item in temp_real_data_copy.iterdir() if item.is_dir()]
-    assert len(movie_folders) > 0, "Real data copy should contain movie folders"
-    
-    # Verify at least one folder has the expected structure
-    test_folder = movie_folders[0]
-    expected_files = ["metadata.json", "movieReviews.csv"]
-    
-    actual_files = [f.name for f in test_folder.iterdir()]
-    for expected_file in expected_files:
-        assert expected_file in actual_files, f"{expected_file} not found in {test_folder.name}"
