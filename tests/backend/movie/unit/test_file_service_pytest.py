@@ -40,3 +40,26 @@ def test_check_metadata_and_reviews_missing(temp_database_dir):
     assert not file_service.check_metadata_exists(TEST_MOVIE), "Metadata file should not exist"
     assert not file_service.check_reviews_exists(TEST_MOVIE), "Reviews file should not exist"
 
+
+def test_delete_movie_folder_success(temp_database_dir):
+    """Test that delete_movie_folder removes the movie folder and all contents."""
+    # Create a test movie folder first
+    folder_path = Path(file_service.create_movie_folder(TEST_MOVIE))
+    
+    # Ensure folder exists
+    assert folder_path.exists(), "Movie folder should exist before deletion"
+    
+    # Delete folder
+    result = file_service.delete_movie_folder(TEST_MOVIE)
+    
+    # Check folder no longer exists
+    assert not folder_path.exists(), "Movie folder should be deleted"
+    
+    # Check return message
+    assert f"'{TEST_MOVIE}' has been deleted." in result
+
+
+def test_delete_movie_folder_nonexistent():
+    """Test that deleting a non-existent folder raises FileNotFoundError."""
+    with pytest.raises(FileNotFoundError):
+        file_service.delete_movie_folder("FakeMovie")
