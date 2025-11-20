@@ -82,6 +82,26 @@ def temp_user_csv(tmp_path, monkeypatch):
     # Cleanup is automatic with tmp_path
     # Restore original path
     user_service.USER_CSV_PATH = original_path
+
+# ==================== Admin Fixtures ====================
+
+@pytest.fixture
+def temp_admin_csv(tmp_path, monkeypatch):
+    """Create a temporary admin CSV file for isolated testing."""
+    from backend.services import admin_service
+    
+    # Create a temporary CSV file
+    temp_csv = tmp_path / "admin_information.csv"
+    temp_csv.write_text("admin_email,admin_password\n")
+    
+    # Patch the ADMIN_CSV_PATH to use our temporary file
+    monkeypatch.setattr(admin_service, "ADMIN_CSV_PATH", str(temp_csv))
+    
+    yield str(temp_csv)
+    
+    # Cleanup (optional, tmp_path handles this automatically)
+
+
 @pytest.fixture
 def fresh_movie_folder_with_metadata(temp_real_data_copy, tmp_path):
     # Find a movie folder with metadata.json file
@@ -119,3 +139,17 @@ def anymovie_temp_folder(tmp_path):
     yield dest_folder
 
     # Cleanup is automatic: tmp_path and contents deleted after test
+
+# ==================== Combined Fixtures ====================
+
+@pytest.fixture
+def full_test_environment(temp_user_csv, temp_admin_csv, isolated_movie_env):
+    """
+    Combined fixture providing isolated user, admin, and movie environments.
+    Use this for comprehensive integration tests.
+    """
+    return {
+        "user_csv": temp_user_csv,
+        "admin_csv": temp_admin_csv,
+        "movies_dir": isolated_movie_env
+    }
