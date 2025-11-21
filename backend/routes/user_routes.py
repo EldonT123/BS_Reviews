@@ -1,8 +1,9 @@
 # backend/routes/user_routes.py
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr
 from backend.services import user_service
 from backend.models.user_model import User
+from backend.dependencies.auth import get_current_user
 
 router = APIRouter()
 
@@ -15,12 +16,19 @@ class UserAuth(BaseModel):
     password: str
 
 
+class BookmarkRequest(BaseModel):
+    """Request model for bookmark operations"""
+    email: EmailStr
+    movie_title: str
+
+
 class SignoutRequest(BaseModel):
     """Request model for signout."""
     session_id: str
 
 
 # ==================== Public Routes ====================
+
 
 @router.post("/signup")
 async def signup(user: UserAuth):
@@ -69,8 +77,12 @@ async def login(user: UserAuth):
 
 
 @router.post("/signout")
-async def signout(request: SignoutRequest):
-    """Sign out user by revoking their session ID."""
+async def signout(
+    request: SignoutRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Sign out user - requires authentication"""
+    # Verify the session_id belongs to the current user
     success = user_service.signout_user(request.session_id)
 
     if not success:
@@ -79,9 +91,7 @@ async def signout(request: SignoutRequest):
             detail="Invalid or expired session ID"
         )
 
-    return {
-        "message": "Successfully signed out"
-    }
+    return {"message": "Successfully signed out"}
 
 
 @router.get("/check-session/{session_id}")
@@ -147,9 +157,18 @@ async def get_tier_info():
 
 # ==================== User Profile ====================
 
+@router.get("/profile/me")
+async def get_my_profile(current_user: User = Depends(get_current_user)):
+    """Get current user's profile - requires authentication"""
+    return {"user": current_user.to_dict()}
+
+
 @router.get("/profile/{email}")
-async def get_user_profile(email: str):
-    """Get user profile information."""
+async def get_user_profile(
+    email: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get any user profile - requires authentication"""
     user = user_service.get_user_by_email(email)
 
     if not user:
@@ -158,6 +177,90 @@ async def get_user_profile(email: str):
             detail="User not found"
         )
 
+    return {"user": user.to_dict()}
     return {
         "user": user.to_dict()
+    }
+# ==================== Bookmark Routes ====================
+
+
+@router.post("/bookmarks/add")
+async def add_bookmark(request: BookmarkRequest):
+    """
+    Add a movie to a user's bookmarked list
+    """
+    if not user_service.user_exists(request.email):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    added = user_service.add_bookmark(request.email, request.movie_title)
+
+    if not added:
+        return {
+            "message": "Movie already bookmarked.",
+            "bookmarked": False
+        }
+
+    return {
+        "message": "Movie added to bookmarks.",
+        "bookmarked": True
+    }
+
+
+@router.post("/bookmarks/remove")
+async def remove_bookmark(request: BookmarkRequest):
+    """
+    Remove a movie from a user's bookmarked list
+    """
+    if not user_service.user_exists(request.email):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    removed = user_service.remove_bookmark(request.email, request.movie_title)
+
+    if not removed:
+        return {
+            "message": "Bookmark not found.",
+            "removed": False
+        }
+
+    return {
+        "message": "Bookmark removed.",
+        "removed": True
+    }
+
+
+@router.get("/bookmarks/{email}")
+async def get_bookmarks(email: str):
+    """
+    Retrieve all bookmarked movie IDs for a user.
+    """
+    if not user_service.user_exists(email):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    bookmarks = user_service.get_user_bookmarks(email)
+
+    return {
+        "email": email,
+        "bookmarks": bookmarks
+    }
+
+
+@router.get("/bookmarks/{email}/{movie_title}")
+async def check_bookmark(email: str, movie_title: str):
+    """
+    Check if specific movie is bookmarked by the user
+    """
+    if not user_service.user_exists(email):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    bookmarked = user_service.is_bookmarked(email, movie_title)
+
+    return {
+        "email": email,
+        "movie_title": movie_title,
+        "bookmarked": bookmarked
     }

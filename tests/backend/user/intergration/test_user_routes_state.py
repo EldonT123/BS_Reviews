@@ -29,13 +29,18 @@ def mock_user():
     return User("test@example.com", "hashed_password", User.TIER_SNAIL)
 
 
+@pytest.fixture
+def mock_slug_user():
+    """Fixture with a mock Slug tier user."""
+    return User("slug@example.com", "hashed_password", User.TIER_SLUG)
+
 # ==================== Login Tests ====================
 
 class TestLogin:
     """Tests for /api/login endpoint with session ID."""
 
     def test_login_returns_session_id(self, client, mock_user):
-        """Test that login returns a session ID instead of token."""
+        """Test that login returns a session ID and revokes old sessions."""
         with patch(
             'backend.services.user_service.authenticate_user'
         ) as mock_auth:
@@ -56,6 +61,26 @@ class TestLogin:
             assert "session_id" in data
             assert data["session_id"] == "abc123XY"
             assert "token" not in data  # Should NOT return token
+
+    def test_login_revokes_existing_sessions(self, client, mock_user):
+        """Test that login revokes all existing sessions for the user."""
+        with patch(
+            'backend.services.user_service.authenticate_user'
+        ) as mock_auth, \
+             patch(
+            'backend.services.user_service.revoke_all_user_sessions'
+        ) as mock_revoke:
+            mock_auth.return_value = (mock_user, "new_session")
+
+            response = client.post(
+                "/api/login",
+                json={
+                    "email": "test@example.com",
+                    "password": "password123"
+                }
+            )
+
+            assert response.status_code == 200
 
     def test_login_invalid_credentials(self, client):
         """Test login with invalid credentials."""
@@ -127,16 +152,21 @@ class TestCheckSession:
 class TestSignout:
     """Tests for /api/signout endpoint with session ID."""
 
-    def test_signout_success(self, client):
-        """Test successful signout with session ID."""
+    def test_signout_success_with_auth(self, client, mock_user):
+        """Test successful signout with valid authentication."""
         with patch(
+            'backend.services.user_service.verify_session_id'
+        ) as mock_verify, \
+             patch(
             'backend.services.user_service.signout_user'
         ) as mock_signout:
+            mock_verify.return_value = mock_user
             mock_signout.return_value = True
 
             response = client.post(
                 "/api/signout",
-                json={"session_id": "abc123XY"}
+                json={"session_id": "abc123XY"},
+                headers={"Authorization": "Bearer abc123XY"}
             )
 
             assert response.status_code == 200
@@ -144,28 +174,31 @@ class TestSignout:
             assert data["message"] == "Successfully signed out"
             mock_signout.assert_called_once_with("abc123XY")
 
-    def test_signout_invalid_session_id(self, client):
-        """Test signout with invalid session ID."""
+    def test_signout_without_auth_header(self, client):
+        """Test signout fails without Authorization header."""
+        response = client.post(
+            "/api/signout",
+            json={"session_id": "abc123XY"}
+        )
+
+        assert response.status_code == 401
+        assert "Not authenticated" in response.json()["detail"]
+
+    def test_signout_with_invalid_session(self, client):
+        """Test signout with invalid session in header."""
         with patch(
-            'backend.services.user_service.signout_user'
-        ) as mock_signout:
-            mock_signout.return_value = False
+            'backend.services.user_service.verify_session_id'
+        ) as mock_verify:
+            mock_verify.return_value = None
 
             response = client.post(
                 "/api/signout",
-                json={"session_id": "invalid-id"}
+                json={"session_id": "abc123XY"},
+                headers={"Authorization": "Bearer invalid"}
             )
 
-            assert response.status_code == 400
-            assert "Invalid or expired session ID" in response.json()[
-                "detail"
-            ]
-
-    def test_signout_missing_session_id(self, client):
-        """Test signout without providing session ID."""
-        response = client.post("/api/signout", json={})
-
-        assert response.status_code == 422  # Validation error
+            assert response.status_code == 401
+            assert "Invalid or expired session" in response.json()["detail"]
 
 
 # ==================== Complete Workflow Tests ====================
@@ -173,13 +206,15 @@ class TestSignout:
 class TestUserWorkflow:
     """Tests for complete user workflow with session IDs."""
 
-    def test_complete_login_check_signout_flow(self, client, mock_user):
-        """Test complete user session workflow."""
+    def test_complete_authenticated_workflow(self, client, mock_user):
+        """Test complete user workflow: login -> check profile -> signout."""
+        session_id = "session123"
+
         # Step 1: Login
         with patch(
             'backend.services.user_service.authenticate_user'
         ) as mock_auth:
-            mock_auth.return_value = (mock_user, "session123")
+            mock_auth.return_value = (mock_user, session_id)
 
             login_response = client.post(
                 "/api/login",
@@ -189,39 +224,50 @@ class TestUserWorkflow:
                 }
             )
             assert login_response.status_code == 200
-            session_id = login_response.json()["session_id"]
-            assert session_id == "session123"
+            returned_session_id = login_response.json()["session_id"]
+            assert returned_session_id == session_id
 
-        # Step 2: Check session is valid
+        # Step 2: Use authenticated feature (get own profile)
         with patch(
             'backend.services.user_service.verify_session_id'
         ) as mock_verify:
             mock_verify.return_value = mock_user
 
-            check_response = client.get(f"/api/check-session/{session_id}")
-            assert check_response.status_code == 200
-            assert check_response.json()["logged_in"] is True
+            profile_response = client.get(
+                "/api/profile/me",
+                headers={"Authorization": f"Bearer {session_id}"}
+            )
+            assert profile_response.status_code == 200
+            assert profile_response.json()["user"]["email"] == "test@example.com"
 
         # Step 3: Sign out
         with patch(
+            'backend.services.user_service.verify_session_id'
+        ) as mock_verify, \
+             patch(
             'backend.services.user_service.signout_user'
         ) as mock_signout:
+            mock_verify.return_value = mock_user
             mock_signout.return_value = True
 
             signout_response = client.post(
                 "/api/signout",
-                json={"session_id": session_id}
+                json={"session_id": session_id},
+                headers={"Authorization": f"Bearer {session_id}"}
             )
             assert signout_response.status_code == 200
 
-        # Step 4: Check session is now invalid
+        # Step 4: Verify cannot use features after signout
         with patch(
             'backend.services.user_service.verify_session_id'
         ) as mock_verify:
             mock_verify.return_value = None
 
-            check_response = client.get(f"/api/check-session/{session_id}")
-            assert check_response.status_code == 401
+            profile_response = client.get(
+                "/api/profile/me",
+                headers={"Authorization": f"Bearer {session_id}"}
+            )
+            assert profile_response.status_code == 401
 
     def test_multiple_logins_different_session_ids(self, client, mock_user):
         """Test that multiple logins create different session IDs."""
