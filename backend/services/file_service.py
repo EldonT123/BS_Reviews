@@ -51,11 +51,14 @@ def create_movie_folder(movie_name):
             ])
     return folder_path
 
+
 def delete_movie_folder(movie_name):
     """Deletes the folder and all contents for a movie."""
     folder_path = get_movie_folder(movie_name)
     if not os.path.exists(folder_path):
-        raise FileNotFoundError(f"Movie folder for '{movie_name}' does not exist.")
-    shutil.rmtree(folder_path) # Recursively delete the movie folder and all its contents
+        raise FileNotFoundError(
+            f"Movie folder for '{movie_name}' does not exist."
+        )
+    # Recursively delete the movie folder and all its contents
+    shutil.rmtree(folder_path)
     return f"'{movie_name}' has been deleted."
-    
