@@ -10,9 +10,9 @@ async def get_current_user(
 ) -> User:
     """
     Dependency that validates session and returns current user.
-    
+
     Expects Authorization header in format: "Bearer <session_id>"
-    
+
     Raises:
         HTTPException: If session is invalid or missing
     """
@@ -21,17 +21,19 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated - Authorization header missing"
         )
-    
+
     # Parse "Bearer <session_id>"
     parts = authorization.split()
     if len(parts) != 2 or parts[0].lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header format. Use: Bearer <session_id>"
+            detail=(
+                "Invalid authorization header format."
+                "Use: Bearer <session_id>")
         )
-    
+
     session_id = parts[1]
-    
+
     # Verify session
     user = user_service.verify_session_id(session_id)
     if not user:
@@ -39,7 +41,7 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired session"
         )
-    
+
     return user
 
 
