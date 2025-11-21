@@ -24,7 +24,7 @@ def temp_user_and_bookmark_files(monkeypatch):
 
     with open(temp_bookmarks.name, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["user_email", "movie_id"])
+        writer.writerow(["user_email", "movie_title"])
     
     #monkeypatch service constants 
     monkeypatch.setattr(user_service, "USER_CSV_PATH", temp_users.name)
@@ -49,29 +49,29 @@ def create_test_user(temp_user_and_bookmark_files):
 
 def test_add_bookmark(create_test_user):
     """Test adding a new bookmark."""
-    result = user_service.add_bookmark("test@example.com", "MOV001")
+    result = user_service.add_bookmark("test@example.com", "Avengers Endgame")
     assert result is True
 
     bookmarks = user_service.get_user_bookmarks("test@example.com")
-    assert bookmarks == ["MOV001"]
+    assert bookmarks == ["Avengers Endgame"]
 
 
 def test_add_duplicate_bookmark(create_test_user):
     """Adding the same movie again should fail."""
-    user_service.add_bookmark("test@example.com", "MOV001")
-    result = user_service.add_bookmark("test@example.com", "MOV001")
+    user_service.add_bookmark("test@example.com", "Avengers Endgame")
+    result = user_service.add_bookmark("test@example.com", "Avengers Endgame")
 
     assert result is False  # duplicate not added
 
     bookmarks = user_service.get_user_bookmarks("test@example.com")
-    assert bookmarks == ["MOV001"]
+    assert bookmarks == ["Avengers Endgame"]
 
 
 def test_remove_bookmark(create_test_user):
     """Removing a bookmark should work."""
-    user_service.add_bookmark("test@example.com", "MOV001")
+    user_service.add_bookmark("test@example.com", "Avengers Endgame")
 
-    result = user_service.remove_bookmark("test@example.com", "MOV001")
+    result = user_service.remove_bookmark("test@example.com", "Avengers Endgame")
     assert result is True
 
     bookmarks = user_service.get_user_bookmarks("test@example.com")
@@ -80,22 +80,22 @@ def test_remove_bookmark(create_test_user):
 
 def test_remove_missing_bookmark(create_test_user):
     """Removing a non-existent bookmark should return False."""
-    result = user_service.remove_bookmark("test@example.com", "MOV999")
+    result = user_service.remove_bookmark("test@example.com", "Thor Ragnarok")
     assert result is False
 
 
 def test_is_bookmarked(create_test_user):
     """Check if bookmark exists."""
-    user_service.add_bookmark("test@example.com", "MOV001")
+    user_service.add_bookmark("test@example.com", "Avengers Endgame")
 
-    assert user_service.is_bookmarked("test@example.com", "MOV001") is True
-    assert user_service.is_bookmarked("test@example.com", "MOV999") is False
+    assert user_service.is_bookmarked("test@example.com", "Avengers Endgame") is True
+    assert user_service.is_bookmarked("test@example.com", "Thor Ragnarok") is False
 
 
 def test_get_bookmarks(create_test_user):
-    """Should return all bookmarked movie IDs."""
-    user_service.add_bookmark("test@example.com", "MOV001")
-    user_service.add_bookmark("test@example.com", "MOV002")
+    """Should return all bookmarked movie titles."""
+    user_service.add_bookmark("test@example.com", "Avengers Endgame")
+    user_service.add_bookmark("test@example.com", "Forrest Gump")
 
     bookmarks = user_service.get_user_bookmarks("test@example.com")
-    assert set(bookmarks) == {"MOV001", "MOV002"}
+    assert set(bookmarks) == {"Avengers Endgame", "Forrest Gump"}
