@@ -4,6 +4,7 @@
 import os
 import json
 import csv
+import shutil
 
 DATABASE_PATH = "./database/archive"
 
@@ -49,3 +50,15 @@ def create_movie_folder(movie_name):
                 "Review Title", "Review"
             ])
     return folder_path
+
+
+def delete_movie_folder(movie_name):
+    """Deletes the folder and all contents for a movie."""
+    folder_path = get_movie_folder(movie_name)
+    if not os.path.exists(folder_path):
+        raise FileNotFoundError(
+            f"Movie folder for '{movie_name}' does not exist."
+        )
+    # Recursively delete the movie folder and all its contents
+    shutil.rmtree(folder_path)
+    return f"'{movie_name}' has been deleted."
