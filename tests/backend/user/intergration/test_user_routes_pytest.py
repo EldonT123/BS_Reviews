@@ -200,15 +200,25 @@ def test_get_tier_info():
 
 
 def test_get_user_profile(temp_user_csv):
-    """Test getting user profile."""
-    # Create a user
+    """Test getting user profile - requires authentication."""
+    # Create a user and login
     client.post(
         "/api/signup",
         json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
     
-    # Get profile
-    response = client.get(f"/api/profile/{TEST_EMAIL}")
+    # Login to get session
+    login_response = client.post(
+        "/api/login",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+    session_id = login_response.json()["session_id"]
+    
+    # Get profile with authentication
+    response = client.get(
+        f"/api/profile/{TEST_EMAIL}",
+        headers={"Authorization": f"Bearer {session_id}"}
+    )
     
     assert response.status_code == 200
     data = response.json()
@@ -217,8 +227,24 @@ def test_get_user_profile(temp_user_csv):
 
 
 def test_get_user_profile_not_found(temp_user_csv):
-    """Test getting profile for non-existent user."""
-    response = client.get("/api/profile/nonexistent@test.com")
+    """Test getting profile for non-existent user - requires authentication."""
+    # Create a user and login to get authentication
+    client.post(
+        "/api/signup",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+    
+    login_response = client.post(
+        "/api/login",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+    session_id = login_response.json()["session_id"]
+    
+    # Try to get profile for non-existent user (with valid authentication)
+    response = client.get(
+        "/api/profile/nonexistent@test.com",
+        headers={"Authorization": f"Bearer {session_id}"}
+    )
     
     assert response.status_code == 404
 

@@ -1,5 +1,5 @@
 # backend/dependencies/auth.py
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException, status, Depends
 from backend.services import user_service
 from backend.models.user_model import User
 from typing import Optional
