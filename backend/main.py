@@ -7,7 +7,6 @@ from backend.routes import (
                     review_routes,
                     user_routes,
                     admin_routes,
-                    settings_routes
                     )
 from backend.services import admin_service
 
@@ -43,7 +42,7 @@ app.include_router(movie_routes.router, prefix="/movies", tags=["Movies"])
 app.include_router(review_routes.router, prefix="/reviews", tags=["Reviews"])
 app.include_router(user_routes.router, prefix="/api", tags=["users"])
 app.include_router(admin_routes.router, prefix="/api/admin", tags=["admin"])
-app.include_router(settings_routes.router, prefix="/api", tags=["settings"])
+
 
 
 @app.get("/")
