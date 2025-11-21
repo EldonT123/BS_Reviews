@@ -1,3 +1,4 @@
 ﻿user_email,user_password,tier
 testuser@gmail.com,testuser#123,snail
 xbonealpha@gmail.com,$2b$12$0Xz0dfocSG8abkQu6O2rdeiGWUqmzp9Xf1zP/.BPHRsqqUFcgN1CG,admin
+newuser@example.com,$2b$12$3UggW4EDxfJ834bF4rDaW.ilVzuVtGZr/ES86y4MRnNlle8YmHHQi,snail

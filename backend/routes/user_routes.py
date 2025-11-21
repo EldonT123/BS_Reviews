@@ -24,6 +24,11 @@ class BookmarkRequest(BaseModel):
     email: EmailStr
     movie_id: str
 
+class SignoutRequest(BaseModel):
+    """Request model for signout."""
+    session_id: str
+
+
 # ==================== Public Routes ====================
 
 @router.post("/signup")
@@ -51,9 +56,9 @@ async def signup(user: UserAuth):
 
 @router.post("/login")
 async def login(user: UserAuth):
-    """Authenticate user and return user info with permissions."""
+    """Authenticate user and return user info with session ID."""
     try:
-        authenticated_user = user_service.authenticate_user(
+        authenticated_user, session_id = user_service.authenticate_user(
             email=user.email,
             password=user.password
         )
@@ -62,6 +67,7 @@ async def login(user: UserAuth):
             "message": (f"Welcome back, "
                         f"{authenticated_user.get_tier_display_name()}!"),
             "user": authenticated_user.to_dict(),
+            "session_id": session_id
         }
 
     except ValueError:
@@ -69,6 +75,40 @@ async def login(user: UserAuth):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
+
+
+@router.post("/signout")
+async def signout(request: SignoutRequest):
+    """Sign out user by revoking their session ID."""
+    success = user_service.signout_user(request.session_id)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired session ID"
+        )
+
+    return {
+        "message": "Successfully signed out"
+    }
+
+
+@router.get("/check-session/{session_id}")
+async def check_session(session_id: str):
+    """Check if a session ID is valid and return user info."""
+    user = user_service.verify_session_id(session_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired session"
+        )
+
+    return {
+        "message": "Session is valid",
+        "logged_in": True,
+        "user": user.to_dict()
+    }
 
 
 # ==================== Tier Information ====================

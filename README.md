@@ -78,9 +78,29 @@ Represents a user who can post reviews.
 
 ### Description
 
-* Stores username and an optional admin flag.
+* Stores an email, password (hashed) and user rank string.
 * Provides an `add_review()` method which delegates review creation to the review service, linking the user to the review data.
-* Includes a readable string representation showing username and admin status.
+* Provides an `update_tier()` method which allows users to upgrade their rank. In the future this is where a user would pay for an upgrade but currently there is no barrier for upgrades.
+* Includes a readable string representation showing email, permissions and rank level.
+* Includes tier checks to return user rank.
+* Includes permission checks to see if user is of high enough rank to complete various functions.
+
+---
+
+## admin_model.py
+
+### Purpose
+
+Represents an admin who can administrate website users, movies and reviews.
+
+### Description
+
+* Stores an email and password (hashed).
+* Provides an `update_user_tier()` method which allows admins to upgrade users rank. This allows admins to force a rank upgrade for a user without paying.
+* Provides a `delete_user()` method which allows admins to delete users. This allows admins to moderate users to ensure a well moderated website.
+* Provides a `get_all_users()` method which allows admins to see all users. This allows admins to moderate users to ensure a well moderated website.
+* Includes a readable string representation showing email, role and permissions.
+* Includes permission checks to show and check admin permissions.
 
 ---
 
