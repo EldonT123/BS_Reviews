@@ -44,7 +44,6 @@ app.include_router(user_routes.router, prefix="/api", tags=["users"])
 app.include_router(admin_routes.router, prefix="/api/admin", tags=["admin"])
 
 
-
 @app.get("/")
 async def root():
     return {"message": "Backend API is up and running."}
