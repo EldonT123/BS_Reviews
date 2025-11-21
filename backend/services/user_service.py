@@ -3,16 +3,23 @@
 import csv
 import os
 import bcrypt
+import secrets
+from datetime import datetime, timedelta
 from typing import Optional, Dict
 from backend.models.user_model import User
 
 # Path configuration
 USER_CSV_PATH = os.path.abspath(
     os.path.join(
-            os.path.dirname(__file__),
-            "../../database/users/user_information.csv"
-        )
+        os.path.dirname(__file__),
+        "../../database/users/user_information.csv"
+    )
 )
+
+# In-memory session storage (consider Redis or database for production)
+user_sessions: Dict[str, tuple[str, datetime]] = {}  # token -> (email, expiry)
+session_ids: Dict[str, str] = {}  # session_id -> token
+SESSION_EXPIRY_HOURS = 24
 
 # ==================== CSV Operations ====================
 
@@ -113,13 +120,186 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password_bytes, hash_bytes)
 
 
+# ==================== Session Management ====================
+
+def _generate_session_token() -> str:
+    """Generate a secure random session token."""
+    return secrets.token_urlsafe(32)
+
+
+def _generate_session_id() -> str:
+    """Generate a random short session ID (8 characters)."""
+    return secrets.token_urlsafe(8)
+
+
+def create_session(email: str) -> str:
+    """
+    Create a session token for a user.
+
+    Args:
+        email: User email address
+
+    Returns:
+        Session token string
+    """
+    token = _generate_session_token()
+    expiry = datetime.now() + timedelta(hours=SESSION_EXPIRY_HOURS)
+    user_sessions[token] = (email.lower(), expiry)
+    return token
+
+
+def create_session_id(email: str) -> str:
+    """
+    Create a random session ID for a user.
+
+    This generates a short, random ID that's easier to type/copy
+    than the full token.
+
+    Args:
+        email: User email address
+
+    Returns:
+        Random session ID string (8 characters)
+    """
+    token = create_session(email)
+    session_id = _generate_session_id()
+
+    # Ensure uniqueness (very unlikely to collide, but just in case)
+    while session_id in session_ids:
+        session_id = _generate_session_id()
+
+    session_ids[session_id] = token
+    return session_id
+
+
+def verify_session(token: str) -> Optional[User]:
+    """
+    Verify session token and return user if valid.
+
+    Args:
+        token: Session token
+
+    Returns:
+        User object if session is valid, None otherwise
+    """
+    if token not in user_sessions:
+        return None
+
+    email, expiry = user_sessions[token]
+
+    # Check if session is expired
+    if datetime.now() > expiry:
+        del user_sessions[token]  # Clean up expired session
+        return None
+
+    return get_user_by_email(email)
+
+
+def verify_session_id(session_id: str) -> Optional[User]:
+    """
+    Verify session by ID instead of full token.
+
+    Args:
+        session_id: Short session ID
+
+    Returns:
+        User object if session is valid, None otherwise
+    """
+    if session_id not in session_ids:
+        return None
+
+    token = session_ids[session_id]
+    return verify_session(token)
+
+
+def revoke_session(token: str) -> bool:
+    """
+    Revoke a session token (for signout).
+
+    Args:
+        token: Session token to revoke
+
+    Returns:
+        True if session was revoked, False if session didn't exist
+    """
+    if token in user_sessions:
+        del user_sessions[token]
+        return True
+    return False
+
+
+def revoke_session_id(session_id: str) -> bool:
+    """
+    Revoke a session by ID.
+
+    Args:
+        session_id: Session ID to revoke
+
+    Returns:
+        True if session was revoked, False if session didn't exist
+    """
+    if session_id not in session_ids:
+        return False
+
+    token = session_ids[session_id]
+    del session_ids[session_id]
+    return revoke_session(token)
+
+
+def revoke_all_user_sessions(email: str):
+    """
+    Revoke all session tokens for a specific user.
+
+    Args:
+        email: User email address
+    """
+    email_lower = email.lower()
+
+    # Revoke all tokens
+    tokens_to_revoke = [
+        token for token, (token_email, _) in user_sessions.items()
+        if token_email == email_lower
+    ]
+    for token in tokens_to_revoke:
+        del user_sessions[token]
+
+    # Revoke all session IDs pointing to those tokens
+    session_ids_to_revoke = [
+        sid for sid, token in session_ids.items()
+        if token in tokens_to_revoke
+    ]
+    for sid in session_ids_to_revoke:
+        del session_ids[sid]
+
+
+def cleanup_expired_sessions():
+    """Remove all expired sessions from memory."""
+    now = datetime.now()
+    expired_tokens = [
+        token for token, (_, expiry) in user_sessions.items()
+        if now > expiry
+    ]
+
+    # Clean up expired tokens
+    for token in expired_tokens:
+        del user_sessions[token]
+
+    # Clean up session IDs pointing to expired tokens
+    session_ids_to_remove = [
+        sid for sid, token in session_ids.items()
+        if token in expired_tokens
+    ]
+    for sid in session_ids_to_remove:
+        del session_ids[sid]
+
+
 # ==================== Business Logic ====================
 
 def create_user(
         email: str,
         password: str,
         tier: str = User.TIER_SNAIL
-        ) -> User:
+) -> User:
     """
     Create a new user account.
     Raises ValueError if user already exists.
@@ -134,10 +314,19 @@ def create_user(
     return User(email.lower(), password_hash, tier)
 
 
-def authenticate_user(email: str, password: str) -> User:
+def authenticate_user(email: str, password: str) -> tuple[User, str]:
     """
-    Authenticate a user with email and password.
-    Raises ValueError if credentials are invalid.
+    Authenticate a user with email and password, and create session.
+
+    Args:
+        email: User email
+        password: User password
+
+    Returns:
+        Tuple of (User object, session ID)
+
+    Raises:
+        ValueError: If credentials are invalid
     """
     user = get_user_by_email(email)
 
@@ -147,7 +336,23 @@ def authenticate_user(email: str, password: str) -> User:
     if not verify_password(password, user.password_hash):
         raise ValueError("Invalid credentials")
 
-    return user
+    # Create session ID (random 8-character string)
+    session_id = create_session_id(email)
+
+    return user, session_id
+
+
+def signout_user(session_id: str) -> bool:
+    """
+    Sign out a user by revoking their session ID.
+
+    Args:
+        session_id: Session ID to revoke
+
+    Returns:
+        True if signout was successful, False if session_id didn't exist
+    """
+    return revoke_session_id(session_id)
 
 
 def user_exists(email: str) -> bool:
@@ -166,8 +371,13 @@ def get_all_users() -> list[User]:
 
 def delete_user(email: str) -> bool:
     """
-    Delete a user by email.
-    Returns True if user was deleted, False if user not found.
+    Delete a user by email and revoke all their sessions.
+
+    Args:
+        email: User email address
+
+    Returns:
+        True if user was deleted, False if user not found
     """
     users = read_users()
     email_lower = email.lower()
@@ -175,6 +385,10 @@ def delete_user(email: str) -> bool:
     if email_lower not in users:
         return False
 
+    # Revoke all sessions for this user
+    revoke_all_user_sessions(email_lower)
+
+    # Delete from CSV
     del users[email_lower]
 
     ensure_user_csv_exists()

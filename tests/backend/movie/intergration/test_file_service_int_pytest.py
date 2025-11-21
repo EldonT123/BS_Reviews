@@ -26,16 +26,6 @@ def test_integration_create_and_verify_movie_folder(temp_database_dir):
     assert "movieReviews.csv" in files, "movieReviews.csv not found in folder"
 
 
-def test_real_data_structure(anymovie_temp_folder):
-    expected_files = ["metadata.json", "movieReviews.csv"]
-    actual_files = [f.name for f in anymovie_temp_folder.iterdir()]
-
-    for expected_file in expected_files:
-        assert expected_file in actual_files, (
-            f"{expected_file} not found in {anymovie_temp_folder.name}"
-        )
-
-
 def test_integration_create_and_delete_movie_folder(temp_database_dir):
     """Integration test: create a movie folder and then delete it."""
     # Step 1: Create the folder

@@ -35,11 +35,11 @@ def test_create_user_duplicate(temp_user_csv):
 def test_authenticate_user_success(temp_user_csv):
     """Test successful authentication."""
     user_service.create_user(TEST_EMAIL, TEST_PASSWORD)
-    
-    user = user_service.authenticate_user(TEST_EMAIL, TEST_PASSWORD)
-    
+    user, token = user_service.authenticate_user(TEST_EMAIL, TEST_PASSWORD)  # Unpack tuple
     assert user is not None
     assert user.email == TEST_EMAIL.lower()
+    assert token is not None  # Also verify token was created
+    assert len(token) > 0
 
 
 def test_authenticate_user_wrong_password(temp_user_csv):
