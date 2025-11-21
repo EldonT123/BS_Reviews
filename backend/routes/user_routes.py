@@ -14,6 +14,15 @@ class UserAuth(BaseModel):
     email: EmailStr
     password: str
 
+class BookmarkRequest(BaseModel):
+    """Request model for bookmark operations"""
+    email: EmailStr
+    password: str
+
+class BookmarkRequest(BaseModel):
+    """Request model for bookmark operations"""
+    email: EmailStr
+    movie_id: str
 
 # ==================== Public Routes ====================
 
@@ -120,4 +129,81 @@ async def get_user_profile(email: str):
 
     return {
         "user": user.to_dict()
+    }
+# ==================== Bookmark Routes ====================
+@router.post("/bookmarks/add")
+async def add_bookmark(request: BookmarkRequest):
+    """Add a movie to a user's bookmarked list"""
+    if not user_service.user_exists(request.email):
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND, detail = "User not found"
+        )
+    added = user_service.add_bookmark(request.email, request.movie_id)
+
+    if not added:
+        return{
+            "message": "Movie already bookmarked.",
+            "bookmarked": False
+        }
+    
+    return{
+        "message": "Movie added to bookmarks.",
+        "bookmarked": True
+    }
+
+@router.post("/bookmarks/remove")
+async def remove_bookmark(request: BookmarkRequest):
+    """
+    Remove a movie from a user's bookmarked list
+    """
+    if not user_service.user_exists(request.email):
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND, detail = "User not found"
+        )
+    removed = user_service.remove_bookmark(request.email, request.movie_id)
+
+    if not removed:
+        return {
+            "message": "Bookmark not found.",
+            "removed": False
+        }
+
+    return {
+        "message": "Bookmark removed.",
+        "removed": True
+    }
+
+@router.get("/bookmarks/{email}")
+async def get_bookmarks(email: str):
+    """
+    Retrieve all bookmarked movie IDs for a user.
+    """
+    if not user_service.user_exists(email):
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail = "User not found"
+        )
+    bookmarks = user_service.get_user_bookmarks(email)
+
+    return{
+        "email": email,
+        "bookmarks": bookmarks
+    }
+
+@router.get("/bookmarks/{email}/{movie_id}")
+async def check_bookmark(email: str, movie_id: str):
+    """
+    Check if specific movie is bookmarked by the user
+    """
+    if not user_service.user_exists(email):
+        raise HTTPException(
+            status_code =status.HTTP_404_NOT_FOUND, detail= "User not found"
+        )
+    
+    bookmarked = user_service.is_bookmarked(email, movie_id)
+
+    return{
+        "email": email,
+        "movie_id": movie_id,
+        "bookmarked": bookmarked
     }

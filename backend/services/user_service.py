@@ -14,6 +14,14 @@ USER_CSV_PATH = os.path.abspath(
         )
 )
 
+# Path configuration for bookmarks
+BOOKMARK_CSV_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "../../database/users/user_bookmarks.csv"
+    )
+)
+
 # ==================== CSV Operations ====================
 
 
@@ -25,6 +33,16 @@ def ensure_user_csv_exists():
         with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(["user_email", "user_password", "user_tier"])
+
+
+def ensure_bookmark_csv_exists():
+    """Ensure the directory and CSV file exist,"""
+    """and create headers if missing."""
+    os.makedirs(os.path.dirname(BOOKMARK_CSV_PATH), exist_ok=True)
+    if not os.path.exists(BOOKMARK_CSV_PATH):
+        with open(BOOKMARK_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["user_email", "movie_id"])
 
 
 def read_users() -> Dict[str, tuple[str, str]]:
@@ -185,3 +203,76 @@ def delete_user(email: str) -> bool:
             writer.writerow([user_email, password_hash, tier])
 
     return True
+
+# ==================== Bookmark Operations ====================
+#Retrieve bookmarks
+def get_user_bookmarks(email: str) -> list [str]:
+    """Return list of movie IDs bookmarked by a user."""
+    """Bookmarks stored in separate CSV file"""
+    ensure_bookmark_csv_exists()
+    bookmarks = []
+
+    with open(BOOKMARK_CSV_PATH, newline = "", encoding = "utf-8") as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader, None) #Skip header
+
+        #Collect movie_ids belonging to the user
+        for row in reader:
+            if len(row) >= 2 and row[0].lower() == email.lower():
+                bookmarks.append(row[1])
+    
+    return bookmarks
+
+#Add a bookmark
+def add_bookmark(email: str, movie_id: str) -> bool:
+    """Add movie to users list of bookmarks
+    Returns True: successfully added
+            False: Movie was already bookmarked
+    """
+    ensure_bookmark_csv_exists()
+
+    #Prevent duplicates
+    existing = get_user_bookmarks(email)
+    if movie_id in existing:
+        return False #already bookmarked
+
+    #Append new bookmark
+    with open(BOOKMARK_CSV_PATH, "a", newline= "", encoding= "utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([email.lower(), movie_id])
+
+    return True
+
+# Remove a bookmark
+def remove_bookmark(email: str, movie_id: str) -> bool:
+    """
+    Remove movie from user's bookmarked list
+    Returns True = bookmark was removed
+            False = bookmark did not exist
+    """
+    ensure_bookmark_csv_exists()
+    removed = False 
+    updated_rows = []
+
+    #Read all rows, skip the one being removed
+    with open(BOOKMARK_CSV_PATH, newline = "", encoding = "utf-8") as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader, None) #skip header
+
+        for row in reader:
+            if row[0].lower() == email.lower() and row[1] == movie_id:
+                removed = True #Found bookmark to remove
+                continue        #Skip adding it to the new list
+            updated_rows.append(row)
+    
+    #Rewrite the CSV without the deleted row
+    with open(BOOKMARK_CSV_PATH, "w", newline="", encoding = "utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["user_email", "movie_id"])
+        writer.writerow(updated_rows)
+    
+    return removed
+
+def is_bookmarked(email: str, movie_id: str) -> bool:
+    """ Return True if the movie_id is already bookmarked by the user"""
+    return movie_id in get_user_bookmarks(email)
