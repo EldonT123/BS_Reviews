@@ -9,11 +9,13 @@ router = APIRouter()
 # ==================== Request Models ====================
 
 
+# This class alows for reviews and ratings to be created.
+# In our case, a rating is just a review without any comment.
 class ReviewInput(BaseModel):
     """Model for creating reviews."""
     email: EmailStr
     rating: float
-    comment: str
+    comment: str = ""
     review_title: str = ""
 
 
