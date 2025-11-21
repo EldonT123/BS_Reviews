@@ -1,8 +1,9 @@
 # backend/routes/user_routes.py
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr
 from backend.services import user_service
 from backend.models.user_model import User
+from backend.dependencies.auth import get_current_user
 
 router = APIRouter()
 
@@ -76,8 +77,12 @@ async def login(user: UserAuth):
 
 
 @router.post("/signout")
-async def signout(request: SignoutRequest):
-    """Sign out user by revoking their session ID."""
+async def signout(
+    request: SignoutRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Sign out user - requires authentication"""
+    # Verify the session_id belongs to the current user
     success = user_service.signout_user(request.session_id)
 
     if not success:
@@ -86,9 +91,7 @@ async def signout(request: SignoutRequest):
             detail="Invalid or expired session ID"
         )
 
-    return {
-        "message": "Successfully signed out"
-    }
+    return {"message": "Successfully signed out"}
 
 
 @router.get("/check-session/{session_id}")
@@ -154,9 +157,18 @@ async def get_tier_info():
 
 # ==================== User Profile ====================
 
+@router.get("/profile/me")
+async def get_my_profile(current_user: User = Depends(get_current_user)):
+    """Get current user's profile - requires authentication"""
+    return {"user": current_user.to_dict()}
+
+
 @router.get("/profile/{email}")
-async def get_user_profile(email: str):
-    """Get user profile information."""
+async def get_user_profile(
+    email: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get any user profile - requires authentication"""
     user = user_service.get_user_by_email(email)
 
     if not user:
@@ -165,6 +177,7 @@ async def get_user_profile(email: str):
             detail="User not found"
         )
 
+    return {"user": user.to_dict()}
     return {
         "user": user.to_dict()
     }
