@@ -336,6 +336,8 @@ def authenticate_user(email: str, password: str) -> tuple[User, str]:
     if not verify_password(password, user.password_hash):
         raise ValueError("Invalid credentials")
 
+    revoke_all_user_sessions(email)
+
     # Create session ID (random 8-character string)
     session_id = create_session_id(email)
 
