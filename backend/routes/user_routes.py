@@ -20,6 +20,7 @@ class BookmarkRequest(BaseModel):
     email: EmailStr
     movie_title: str
 
+
 class SignoutRequest(BaseModel):
     """Request model for signout."""
     session_id: str
