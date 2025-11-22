@@ -24,7 +24,7 @@ def test_get_top_movies_success(temp_database_dir):
         metadata_path = movie_folder / "metadata.json"
         metadata_path.write_text(json.dumps(metadata), encoding='utf-8')
 
-    response = client.get("/movies/top")
+    response = client.get("/api/movies/top")
     assert response.status_code == 200
     data = response.json()
     assert len(data) <= 5
@@ -33,7 +33,7 @@ def test_get_top_movies_success(temp_database_dir):
 
 def test_get_poster_not_found():
     """Test poster endpoint with non-existent movie."""
-    response = client.get("/movies/poster/nonexistentmovie")
+    response = client.get("/api/movies/poster/nonexistentmovie")
     assert response.status_code == 404
     assert response.json() == {"detail": "Poster not found"}
 
@@ -60,7 +60,7 @@ def test_get_most_commented_movies(temp_database_dir):
         metadata_path = movie_folder / "metadata.json"
         metadata_path.write_text(json.dumps(metadata), encoding='utf-8')
     
-    response = client.get("/movies/most_commented")
+    response = client.get("/api/movies/most_commented")
     assert response.status_code == 200
     movies = response.json()
     
@@ -76,7 +76,7 @@ def test_get_most_commented_movies(temp_database_dir):
 
 def test_get_most_commented_movies_with_real_data(temp_real_data_copy):
     """Integration test: Get most commented movies from real data."""
-    response = client.get("/movies/most_commented")
+    response = client.get("/api/movies/most_commented")
     assert response.status_code == 200
     movies = response.json()
     

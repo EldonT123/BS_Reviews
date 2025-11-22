@@ -181,8 +181,8 @@ def test_admin_get_all_users(temp_admin_csv, temp_user_csv):
     headers = get_auth_headers(token)
     
     # Create some users
-    client.post("/api/signup", json={"email": "user1@test.com", "password": TEST_USER_PASSWORD})
-    client.post("/api/signup", json={"email": "user2@test.com", "password": TEST_USER_PASSWORD})
+    client.post("/api/users/signup", json={"email": "user1@test.com", "password": TEST_USER_PASSWORD})
+    client.post("/api/users/signup", json={"email": "user2@test.com", "password": TEST_USER_PASSWORD})
     
     response = client.get("/api/admin/users", headers=headers)
     
@@ -200,7 +200,7 @@ def test_admin_upgrade_user_tier(temp_admin_csv, temp_user_csv):
     
     # Create a user
     client.post(
-        "/api/signup",
+        "/api/users/signup",
         json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
     )
     
@@ -224,7 +224,7 @@ def test_admin_upgrade_invalid_tier(temp_admin_csv, temp_user_csv):
     
     # Create a user
     client.post(
-        "/api/signup",
+        "/api/users/signup",
         json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
     )
     
@@ -262,7 +262,7 @@ def test_admin_delete_user(temp_admin_csv, temp_user_csv):
     
     # Create a user
     client.post(
-        "/api/signup",
+        "/api/users/signup",
         json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
     )
     
@@ -366,7 +366,7 @@ def test_integration_admin_manages_multiple_users(temp_admin_csv, temp_user_csv)
     # Create all users
     for email, password in users:
         response = client.post(
-            "/api/signup",
+            "/api/users/signup",
             json={"email": email, "password": password}
         )
         assert response.status_code == 200
@@ -438,7 +438,7 @@ def test_integration_separate_admin_and_user_accounts(temp_admin_csv, temp_user_
     email = "same@example.com"
     
     # Create user with this email
-    user_response = client.post("/api/signup", json={"email": email, "password": "UserPass123!"})
+    user_response = client.post("/api/users/signup", json={"email": email, "password": "UserPass123!"})
     assert user_response.status_code == 200
     
     # Create admin with same email (should work - different systems)
