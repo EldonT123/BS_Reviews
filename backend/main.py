@@ -39,7 +39,9 @@ app.add_middleware(
 
 # Register routers from routes folder
 app.include_router(movie_routes.router, prefix="/api/movies", tags=["Movies"])
-app.include_router(review_routes.router, prefix="/api/reviews", tags=["Reviews"])
+app.include_router(
+    review_routes.router, prefix="/api/reviews", tags=["Reviews"]
+    )
 app.include_router(user_routes.router, prefix="/api/users", tags=["Users"])
 app.include_router(admin_routes.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(search_routes.router, prefix="/api/search", tags=["Search"])
