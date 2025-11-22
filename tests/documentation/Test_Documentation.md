@@ -383,14 +383,6 @@ def test_revoke_all_user_sessions(self):
 
 ---
 
-### PR #2: User Authentication and Session Management
-**Branch:** `State_tracking`  
-**Files Changed:**
-- `backend/services/user_service.py` (Modified - added session management)
-- `backend/routes/user_routes.py` (Modified - added session endpoints)
-- `tests/backend/user/unit/test_session_management.py` (New)
-- `tests/backend/user/integration/test_user_routes_session.py` (New)
-
 ## Pull Request #3: User Ranking System and Test Structure Refactor
 **Branch:** `feature/rank-system`  
 **Files Cahnged:** 
@@ -874,14 +866,314 @@ def test_signup_missing_password():
 - Prevents user enumeration attacks
 
 ### Screenshots
-- Below is an image of the Manual Testing in the PR (Login/Signup Flow):
-  ![Login Page](image-auth-1.png)
-- Below is an image of the Unit Tests successfully running in the PR:
-  ![Unit Tests Passing](image-auth-2.png)
-- Below is an image of the Integration tests successfully running in the PR:
-  ![Integration Tests Passing](image-auth-3.png)
-- Below is an image of all previous tests running functionally in the PR:
-  ![All Tests Passing](image-auth-4.png)
+- Below is an image of the Manual Testing in the PR (Login/Signup Flow Done in Frontend):
+  ![alt text](image-10.png)
+- Below is an image of All Tests successfully running in the PR:
+  ![alt text](image-11.png)
+
+---
+### PR #5: Foundation Implementation - Core Application Architecture
+**Branch:** `foundation_feature`  
+**Files Changed:**
+- `backend/models/movie_model.py` (New)
+- `backend/models/review_model.py` (New)
+- `backend/models/user_model.py` (New)
+- `backend/services/file_service.py` (New)
+- `backend/services/metadata_service.py` (New)
+- `backend/services/review_service.py` (New)
+- `backend/routes/movie_routes.py` (New)
+- `backend/routes/review_routes.py` (New)
+- `frontend/components/MovieCard.tsx` (New)
+- `frontend/pages/index.tsx` (New)
+- `tests/backend/fixtures/` (New - Multiple fixture files)
+- `tests/backend/unit/test_services.py` (New)
+- `tests/backend/integration/test_routes.py` (New)
+- `node_modules/` (Unintentionally included - no .gitignore)
+- Various dependency files
+
+**Note on PR Size:** This PR appears significantly larger than expected due to the absence of a proper `.gitignore` file at the time of commit. As a result, dependencies such as `node_modules/`, build artifacts, and other system files were inadvertently included in the commit. The actual feature implementation represents a much smaller set of meaningful code changes focused on core application functionality.
+
+**Description:**
+Established the foundational architecture for the movie review application, implementing core data models, backend services, RESTful API routes, and an early frontend interface. This PR represents the initial system design that subsequent features (search, authentication, etc.) were built upon. Includes comprehensive testing infrastructure with both unit and integration tests, along with pytest fixtures for reproducible test environments.
+
+---
+
+### Core Components Implemented
+
+#### 1. **Data Models**
+Defined three core entities to structure application data:
+
+- **Movie Model (`movie_model.py`):**
+  - Encapsulates movie metadata (title, genre, release date, poster URL)
+  - Provides data validation and serialization methods
+  - Supports JSON import/export for persistence
+
+- **Review Model (`review_model.py`):**
+  - Represents user-submitted reviews with ratings and comments
+  - Links reviews to movies and users via foreign key relationships
+  - Includes timestamp tracking for review creation
+
+- **User Model (`user_model.py`):**
+  - Manages user profiles and authentication state
+  - Stores user preferences and tier information
+  - Provides methods for user data retrieval and updates
+
+#### 2. **Backend Services**
+Implemented service layer for business logic separation:
+
+- **File Service (`file_service.py`):**
+  - Handles file I/O operations for movie posters and metadata
+  - Provides abstraction layer for file system interactions
+  - Supports reading, writing, and organizing movie data directories
+
+- **Metadata Service (`metadata_service.py`):**
+  - Processes JSON metadata files for movie information
+  - Parses and validates movie data from external sources
+  - Manages metadata caching and retrieval
+
+- **Review Service (`review_service.py`):**
+  - Manages review creation, retrieval, and aggregation
+  - Calculates average ratings and review statistics
+  - Supports filtering reviews by movie, user, or date range
+
+#### 3. **RESTful API Routes**
+Created HTTP endpoints for frontend-backend communication:
+
+- **Movie Routes (`movie_routes.py`):**
+  - `GET /api/movies/top` - Retrieve highest-rated movies
+  - `GET /api/movies/most-commented` - Get movies with most reviews
+  - `GET /api/movies/{movie_id}/poster` - Fetch movie poster image
+  - `GET /api/movies/{movie_id}` - Get detailed movie information
+
+- **Review Routes (`review_routes.py`):**
+  - `POST /api/reviews` - Submit new movie review
+  - `GET /api/reviews/{movie_id}` - Get all reviews for a movie
+  - `GET /api/reviews/user/{user_id}` - Retrieve user's review history
+
+#### 4. **Early Frontend Development**
+Built initial React components for manual testing:
+
+- **MovieCard Component:**
+  - Displays movie poster, title, and rating
+  - Provides click interaction to view details
+  - Responsive design for various screen sizes
+
+- **Landing Page:**
+  - Fetches and displays top movies from backend
+  - Tests metadata retrieval and rendering
+  - Validates API integration with real data
+
+---
+
+### Testing Implementation
+
+**Important Note on Test Status:**
+The comprehensive test suite developed for this PR has been significantly modified and reorganized in subsequent PRs (particularly PR #1 Search Service and PR #4 Authentication). The original tests from this foundation PR have been:
+- Refactored and split into more focused test files
+- Enhanced with additional test cases as new features were added
+- Reorganized into the current test directory structure
+
+As a result, the **original test files from this PR no longer exist in their initial form**. The testing methodologies and approaches documented here represent the testing philosophy established during foundation development, but the actual test code has evolved substantially.
+
+#### Original Testing Approach
+
+### 1. Test Fixtures (Foundation Testing Infrastructure)
+**Purpose:** Create reusable, isolated test environments for consistent testing
+
+**Example - Sample Movie Data Fixture:**
+```python
+@pytest.fixture
+def sample_movie_data():
+    """Provides sample movie metadata for testing"""
+    return {
+        "title": "Inception",
+        "genre": ["Action", "Sci-Fi"],
+        "release_date": "2010-07-16",
+        "rating": 8.8,
+        "poster_url": "/posters/inception.jpg"
+    }
+```
+**Methodology:** Fixtures provided consistent test data across multiple test functions, eliminating data setup duplication.
+
+**Example - Temporary File System Fixture:**
+```python
+@pytest.fixture
+def temp_movie_directory(tmp_path):
+    """Creates temporary directory structure for file service tests"""
+    movie_dir = tmp_path / "movies" / "Inception"
+    movie_dir.mkdir(parents=True)
+    
+    # Create sample metadata file
+    metadata = {"title": "Inception", "genre": ["Action"]}
+    (movie_dir / "metadata.json").write_text(json.dumps(metadata))
+    
+    return movie_dir
+```
+**Methodology:** Used pytest's `tmp_path` fixture to create isolated file systems, preventing test interference.
+
+### 2. Unit Testing - Services Layer
+**Purpose:** Validate individual service functions in isolation
+
+**Example - File Service Tests:**
+```python
+def test_read_metadata_file(temp_movie_directory, file_service):
+    """Test reading metadata from JSON file"""
+    metadata = file_service.read_metadata("Inception")
+    
+    assert metadata is not None
+    assert metadata["title"] == "Inception"
+    assert "Action" in metadata["genre"]
+```
+**Methodology:** Tested file operations using temporary directories, ensuring no impact on actual data.
+
+**Example - Review Service Tests:**
+```python
+def test_calculate_average_rating(review_service, sample_reviews):
+    """Test average rating calculation"""
+    avg_rating = review_service.calculate_average_rating("movie123")
+    
+    assert avg_rating == 7.5
+    assert isinstance(avg_rating, float)
+```
+**Methodology:** Used mock review data to test rating calculations without database dependencies.
+
+### 3. Integration Testing - API Routes
+**Purpose:** Test complete request-response cycles with all components
+
+**Example - Top Movies Endpoint:**
+```python
+def test_get_top_movies_integration(client, populated_database):
+    """Integration test: Retrieve top-rated movies"""
+    response = client.get("/api/movies/top?limit=5")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["movies"]) == 5
+    assert data["movies"][0]["rating"] >= data["movies"][1]["rating"]
+```
+**Methodology:** Used FastAPI TestClient with populated test database to validate complete workflows.
+
+**Example - Review Submission Flow:**
+```python
+def test_submit_review_integration(client, authenticated_user):
+    """Integration test: Complete review submission"""
+    review_data = {
+        "movie_id": "inception",
+        "rating": 9,
+        "comment": "Mind-bending masterpiece!"
+    }
+    
+    response = client.post("/api/reviews", json=review_data)
+    
+    assert response.status_code == 201
+    assert response.json()["review"]["rating"] == 9
+    
+    # Verify review was persisted
+    get_response = client.get("/api/reviews/inception")
+    reviews = get_response.json()["reviews"]
+    assert any(r["comment"] == "Mind-bending masterpiece!" for r in reviews)
+```
+**Methodology:** Multi-step validation ensuring data persistence across API calls.
+
+### 4. Manual Testing
+**Terminal API Testing:**
+Performed manual cURL requests to validate endpoints during development:
+
+```bash
+# Test movie retrieval
+curl http://localhost:8000/api/movies/top
+
+# Test review submission
+curl -X POST http://localhost:8000/api/reviews \
+  -H "Content-Type: application/json" \
+  -d '{"movie_id": "inception", "rating": 9, "comment": "Great film!"}'
+
+# Test poster fetching
+curl http://localhost:8000/api/movies/inception/poster --output poster.jpg
+```
+
+**Frontend Manual Testing:**
+- Loaded landing page to verify movie data fetching
+- Tested MovieCard rendering with various poster sizes
+- Validated click interactions and navigation
+- Checked responsive design on different screen widths
+
+### 5. Error Handling and Edge Cases
+**Example - Missing Metadata:**
+```python
+def test_get_movie_not_found(client):
+    """Test 404 response for non-existent movie"""
+    response = client.get("/api/movies/nonexistent-movie")
+    
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+```
+
+**Example - Invalid Review Data:**
+```python
+def test_submit_review_invalid_rating(client):
+    """Test review submission with out-of-range rating"""
+    invalid_review = {
+        "movie_id": "inception",
+        "rating": 15,  # Invalid: should be 1-10
+        "comment": "Test"
+    }
+    
+    response = client.post("/api/reviews", json=invalid_review)
+    
+    assert response.status_code == 422
+```
+
+**Status Codes Tested:** 200 (Success), 201 (Created), 404 (Not Found), 422 (Validation Error), 500 (Server Error)
+
+---
+
+
+**Note:** These test reflect the original implementation. Current test suite (after refactoring in subsequent PRs) has different organization and count.
+
+### Documentation and Code Quality
+- **Inline Comments:** Added comprehensive docstrings to all functions and classes
+- **Architecture Documentation:** Created markdown files explaining service interactions and data flow
+- **API Documentation:** Documented all endpoints with request/response schemas
+- **Code Style:** Followed PEP 8 guidelines with consistent formatting
+
+---
+
+### Known Issues and Future Improvements
+
+1. **Missing .gitignore:**
+   - Issue resolved in subsequent commits
+   - Recommendation: Always initialize repositories with proper .gitignore templates
+
+2. **Test Organization:**
+   - Original test structure was monolithic
+   - Later refactored into domain-specific test modules (as seen in PR #1 and PR #4)
+
+3. **Frontend Placeholder Status:**
+   - Early frontend served primarily for manual API testing
+   - Full UI/UX implementation came in later PRs
+
+---
+
+### Screenshots
+- Below is an image of the Manual Frontend Testing in the terminal. Data is being pulled from metadat.json files to prodcues the movie rating information:
+  ![alt text](image-12.png)
+- Below is an image of the All tests successfully running:
+  ![alt text](image-13.png)
+
+
+---
+
+### Impact and Foundation for Future Work
+
+This PR established the architectural patterns that enabled rapid development of subsequent features:
+- **Search Service (PR #1):** Built on top of metadata_service for movie queries
+- **Authentication (PR #4):** Extended user_model and added auth-specific routes
+- **Review System Enhancements:** Review service became basis for advanced filtering
+
+The modular design with clear separation between models, services, and routes proved essential for maintaining code quality as the application grew in complexity.
+
+---
 
 ---
 ## Test Coverage Summary
