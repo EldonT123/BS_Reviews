@@ -9,6 +9,7 @@ This document provides comprehensive documentation for all testing methodologies
 2. [Pull Request Documentation](#pull-request-documentation)
 3. [Test Coverage Summary](#test-coverage-summary)
 4. [Running Tests](#running-tests)
+5. [Summarized List of PR's](#Summarized-List-of-PR's)
 
 ---
 
@@ -1275,61 +1276,13 @@ pytest tests/backend/user/unit/test_session_management.py::TestSessionManagement
 
 ---
 
-## Evidence of Test Execution
-
-### Screenshots Location
-All test execution screenshots are organized by PR:
-- `docs/test_screenshots/PR1_search/`
-  - `search_unit_tests_passing.png`
-  - `search_unit_coverage.png`
-  - `search_integration_tests_passing.png`
-  - `search_integration_coverage.png`
-  - `search_all_tests_summary.png`
-
-- `docs/test_screenshots/PR2_sessions/`
-  - `session_unit_tests_passing.png`
-  - `session_unit_coverage.png`
-  - `session_integration_tests_passing.png`
-  - `session_api_test_coverage.png`
-  - `complete_workflow_test.png`
-
-### Coverage Reports Location
-HTML coverage reports stored in:
-- `docs/coverage_reports/PR1_search/htmlcov/`
-- `docs/coverage_reports/PR2_sessions/htmlcov/`
-
-### Test Execution Times
-- Search unit tests: ~3 seconds
-- Search integration tests: ~8 seconds
-- Session unit tests: ~2 seconds
-- Session integration tests: ~5 seconds
-- **Total test suite: ~18 seconds**
-
----
-
-## Conclusion
-
-This test suite demonstrates comprehensive coverage of the Movie Review Backend using multiple testing methodologies:
-
-### PR #1: Search Service
-- ✅ **70+ tests** covering all search functionality
-- ✅ **Mocking** for isolated unit tests
-- ✅ **Integration testing** with real file I/O
-- ✅ **Equivalence partitioning** for input validation
-- ✅ **Fault injection** for error scenarios
-- ✅ **Boundary testing** for edge cases
-
-### PR #2: Session Management
-- ✅ **45+ tests** covering authentication and sessions
-- ✅ **Security testing** for passwords and tokens
-- ✅ **Randomness testing** for session ID generation
-- ✅ **Workflow testing** for complete user journeys
-- ✅ **Exception handling** for all error paths
-
-**Total Achievement:**
-- 115+ comprehensive tests
-- 93%+ code coverage
-- Multiple testing methodologies demonstrated
-- 2 major pull requests with extensive testing
-- Fast test execution (<20 seconds)
-- Clear evidence of test-driven development
+## Summarized List of PR's
+Cain's PR's: 
+- **Test Documentation 2**: adding all my test documentation
+- **Test Documnetation 1**: Setting up structure of our test documentation file
+- **State Tracking**: Allows for proper recording of sessions for functions
+- **Addition of Search Feature and Associated Testin**g: Allows for searching of movies by several paramters
+- **Added Framework for Rank based system and Re-organized Test Folder Structure**
+- **Add authentication features(login/signup)**
+- **User review movies branch**: added all functionalities asked for in the User Reviews issue in Project backlog. Baseline of entire project structure off of this PR
+- **Implemented Directory Navigation & File Handling Feature**: Old code that was eventually intergrated into User Review PR. 
