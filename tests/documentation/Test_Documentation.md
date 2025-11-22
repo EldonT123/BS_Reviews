@@ -383,6 +383,507 @@ def test_revoke_all_user_sessions(self):
 
 ---
 
+### PR #2: User Authentication and Session Management
+**Branch:** `State_tracking`  
+**Files Changed:**
+- `backend/services/user_service.py` (Modified - added session management)
+- `backend/routes/user_routes.py` (Modified - added session endpoints)
+- `tests/backend/user/unit/test_session_management.py` (New)
+- `tests/backend/user/integration/test_user_routes_session.py` (New)
+
+## Pull Request #3: User Ranking System and Test Structure Refactor
+**Branch:** `feature/rank-system`  
+**Files Cahnged:** 
+- `backend/models/user_model.py` 
+- `backend/routes/user_routes.py`  
+- `test_user_model_unit.py`
+- `test_user_routes_integration.py`
+- `test_admin_routes_integration.py`
+
+### Description
+Implemented tier-based ranking system (Snail, Slug, Banana Slug) with permission-based access control. Refactored test structure to follow unit/integration folder model. Includes 25+ tests validating tier permissions, upgrades, and access control.
+
+### Predominant Testing Methodologies
+
+#### 1. Equivalence Partitioning (Permission Levels)
+**Purpose:** Validate each tier has correct permissions
+
+**User Tier Partitions:**
+- **Partition 1:** Snail tier - Browse only (no review writing)
+- **Partition 2:** Slug tier - Browse + write reviews
+- **Partition 3:** Banana Slug tier - All permissions + priority reviews
+
+**Example - Permission Validation:**
+```python
+def test_user_permissions():
+    """Permission helpers should enforce the correct rules for each tier."""
+    snail = User("snail@test.com", "hash", User.TIER_SNAIL)
+    slug = User("slug@test.com", "hash", User.TIER_SLUG)
+    banana = User("banana@test.com", "hash", User.TIER_BANANA_SLUG)
+    
+    # Everyone can browse
+    assert snail.can_browse() is True
+    assert slug.can_browse() is True
+    assert banana.can_browse() is True
+    
+    # Only Slug+ can write reviews
+    assert snail.can_write_reviews() is False
+    assert slug.can_write_reviews() is True
+    assert banana.can_write_reviews() is True
+    
+    # Only Banana Slugs have priority
+    assert snail.has_priority_reviews() is False
+    assert slug.has_priority_reviews() is False
+    assert banana.has_priority_reviews() is True
+```
+**Methodology:** Each tier represents an equivalence partition with distinct permission sets.
+
+**Example - Tier Type Checking:**
+```python
+def test_user_tier_checks():
+    """Users should correctly report their tier type through helper methods."""
+    snail = User("snail@test.com", "hash", User.TIER_SNAIL)
+    slug = User("slug@test.com", "hash", User.TIER_SLUG)
+    banana = User("banana@test.com", "hash", User.TIER_BANANA_SLUG)
+    
+    assert snail.is_snail() is True
+    assert slug.is_slug() is True
+    assert banana.is_banana_slug() is True
+```
+**Methodology:** Tests boundary between tiers using boolean helpers.
+
+#### 2. Exception Handling (Access Control)
+**Purpose:** Enforce permission boundaries
+
+**Example - Permission Denied:**
+```python
+def test_add_review_permission_denied():
+    """Test that Snail tier cannot write reviews."""
+    snail = User("snail@test.com", "hash", User.TIER_SNAIL)
+    
+    with pytest.raises(ValueError, match="cannot write reviews"):
+        snail.add_review("Test_Movie", 5.0, "Trying to review")
+```
+**Methodology:** Tests that low-tier users are blocked from protected actions with clear error messages.
+
+**Example - Movie Not Found:**
+```python
+def test_add_review_delegates(temp_user_csv):
+    """Test that add_review delegates to review_service."""
+    user = user_service.create_user(
+        email="reviewer@test.com",
+        password="TestPass123!",
+        tier=User.TIER_SLUG
+    )
+    
+    try:
+        user.add_review("Test_Movie", 4.5, "Great movie!")
+    except Exception as e:
+        assert "movie" in str(e).lower() or "not found" in str(e).lower()
+```
+**Methodology:** Tests graceful error handling when attempting invalid operations.
+
+#### 3. Workflow Testing (Tier Progression)
+**Purpose:** Test complete tier upgrade lifecycle
+
+**Example - Complete Tier Progression:**
+```python
+def test_integration_tier_progression(temp_user_csv, temp_admin_csv):
+    """Integration test: User tier progression through admin actions."""
+    token = create_admin_and_get_token()
+    email = "progression@test.com"
+    
+    # Step 1: Signup as Snail
+    signup = client.post("/api/signup", json={"email": email, "password": "pw"})
+    assert signup.json()["user"]["tier"] == User.TIER_SNAIL
+    assert signup.json()["user"]["permissions"]["can_write_reviews"] is False
+    
+    # Step 2: Admin upgrades to Slug
+    upgrade = client.post("/api/admin/users/upgrade-tier",
+                         headers={"Authorization": f"Bearer {token}"},
+                         json={"email": email, "new_tier": User.TIER_SLUG})
+    assert upgrade.status_code == 200
+    
+    # Step 3: Login and verify Slug permissions
+    login = client.post("/api/login", json={"email": email, "password": "pw"})
+    assert login.json()["user"]["tier"] == User.TIER_SLUG
+    assert login.json()["user"]["permissions"]["can_write_reviews"] is True
+    
+    # Step 4: Upgrade to Banana Slug
+    upgrade = client.post("/api/admin/users/upgrade-tier",
+                         headers={"Authorization": f"Bearer {token}"},
+                         json={"email": email, "new_tier": User.TIER_BANANA_SLUG})
+    
+    # Step 5: Verify VIP permissions
+    login = client.post("/api/login", json={"email": email, "password": "pw"})
+    assert login.json()["user"]["permissions"]["has_priority_reviews"] is True
+```
+**Methodology:** Tests complete state transitions: Snail → Slug → Banana Slug, validating permissions at each stage.
+
+#### 4. Integration Testing (API Endpoints)
+**Purpose:** Validate tier system through HTTP endpoints
+
+**Example - Tier Information Endpoint:**
+```python
+def test_get_tier_info():
+    """Test getting tier information."""
+    response = client.get("/api/tiers")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "tiers" in data
+    assert len(data["tiers"]) == 3  # Snail, Slug, Banana Slug
+```
+**Methodology:** Tests public API returns complete tier information.
+
+**Example - Authenticated Profile Access:**
+```python
+def test_get_user_profile(temp_user_csv):
+    """Test getting user profile - requires authentication."""
+    # Create and login user
+    client.post("/api/signup", json={"email": TEST_EMAIL, "password": TEST_PASSWORD})
+    login = client.post("/api/login", json={"email": TEST_EMAIL, "password": TEST_PASSWORD})
+    session_id = login.json()["session_id"]
+    
+    # Access profile with session
+    response = client.get(f"/api/profile/{TEST_EMAIL}",
+                         headers={"Authorization": f"Bearer {session_id}"})
+    
+    assert response.status_code == 200
+    assert response.json()["user"]["email"] == TEST_EMAIL.lower()
+```
+**Methodology:** Tests authentication requirement for profile access.
+
+**Example - 404 Error Handling:**
+```python
+def test_get_user_profile_not_found(temp_user_csv):
+    """Test getting profile for non-existent user."""
+    # Create user for authentication
+    client.post("/api/signup", json={"email": TEST_EMAIL, "password": TEST_PASSWORD})
+    login = client.post("/api/login", json={"email": TEST_EMAIL, "password": TEST_PASSWORD})
+    session_id = login.json()["session_id"]
+    
+    # Try non-existent profile
+    response = client.get("/api/profile/nonexistent@test.com",
+                         headers={"Authorization": f"Bearer {session_id}"})
+    
+    assert response.status_code == 404
+```
+**Methodology:** Tests proper error responses for missing resources.
+
+#### 5. Boundary Testing (Tier Boundaries)
+**Purpose:** Test tier transition boundaries
+
+**Example - Tier Display Names:**
+```python
+def test_user_tier_display():
+    """Test tier display names."""
+    snail = User("user@test.com", "hash", User.TIER_SNAIL)
+    slug = User("user@test.com", "hash", User.TIER_SLUG)
+    banana = User("user@test.com", "hash", User.TIER_BANANA_SLUG)
+    
+    assert "Snail" in snail.get_tier_display_name()
+    assert "Slug" in slug.get_tier_display_name()
+    assert "Banana Slug" in banana.get_tier_display_name()
+```
+**Methodology:** Tests human-readable tier names at boundaries.
+
+**Example - Serialization with Permissions:**
+```python
+def test_user_to_dict():
+    """Test User to_dict method includes permissions."""
+    user = User("test@test.com", "hash", User.TIER_SLUG)
+    user_dict = user.to_dict()
+    
+    assert user_dict["email"] == "test@test.com"
+    assert user_dict["tier"] == User.TIER_SLUG
+    assert "permissions" in user_dict
+    assert user_dict["permissions"]["can_write_reviews"] is True
+```
+**Methodology:** Tests serialization includes all permission data.
+
+#### 6. Unit Testing (Model Methods)
+**Purpose:** Test User model in isolation
+
+**Example - String Representation:**
+```python
+def test_user_repr():
+    """Test User repr method."""
+    user = User(email="alice@example.com",
+               password_hash="hashed_password",
+               tier=User.TIER_SLUG)
+    
+    assert repr(user) == "User(email=alice@example.com, tier=slug)"
+```
+**Methodology:** Tests object representation for debugging.
+
+### Test Structure Refactor
+This PR reorganized tests into:
+- `tests/backend/{component}/unit/` - Isolated unit tests
+- `tests/backend/{component}/integration/` - API and workflow tests
+
+**Benefits:**
+- Clear separation of concerns
+- Easier to run unit tests independently
+- Better organization for CI/CD pipelines
+
+### Screenshots
+- `docs/test_screenshots/PR3_ranking/ranking_unit_tests_passing.png`
+- `docs/test_screenshots/PR3_ranking/ranking_integration_tests.png`
+- `docs/test_screenshots/PR3_ranking/tier_progression_test.png`
+- `docs/test_screenshots/PR3_ranking/permission_validation.png`
+
+### PR #4: User Authentication System with Password Security
+**Branch:** `auth_feature`  
+**Files Changed:**
+- `backend/services/user_service.py` (New)
+- `backend/routes/auth_routes.py` (New)
+- `backend/models/user_model.py` (New)
+- `frontend/pages/login.tsx` (New)
+- `frontend/pages/signup.tsx` (New)
+- `frontend/app.tsx` (Modified)
+- `tests/backend/auth/unit/test_user_service_unit.py` (New)
+- `tests/backend/auth/integration/test_auth_integration.py` (New)
+
+**Description:**
+Implemented secure user authentication system with login and signup functionality. Includes password hashing using bcrypt to prevent plaintext password storage, email validation, case-insensitive email handling, and user tier management. Frontend routing updated to initialize at login page before granting access to main application.
+
+---
+
+### 1. Mocking (Unit Tests)
+**Purpose:** Isolate password hashing and verification logic from database operations
+
+**Example - `TestPasswordHashing`:**
+```python
+def test_password_hash_returns_string():
+    """Test that hash_password returns a hashed string"""
+    hashed = user_service.hash_password(TEST_PASSWORD)
+    
+    assert isinstance(hashed, str)
+    assert len(hashed) > 0
+    assert hashed != TEST_PASSWORD
+```
+**Methodology:** Tests password hashing function independently, ensuring plaintext passwords are never stored.
+
+**Example - `TestPasswordVerification`:**
+```python
+def test_verify_password_correct():
+    """Test that verify_password returns True for correct password"""
+    hashed = user_service.hash_password(TEST_PASSWORD)
+    
+    assert user_service.verify_password(TEST_PASSWORD, hashed) is True
+```
+**Methodology:** Validates bcrypt verification logic without requiring full user creation workflow.
+
+### 2. Equivalence Partitioning
+**Applied to:** Password validation, email formats, authentication states
+
+**Example - Password Hashing:**
+- **Partition 1:** Standard passwords (8-72 characters)
+- **Partition 2:** Long passwords (>72 bytes, bcrypt truncation handling)
+- **Partition 3:** Different passwords generating unique hashes (salt verification)
+- **Partition 4:** Same password verified against its hash (positive validation)
+- **Partition 5:** Wrong password against hash (negative validation)
+
+**Example - Email Handling:**
+- **Partition 1:** Lowercase email (user@example.com)
+- **Partition 2:** Uppercase email (USER@EXAMPLE.COM)
+- **Partition 3:** Mixed case email (User@Example.COM)
+- **Partition 4:** Invalid format (not-an-email)
+
+### 3. Fault Injection
+**Purpose:** Test security measures and error handling
+
+**Example - Duplicate User Prevention:**
+```python
+def test_create_user_duplicate(temp_user_csv):
+    """Test that creating duplicate user raises error"""
+    user_service.create_user(TEST_EMAIL, TEST_PASSWORD)
+    
+    with pytest.raises(ValueError, match="already exists"):
+        user_service.create_user(TEST_EMAIL, "DifferentPass123!")
+```
+**Injected Fault:** Attempting to create user with existing email  
+**Expected Behavior:** Raises ValueError preventing duplicate accounts
+
+**Example - Wrong Password:**
+```python
+def test_authenticate_user_wrong_password(temp_user_csv):
+    """Test authentication fails with wrong password"""
+    user_service.create_user(TEST_EMAIL, TEST_PASSWORD)
+    
+    with pytest.raises(ValueError, match="Invalid credentials"):
+        user_service.authenticate_user(TEST_EMAIL, "WrongPassword123!")
+```
+**Injected Fault:** Incorrect password attempt  
+**Expected Behavior:** Raises ValueError without revealing whether email exists
+
+**Example - Nonexistent User:**
+```python
+def test_authenticate_user_not_found(temp_user_csv):
+    """Test authentication fails for non-existent user"""
+    with pytest.raises(ValueError, match="Invalid credentials"):
+        user_service.authenticate_user("nonexistent@test.com", TEST_PASSWORD)
+```
+**Injected Fault:** Login attempt with unregistered email  
+**Expected Behavior:** Same error message as wrong password (security best practice)
+
+### 4. Integration Testing
+**Purpose:** Test complete authentication workflows with database persistence
+
+**Setup:** Creates temporary CSV database for user storage, simulates real signup/login flows
+
+**Example - Signup Endpoint:**
+```python
+def test_signup_success(temp_user_csv):
+    """Integration test: Successful user signup"""
+    response = client.post(
+        "/api/signup",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "message" in data
+    assert "user" in data
+    assert data["user"]["email"] == TEST_EMAIL.lower()
+    assert data["user"]["tier"] == User.TIER_SNAIL  # New users start as Snail
+```
+**Methodology:** Tests HTTP request/response with FastAPI TestClient, validates user creation and tier assignment.
+
+**Example - Login Endpoint:**
+```python
+def test_login_success(temp_user_csv):
+    """Integration test: Successful login with correct credentials"""
+    # Create user first
+    client.post(
+        "/api/signup",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+    
+    # Now login
+    response = client.post(
+        "/api/login",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "message" in data
+    assert "user" in data
+    assert data["user"]["tier"] == User.TIER_SNAIL
+```
+**Methodology:** Tests complete authentication cycle from signup to login, validates session token generation.
+
+**Example - Complete Authentication Flow:**
+```python
+def test_integration_signup_then_login(temp_user_csv):
+    """Integration test: Complete signup and login flow"""
+    email = "flow@example.com"
+    password = "FlowTest123!"
+    
+    # Step 1: Signup
+    signup_response = client.post(
+        "/api/signup",
+        json={"email": email, "password": password}
+    )
+    assert signup_response.status_code == 200
+    assert signup_response.json()["user"]["tier"] == User.TIER_SNAIL
+    
+    # Step 2: Login with same credentials
+    login_response = client.post(
+        "/api/login",
+        json={"email": email, "password": password}
+    )
+    assert login_response.status_code == 200
+    
+    # Step 3: Try to signup again (should fail)
+    duplicate_response = client.post(
+        "/api/signup",
+        json={"email": email, "password": "NewPassword456!"}
+    )
+    assert duplicate_response.status_code == 400
+    
+    # Step 4: Login with wrong password (should fail)
+    wrong_login_response = client.post(
+        "/api/login",
+        json={"email": email, "password": "WrongPassword789!"}
+    )
+    assert wrong_login_response.status_code == 401
+```
+**Methodology:** Multi-step workflow validation covering positive and negative test cases in realistic user scenarios.
+
+### 5. Exception Handling
+**Example - Signup Validation:**
+```python
+def test_signup_duplicate_email(temp_user_csv):
+    """Test signup fails with duplicate email"""
+    # First signup
+    client.post(
+        "/api/signup",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+    
+    # Second signup with same email
+    response = client.post(
+        "/api/signup",
+        json={"email": TEST_EMAIL, "password": "DifferentPass456!"}
+    )
+    
+    assert response.status_code == 400
+    assert "already exists" in response.json()["detail"]
+```
+
+**Example - Input Validation:**
+```python
+def test_signup_invalid_email():
+    """Test signup with invalid email format"""
+    response = client.post(
+        "/api/signup",
+        json={"email": "not-an-email", "password": TEST_PASSWORD}
+    )
+    
+    assert response.status_code == 422
+
+def test_signup_missing_password():
+    """Test signup with missing password field"""
+    response = client.post(
+        "/api/signup",
+        json={"email": TEST_EMAIL}
+    )
+    
+    assert response.status_code == 422
+```
+
+**Status Codes Tested:** 200 (Success), 400 (Bad Request - Duplicate User), 401 (Unauthorized - Invalid Credentials), 422 (Unprocessable Entity - Validation Error)
+
+### 6. Security Features
+**Password Hashing:**
+- Bcrypt algorithm with automatic salt generation
+- Passwords never stored in plaintext
+- Different hashes for same password (salt uniqueness verified)
+- Handles long passwords (>72 bytes) correctly
+
+**Email Security:**
+- Case-insensitive comparison prevents duplicate accounts
+- All emails normalized to lowercase for consistency
+- Format validation at API layer (422 status)
+
+**Error Message Consistency:**
+- Same "Invalid credentials" message for wrong password and nonexistent user
+- Prevents user enumeration attacks
+
+### Screenshots
+- Below is an image of the Manual Testing in the PR (Login/Signup Flow):
+  ![Login Page](image-auth-1.png)
+- Below is an image of the Unit Tests successfully running in the PR:
+  ![Unit Tests Passing](image-auth-2.png)
+- Below is an image of the Integration tests successfully running in the PR:
+  ![Integration Tests Passing](image-auth-3.png)
+- Below is an image of all previous tests running functionally in the PR:
+  ![All Tests Passing](image-auth-4.png)
+
+---
 ## Test Coverage Summary
 
 ### Overall Statistics
