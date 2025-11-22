@@ -1,5 +1,7 @@
+# Use official Python image
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
 # Install system dependencies
@@ -8,13 +10,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for caching
-COPY backend/requirements.txt .
+COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend code
-COPY backend/ .
+# Copy the entire backend folder into /app/backend
+COPY backend/ /app/backend/
 
-EXPOSE 5000
+# Expose the port FastAPI runs on
+EXPOSE 8000
 
 # Run FastAPI via uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
