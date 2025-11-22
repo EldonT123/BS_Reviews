@@ -1179,37 +1179,51 @@ The modular design with clear separation between models, services, and routes pr
 ---
 ## Test Coverage Summary
 
-### Overall Statistics
-| Component | Unit Tests | Integration Tests | Total Tests | Coverage |
-|-----------|-----------|-------------------|-------------|----------|
-| Search Service | 50+ | 20+ | 70+ | 95%+ |
-| Session Management | 30+ | 15+ | 45+ | 92%+ |
-| **Total** | **80+** | **35+** | **115+** | **93%+** |
+**Platform:** win32 | **Python:** 3.13.3-final-0
 
-### Testing Methodologies Distribution
+### Summary
 
-| Methodology | PR #1 (Search) | PR #2 (Sessions) | Total Usage |
-|-------------|----------------|------------------|-------------|
-| Mocking | ✅ Extensive | ✅ Extensive | 80+ tests |
-| Integration Testing | ✅ 20+ tests | ✅ 15+ tests | 35+ tests |
-| Equivalence Partitioning | ✅ All inputs | ✅ Session states | 40+ tests |
-| Fault Injection | ✅ File errors | ✅ Expired sessions | 25+ tests |
-| Exception Handling | ✅ All paths | ✅ All errors | 50+ tests |
-| Boundary Testing | ✅ Dates, ratings | ✅ Empty inputs | 20+ tests |
-| Security Testing | N/A | ✅ Passwords, tokens | 15+ tests |
-| Workflow Testing | ✅ Full search flow | ✅ Auth flow | 10+ tests |
+| Metric | Value |
+|--------|-------|
+| Total Statements | 1111 |
+| Missed Statements | 168 |
+| **Overall Coverage** | **85%** |
 
-### Code Coverage by File
+### Detailed Coverage by Module
 
-**Search Service:**
-- `search_service.py`: 95% coverage
-- `search_routes.py`: 90% coverage
+| Module | Statements | Missed | Coverage | Missing Lines |
+|--------|-----------|--------|----------|----------------|
+| backend/__init__.py | 0 | 0 | 100% | — |
+| backend/dependencies/auth.py | 23 | 7 | 70% | 28, 53–58, 65–70 |
+| backend/main.py | 27 | 10 | 63% | 17–26, 50, 54–55 |
+| backend/middleware/auth_middleware.py | 13 | 3 | 77% | 31, 38–39 |
+| backend/models/__init__.py | 0 | 0 | 100% | — |
+| backend/models/admin_model.py | 29 | 0 | 100% | — |
+| backend/models/movie_model.py | 12 | 0 | 100% | — |
+| backend/models/user_model.py | 42 | 5 | 88% | 80–84 |
+| backend/routes/__init__.py | 0 | 0 | 100% | — |
+| backend/routes/admin_routes.py | 56 | 1 | 98% | 84 |
+| backend/routes/movie_routes.py | 43 | 5 | 88% | 31–32, 57–58, 69 |
+| backend/routes/review_routes.py | 72 | 46 | 36% | 38–49, 63–114, 133–173, 191–209, 218–226, 235–237 |
+| backend/routes/search_routes.py | 47 | 6 | 87% | 69, 75–76, 134, 147–148 |
+| backend/routes/user_routes.py | 80 | 21 | 74% | 89, 192–204, 215–227, 238–245, 256–262 |
+| backend/services/__init__.py | 0 | 0 | 100% | — |
+| backend/services/admin_service.py | 114 | 7 | 94% | 139–140, 163–169, 273 |
+| backend/services/file_service.py | 34 | 0 | 100% | — |
+| backend/services/metadata_service.py | 22 | 0 | 100% | — |
+| backend/services/review_service.py | 160 | 14 | 91% | 107–109, 159–161, 202–204, 230, 280–281, 365, 373 |
+| backend/services/search_service.py | 129 | 13 | 90% | 25–27, 43–44, 151, 154–156, 203, 234–236, 245 |
+| backend/services/user_service.py | 208 | 30 | 86% | 39–41, 49–52, 62, 187, 204, 210–211, 227, 243–246, 259–264, 295–311, 375, 488 |
 
-**Session Management:**
-- `user_service.py` (session methods): 92% coverage
-- `user_routes.py` (session endpoints): 88% coverage
+## Coverage Gaps
 
----
+**Modules needing attention (< 85% coverage):**
+
+- **backend/routes/review_routes.py** (36%) — Significant gaps, especially lines 63–114 and 133–173
+- **backend/main.py** (63%) — Missing lines 17–26
+- **backend/dependencies/auth.py** (70%) — Missing lines 53–58, 65–70
+- **backend/routes/user_routes.py** (74%) — Missing lines 192–204, 215–227
+- **backend/middleware/auth_middleware.py** (77%) — Missing lines 31, 38–39
 
 ## Running Tests
 
