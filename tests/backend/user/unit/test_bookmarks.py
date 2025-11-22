@@ -3,21 +3,22 @@ import csv
 import tempfile
 import pytest
 
-#important service youre testing
+# important service youre testing
 from backend.services import user_service
 
 @pytest.fixture
+# Fixture/ Environment Setup
+
 def temp_user_and_bookmark_files(monkeypatch):
     """
     Creates temporary CSV files for users and bookmarks so tests do not modify real data. 
     Monkeypatches the service paths
     """
-
-    #create temp files
+    # Create temp files
     temp_users = tempfile.NamedTemporaryFile(delete=False)
     temp_bookmarks = tempfile.NamedTemporaryFile(delete=False)
 
-    #Write CSV headers
+    # Write CSV headers
     with open (temp_users.name, "w", newline = "", encoding = "utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["user_email", "user_password", "user_tier"])
@@ -34,6 +35,9 @@ def temp_user_and_bookmark_files(monkeypatch):
 
 
 @pytest.fixture
+# Fixture/ preparation
+
+
 def create_test_user(temp_user_and_bookmark_files):
     """
     Creates a test user in the temp CSV.
@@ -45,7 +49,10 @@ def create_test_user(temp_user_and_bookmark_files):
     )
     return "test@example.com"
 
-#Bookmark Tests
+# Bookmark Tests
+# Functional test (behaviour end to end) and 
+# File I/O integration test (writes/reads temp CSV files)
+
 
 def test_add_bookmark(create_test_user):
     """Test adding a new bookmark."""
@@ -54,6 +61,10 @@ def test_add_bookmark(create_test_user):
 
     bookmarks = user_service.get_user_bookmarks("test@example.com")
     assert bookmarks == ["Avengers Endgame"]
+
+# Unit test (Validates logic to prevent duplicates), 
+# Functional test (verifies expected behaviour), and 
+# File I/O integration test
 
 
 def test_add_duplicate_bookmark(create_test_user):
@@ -66,6 +77,7 @@ def test_add_duplicate_bookmark(create_test_user):
     bookmarks = user_service.get_user_bookmarks("test@example.com")
     assert bookmarks == ["Avengers Endgame"]
 
+# Functional test and File I/O integration test
 
 def test_remove_bookmark(create_test_user):
     """Removing a bookmark should work."""
@@ -77,12 +89,16 @@ def test_remove_bookmark(create_test_user):
     bookmarks = user_service.get_user_bookmarks("test@example.com")
     assert bookmarks == []
 
+# Unit test (tests how logic handles non-existent items),
+# Functional test (ensure correct boolean return behaviour)
 
 def test_remove_missing_bookmark(create_test_user):
     """Removing a non-existent bookmark should return False."""
     result = user_service.remove_bookmark("test@example.com", "Thor Ragnarok")
     assert result is False
 
+# Unit test (logic checks boolean result),
+# Functional Test (verifies lookup behaviour)
 
 def test_is_bookmarked(create_test_user):
     """Check if bookmark exists."""
@@ -91,6 +107,8 @@ def test_is_bookmarked(create_test_user):
     assert user_service.is_bookmarked("test@example.com", "Avengers Endgame") is True
     assert user_service.is_bookmarked("test@example.com", "Thor Ragnarok") is False
 
+# Functional tests (returns full lists of bookmarks)
+# File I/O integration test
 
 def test_get_bookmarks(create_test_user):
     """Should return all bookmarked movie titles."""
