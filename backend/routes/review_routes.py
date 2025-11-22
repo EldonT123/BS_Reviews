@@ -2,8 +2,8 @@
 """Routes for review management - HTTP handling only."""
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
-from backend.services import review_service, user_service
-from backend.dependencies.auth import get_current_user, require_slug_tier
+from backend.services import review_service
+from backend.dependencies.auth import require_slug_tier
 from backend.models.user_model import User
 
 router = APIRouter()
@@ -58,16 +58,17 @@ async def post_review(
     movie_name: str,
     review: ReviewInput,
     current_user: User = Depends(require_slug_tier)
-):    
+):
     """
     Add a review to a movie.
-    Requires: Authentication + Slug tier or above (Snails cannot write reviews).
+    Requires: Authentication + Slug tier or above.
     """
     # Example run
-    # curl -X POST http://localhost:8000/reviews/Joker 
-    # -H "Content-Type: application/json" 
-    # -H "Authorization: Bearer <session id>" 
-    # -d "{\"rating\": 9.5, \"comment\": \"Amazing movie!\", \"review_title\": \"Mind-bending\"}"
+    # curl -X POST http://localhost:8000/reviews/Joker
+    # -H "Content-Type: application/json"
+    # -H "Authorization: Bearer <session id>"
+    # -d "{\"rating\": 9.5, \"comment\"
+    # : \"Amazing movie!\", \"review_title\": \"Mind-bending\"}"
 
     # User is already authenticated and has Slug tier via dependency
     # Use authenticated user's email instead of trusting client input
@@ -134,9 +135,11 @@ async def update_review(
     Users can only edit their own reviews.
     """
     # Example run
-    # curl -X PUT http://localhost:8000/reviews/Joker 
-    # -H "Content-Type: application/json" -H "Authorization: Bearer <session id>" 
-    # -d "{\"rating\": 9.5, \"comment\": \"testing update\", \"review_title\": \"even better the second time\"}"
+    # curl -X PUT http://localhost:8000/reviews/Joker
+    # -H "Content-Type: application/json"
+    # -H "Authorization: Bearer <session id>"
+    # -d "{\"rating\": 9.5, \"comment\":
+    # \"testing update\", \"review_title\": \"even better the second time\"}"
 
     # Use authenticated user's email
     email = current_user.email
@@ -201,7 +204,9 @@ async def delete_review(
     email = current_user.email
 
     # Delete review
-    success = review_service.delete_review(username=email, movie_name=movie_name)
+    success = review_service.delete_review(
+        username=email, movie_name=movie_name
+        )
 
     if not success:
         raise HTTPException(
