@@ -4,7 +4,9 @@ from backend.services import metadata_service, file_service
 
 @pytest.fixture
 def temp_movie_env(tmp_path, monkeypatch):
-    """Create an isolated temporary movie folder for tests."""
+    """
+    Create an isolated temporary movie folder for tests.
+    """
     temp_dir = tmp_path / "movies"
     temp_dir.mkdir(parents=True)
 
@@ -21,7 +23,10 @@ def temp_movie_env(tmp_path, monkeypatch):
 # --- UNIT TESTS (Pure behavior, isolated filesystem) ---
 
 def test_read_metadata_missing_file(monkeypatch, tmp_path):
-    """If metadata.json does not exist, return an empty dict."""
+    """
+    Unit test - tests a single function in isolation
+    If metadata.json does not exist, return an empty dict.
+    """
     dummy_folder = tmp_path / "NoMovie"
     dummy_folder.mkdir()
     monkeypatch.setattr(file_service, "get_movie_folder", lambda name: str(dummy_folder))
@@ -31,7 +36,12 @@ def test_read_metadata_missing_file(monkeypatch, tmp_path):
 
 
 def test_write_and_read_metadata(temp_movie_env):
-    """Ensure write_metadata creates and can read back valid JSON."""
+    """
+    Unit test - Behavioural and light integration with filesystem
+    reads and writes metadata using real JSON I/O
+    Touches both write and read
+    Ensure write_metadata creates and can read back valid JSON.
+    """
     movie_name = "UnitTestMovie"
     # No need to create folder manually; get_movie_folder will create it
     data = {"title": "Test Movie", "director": "Tester", "average_rating": 4.5}
@@ -44,7 +54,10 @@ def test_write_and_read_metadata(temp_movie_env):
 
 
 def test_update_average_rating(temp_movie_env):
-    """Ensure update_average_rating correctly modifies the field."""
+    """
+    Unit test - tests single update function with fake filesystem
+    Ensure update_average_rating correctly modifies the field.
+    """
     movie_name = "AverageTest"
     initial_data = {"title": "Temp", "average_rating": 2.0}
     metadata_service.write_metadata(movie_name, initial_data)

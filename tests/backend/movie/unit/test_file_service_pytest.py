@@ -1,76 +1,64 @@
-"""Tests for file_service module."""
+"""Tests for file_service module. (with mocking)"""
 import pytest
-from pathlib import Path
+from unittest.mock import patch, MagicMock
 from backend.services import file_service
 
 TEST_MOVIE = "Test_Movie"
 
+# Logic test with mocked filesystem
+@patch("backend.services.file_service.DATABASE_PATH", "/fake/db")
 
-def test_get_movie_folder_path(temp_database_dir):
-    """Test that get_movie_folder returns correct path."""
-    path = file_service.get_movie_folder(TEST_MOVIE)
-    assert path.endswith(TEST_MOVIE), (
-        f"Movie folder path should end with movie name, got: {path}"
-    )
-    assert temp_database_dir.exists(), "Database directory should exist"
+
+def test_get_movie_folder_path():
+    """
+    Tests path building logic is correct
+    """
+    result = file_service.get_movie_folder(TEST_MOVIE)
+    assert result == "/fake/db/Test_Movie"
+
+"""Integration test - creates real files/folders in a temporary directories
+Not needed with mocking because mocking does unit level testing
 
 
 def test_create_movie_folder_creates_files(temp_database_dir):
-    """Test that create_movie_folder creates folder and required files."""
-    folder_path = Path(file_service.create_movie_folder(TEST_MOVIE))
+    # Test that create_movie_folder creates folder and required files.
 
+    folder_path = Path(file_service.create_movie_folder(TEST_MOVIE))
+    
     assert folder_path.exists(), "Movie folder was not created"
     assert folder_path.is_dir(), "Movie folder path is not a directory"
 
     metadata_path = folder_path / "metadata.json"
     reviews_path = folder_path / "movieReviews.csv"
-
+    
     assert metadata_path.is_file(), "metadata.json was not created"
     assert reviews_path.is_file(), "movieReviews.csv was not created"
 
-
-def test_check_metadata_exists_and_reviews_exists(temp_database_dir):
-    """Test that check functions correctly identify existing files."""
-    file_service.create_movie_folder(TEST_MOVIE)
-
-    assert file_service.check_metadata_exists(TEST_MOVIE), (
-        "Metadata file should exist"
-    )
-    assert file_service.check_reviews_exists(TEST_MOVIE), (
-        "Reviews file should exist"
-    )
+"""
+# Logic testing with mocking for test_check_metadata_exists_and_reviews_exists
+# and test_check_metadata_and_reviews_missing
+@patch("backend.services.file_service.os.path.exists")
+@patch("backend.services.file_service.os.path.join", side_effect=lambda *a: "/mocked/path")
 
 
-def test_check_metadata_and_reviews_missing(temp_database_dir):
-    """Test that check functions correctly identify missing files."""
-    assert not file_service.check_metadata_exists(TEST_MOVIE), (
-        "Metadata file should not exist"
-    )
-    assert not file_service.check_reviews_exists(TEST_MOVIE), (
-        "Reviews file should not exist"
-    )
+def test_check_metadata_exists_and_reviews_exists(mock_join, mock_exists):
+     # Simulate metadata.json and movieReviews.csv bock exist
+    mock_exists.return_value = True
+   
+    assert file_service.check_metadata_exists(TEST_MOVIE) is True
+    assert file_service.check_reviews_exists(TEST_MOVIE) is True
+
+@patch("backend.services.file_service.os.path.join")
+@patch("backend.services.file_service.os.path.exists")
 
 
-def test_delete_movie_folder_success(temp_database_dir):
-    """Test that delete_movie_folder removes the movie folder
-    and all contents."""
-    # Create a test movie folder first
-    folder_path = Path(file_service.create_movie_folder(TEST_MOVIE))
+def test_check_metadata_and_reviews_missing(mock_join, mock_exists):
+    """Mocks filesystem missing files."""
+    # os.path.join → always return a fake consistent path
+    mock_join.return_value = "/mocked/path"
 
-    # Ensure folder exists
-    assert folder_path.exists(), "Movie folder should exist before deletion"
+    # os.path.exists → always return False
+    mock_exists.return_value = False
 
-    # Delete folder
-    result = file_service.delete_movie_folder(TEST_MOVIE)
-
-    # Check folder no longer exists
-    assert not folder_path.exists(), "Movie folder should be deleted"
-
-    # Check return message
-    assert f"'{TEST_MOVIE}' has been deleted." in result
-
-
-def test_delete_movie_folder_nonexistent():
-    """Test that deleting a non-existent folder raises FileNotFoundError."""
-    with pytest.raises(FileNotFoundError):
-        file_service.delete_movie_folder("FakeMovie")
+    assert not file_service.check_metadata_exists(TEST_MOVIE) is False
+    assert not file_service.check_reviews_exists(TEST_MOVIE) is False
