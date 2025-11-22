@@ -1,8 +1,10 @@
 # backend/routes/review_routes.py
 """Routes for review management - HTTP handling only."""
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, EmailStr
-from backend.services import review_service, user_service
+from fastapi import APIRouter, HTTPException, status, Depends
+from pydantic import BaseModel
+from backend.services import review_service
+from backend.dependencies.auth import require_slug_tier
+from backend.models.user_model import User
 
 router = APIRouter()
 
@@ -13,7 +15,6 @@ router = APIRouter()
 # In our case, a rating is just a review without any comment.
 class ReviewInput(BaseModel):
     """Model for creating reviews."""
-    email: EmailStr
     rating: float
     comment: str = ""
     review_title: str = ""
@@ -21,7 +22,6 @@ class ReviewInput(BaseModel):
 
 class ReviewUpdate(BaseModel):
     """Model for updating reviews."""
-    email: EmailStr
     rating: float
     comment: str
     review_title: str = ""
@@ -54,21 +54,25 @@ async def get_reviews(movie_name: str):
 
 
 @router.post("/{movie_name}")
-async def post_review(movie_name: str, review: ReviewInput):
+async def post_review(
+    movie_name: str,
+    review: ReviewInput,
+    current_user: User = Depends(require_slug_tier)
+):
     """
     Add a review to a movie.
-    Requires: Slug tier or above (Snails cannot write reviews).
+    Requires: Authentication + Slug tier or above.
     """
-    # Validate permission
-    (
-        has_permission,
-        error_msg
-    ) = review_service.validate_review_permission(review.email)
-    if not has_permission:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_msg
-        )
+    # Example run
+    # curl -X POST http://localhost:8000/reviews/Joker
+    # -H "Content-Type: application/json"
+    # -H "Authorization: Bearer <session id>"
+    # -d "{\"rating\": 9.5, \"comment\"
+    # : \"Amazing movie!\", \"review_title\": \"Mind-bending\"}"
+
+    # User is already authenticated and has Slug tier via dependency
+    # Use authenticated user's email instead of trusting client input
+    email = current_user.email
 
     # Validate rating
     is_valid, error_msg = review_service.validate_rating(review.rating)
@@ -79,7 +83,7 @@ async def post_review(movie_name: str, review: ReviewInput):
         )
 
     # Check if user already reviewed this movie
-    if review_service.user_has_reviewed(movie_name, review.email):
+    if review_service.user_has_reviewed(movie_name, email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=("You have already reviewed this movie. "
@@ -88,7 +92,7 @@ async def post_review(movie_name: str, review: ReviewInput):
 
     # Add review
     success = review_service.add_review(
-        username=review.email,
+        username=email,
         movie_name=movie_name,
         rating=review.rating,
         comment=review.comment,
@@ -101,12 +105,9 @@ async def post_review(movie_name: str, review: ReviewInput):
             detail="Failed to add review"
         )
 
-    # Get user for custom message
-    user = user_service.get_user_by_email(review.email)
-
-    if user and user.has_priority_reviews():
-        message = (f"🍌 Review added successfully! "
-                   f"As a {user.get_tier_display_name()}, "
+    if current_user.has_priority_reviews():
+        message = (f"🌟 Review added successfully! "
+                   f"As a {current_user.get_tier_display_name()}, "
                    f"your review will appear first!")
     else:
         message = "Review added successfully!"
@@ -114,7 +115,7 @@ async def post_review(movie_name: str, review: ReviewInput):
     return {
         "message": message,
         "review": {
-            "email": review.email,
+            "email": email,
             "rating": review.rating,
             "comment": review.comment,
             "review_title": review.review_title
@@ -123,21 +124,25 @@ async def post_review(movie_name: str, review: ReviewInput):
 
 
 @router.put("/{movie_name}")
-async def update_review(movie_name: str, review: ReviewUpdate):
+async def update_review(
+    movie_name: str,
+    review: ReviewUpdate,
+    current_user: User = Depends(require_slug_tier)
+):
     """
     Update an existing review.
-    Requires: Slug tier or above.
+    Requires: Authentication + Slug tier or above.
     Users can only edit their own reviews.
     """
-    # Validate permission
-    (
-        has_permission, error_msg
-    ) = review_service.validate_edit_permission(review.email)
-    if not has_permission:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_msg
-        )
+    # Example run
+    # curl -X PUT http://localhost:8000/reviews/Joker
+    # -H "Content-Type: application/json"
+    # -H "Authorization: Bearer <session id>"
+    # -d "{\"rating\": 9.5, \"comment\":
+    # \"testing update\", \"review_title\": \"even better the second time\"}"
+
+    # Use authenticated user's email
+    email = current_user.email
 
     # Validate rating
     is_valid, error_msg = review_service.validate_rating(review.rating)
@@ -148,7 +153,7 @@ async def update_review(movie_name: str, review: ReviewUpdate):
         )
 
     # Check if review exists
-    if not review_service.user_has_reviewed(movie_name, review.email):
+    if not review_service.user_has_reviewed(movie_name, email):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=("You haven't written a review for this movie yet. "
@@ -157,7 +162,7 @@ async def update_review(movie_name: str, review: ReviewUpdate):
 
     # Update review
     success = review_service.update_review(
-        username=review.email,
+        username=email,
         movie_name=movie_name,
         rating=review.rating,
         comment=review.comment,
@@ -173,7 +178,7 @@ async def update_review(movie_name: str, review: ReviewUpdate):
     return {
         "message": "Review updated successfully!",
         "review": {
-            "email": review.email,
+            "email": email,
             "rating": review.rating,
             "comment": review.comment,
             "review_title": review.review_title
@@ -181,24 +186,27 @@ async def update_review(movie_name: str, review: ReviewUpdate):
     }
 
 
-@router.delete("/{movie_name}/{email}")
-async def delete_review(movie_name: str, email: EmailStr):
+@router.delete("/{movie_name}")
+async def delete_review(
+    movie_name: str,
+    current_user: User = Depends(require_slug_tier)
+):
     """
     Delete a user's review.
+    Requires: Authentication + Slug tier or above.
     Users can only delete their own reviews.
     """
-    # Validate permission
-    has_permission, error_msg = review_service.validate_edit_permission(email)
-    if not has_permission:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_msg
-        )
+    # Example run
+    # curl -X DELETE http://localhost:8000/api/reviews/Inception
+    # -H "Authorization: Bearer <session_id>"
+
+    # Use authenticated user's email
+    email = current_user.email
 
     # Delete review
-    (
-        success
-    ) = review_service.delete_review(username=email, movie_name=movie_name)
+    success = review_service.delete_review(
+        username=email, movie_name=movie_name
+        )
 
     if not success:
         raise HTTPException(
