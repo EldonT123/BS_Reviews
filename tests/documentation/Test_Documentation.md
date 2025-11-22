@@ -175,7 +175,7 @@ def test_movie_not_found_endpoint_integration(self, client):
 
 ---
 
-### PR #3: Admin and User Separation with Authentication Middleware
+### PR #2: Admin and User Separation with Authentication Middleware
 **Branch:** `split_admin_and_user_classes`  
 **Files Changed:**
 - `backend/models/admin_model.py` (New)
@@ -679,7 +679,7 @@ def test_admin_permissions(self):
 
 ---
 
-### PR #2: User Authentication and Session Management
+### PR #3: User Authentication and Session Management
 **Branch:** `State_tracking`  
 **Files Changed:**
 - `backend/services/user_service.py` (Modified - added session management)
@@ -888,7 +888,7 @@ def test_revoke_all_user_sessions(self):
 
 ---
 
-## Pull Request #3: User Ranking System and Test Structure Refactor
+## Pull Request #4: User Ranking System and Test Structure Refactor
 **Branch:** `feature/rank-system`  
 **Files Cahnged:** 
 - `backend/models/user_model.py` 
@@ -1130,7 +1130,7 @@ This PR reorganized tests into:
 - `docs/test_screenshots/PR3_ranking/tier_progression_test.png`
 - `docs/test_screenshots/PR3_ranking/permission_validation.png`
 
-### PR #4: User Authentication System with Password Security
+### PR #5: User Authentication System with Password Security
 **Branch:** `auth_feature`  
 **Files Changed:**
 - `backend/services/user_service.py` (New)
