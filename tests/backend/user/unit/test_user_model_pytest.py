@@ -1,9 +1,13 @@
 """Tests for User model."""
 import pytest
+from unittest.mock import patch, Mock
 from backend.models.user_model import User
 
+# ==================== UNIT TESTS - User Representation ====================
+
 def test_user_repr():
-    """Test User repr method."""
+    """Unit test - Positive path:
+    Test User repr method."""
     user = User(
         email="alice@example.com",
         password_hash="hashed_password",
@@ -14,7 +18,8 @@ def test_user_repr():
 
 
 def test_user_tier_display():
-    """Test tier display names."""
+    """Unit test - Positive path:
+    Test tier display names."""
     snail = User("user@test.com", "hash", User.TIER_SNAIL)
     slug = User("user@test.com", "hash", User.TIER_SLUG)
     banana = User("user@test.com", "hash", User.TIER_BANANA_SLUG)
@@ -23,28 +28,28 @@ def test_user_tier_display():
     assert "Slug" in slug.get_tier_display_name()
     assert "Banana Slug" in banana.get_tier_display_name()
 
+# ==================== UNIT TESTS - Review Operations ====================
 
-def test_add_review_delegates(temp_user_csv):
-    """Test that add_review delegates to review_service."""
-    from backend.services import user_service
+@patch("backend.services.review_service.add_review")
+def test_add_review_delegates(mock_add_review):
+    """Unit test - Positive path:
+    Test that add_review delegates to review_service."""
+    mock_add_review.return_value = True
     
     # Create a user with Slug tier (can write reviews)
-    user = user_service.create_user(
-        email="reviewer@test.com",
-        password="TestPass123!",
-        tier=User.TIER_SLUG
-    )
+    user = User("reviewer@test.com", "hash", User.TIER_SLUG)
     
-    # This should work without error (though review_service needs to handle it)
-    try:
-        user.add_review("Test_Movie", 4.5, "Great movie!")
-    except Exception as e:
-        # Expected if movie doesn't exist
-        assert "movie" in str(e).lower() or "not found" in str(e).lower()
+    #Act
+    result = user.add_review("Test_Movie", 4.5, "Great movie!")
+
+    #Assert delegation
+    mock_add_review.assert_called_once_with(user.email, "Test_Movie", 4.5, "Great movie!")
+    assert result is True
 
 
 def test_add_review_permission_denied():
-    """Test that Snail tier cannot write reviews."""
+    """Unit test - Edge case:
+    Test that Snail tier cannot write reviews."""
     snail = User("snail@test.com", "hash", User.TIER_SNAIL)
     
     with pytest.raises(ValueError, match="cannot write reviews"):
@@ -54,7 +59,8 @@ def test_add_review_permission_denied():
 # ==================== UNIT TESTS - Permission Assertion Check's ====================
 
 def test_user_tier_checks():
-    """Users should correctly report their tier type through helper methods."""
+    """Unit tets- Positive path:
+    Users should correctly report their tier type through helper methods."""
     snail = User("snail@test.com", "hash", User.TIER_SNAIL)
     slug = User("slug@test.com", "hash", User.TIER_SLUG)
     banana = User("banana@test.com", "hash", User.TIER_BANANA_SLUG)
@@ -76,7 +82,8 @@ def test_user_tier_checks():
 
 
 def test_user_permissions():
-    """Permission helpers should enforce the correct rules for each tier."""
+    """Unit test - Positive/ Edge path:
+    Permission helpers should enforce the correct rules for each tier."""
     snail = User("snail@test.com", "hash", User.TIER_SNAIL)
     slug = User("slug@test.com", "hash", User.TIER_SLUG)
     banana = User("banana@test.com", "hash", User.TIER_BANANA_SLUG)
@@ -98,7 +105,8 @@ def test_user_permissions():
 
 
 def test_user_to_dict():
-    """Test User to_dict method."""
+    """Unit test - Positive path:
+    Test User to_dict method."""
     user = User("test@test.com", "hash", User.TIER_SLUG)
     user_dict = user.to_dict()
     

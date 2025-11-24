@@ -8,7 +8,8 @@ TEST_MOVIE = "Test_Movie"
 
 
 def test_integration_create_and_verify_movie_folder(temp_database_dir):
-    """Integration test: create movie folder and verify all components."""
+    """Integration test with positive path: 
+    Create movie folder and verify all components."""
     movie_name = "Integration_Movie"
 
     # Create folder (temp_database_dir ensures clean state)
@@ -28,7 +29,8 @@ def test_integration_create_and_verify_movie_folder(temp_database_dir):
 
 
 def test_integration_create_and_delete_movie_folder(temp_database_dir):
-    """Integration test: create a movie folder and then delete it."""
+    """Integration test with positive path: 
+    Create a movie folder and then delete it."""
     # Step 1: Create the folder
     folder_path = Path(file_service.create_movie_folder(TEST_MOVIE))
 

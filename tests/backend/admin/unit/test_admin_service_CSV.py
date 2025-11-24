@@ -15,7 +15,8 @@ TEST_ADMIN_PASSWORD = "AdminPass123!"
 
 @patch('os.path.exists')
 def test_read_admins_empty_file(mock_exists):
-    """Test reading from non-existent CSV file returns empty dict."""
+    """Unit Test - Edge Case:
+    Test reading from non-existent CSV file returns empty dict."""
     # Arrange
     mock_exists.return_value = False
     
@@ -29,7 +30,8 @@ def test_read_admins_empty_file(mock_exists):
 @patch('builtins.open', new_callable=mock_open, read_data='admin_email,admin_password\nadmin1@test.com,hash1\nadmin2@test.com,hash2\n')
 @patch('os.path.exists', return_value=True)
 def test_read_admins_with_data(mock_exists, mock_file):
-    """Test reading admins from populated CSV."""
+    """Unit test - Positive path:
+    Test reading admins from populated CSV."""
     # Act
     admins = admin_service.read_admins()
     
@@ -44,7 +46,8 @@ def test_read_admins_with_data(mock_exists, mock_file):
 @patch('builtins.open', new_callable=mock_open, read_data='admin_email,admin_password\nAdmin@Example.COM,hashed123\n')
 @patch('os.path.exists', return_value=True)
 def test_read_admins_case_insensitive(mock_exists, mock_file):
-    """Test that admin email keys are stored in lowercase."""
+    """Unit test - Edge case:
+    Test that admin email keys are stored in lowercase."""
     # Act
     admins = admin_service.read_admins()
     
@@ -57,7 +60,8 @@ def test_read_admins_case_insensitive(mock_exists, mock_file):
 @patch('builtins.open', new_callable=mock_open)
 @patch('backend.services.admin_service.ensure_admin_csv_exists')
 def test_save_admin_creates_entry(mock_ensure, mock_file):
-    """Test that save_admin writes to CSV."""
+    """Unit Test - Positive path:
+    Test that save_admin writes to CSV."""
     # Act
     admin_service.save_admin("newadmin@test.com", "hashedpass789")
     
@@ -72,7 +76,8 @@ def test_save_admin_creates_entry(mock_ensure, mock_file):
 
 @patch('backend.services.admin_service.read_admins')
 def test_get_admin_by_email_found(mock_read_admins):
-    """Test retrieving an admin by email."""
+    """Unit test - positive path
+    Test retrieving an admin by email."""
     # Arrange
     mock_read_admins.return_value = {"findme@test.com": "hashed_password"}
     
@@ -88,7 +93,8 @@ def test_get_admin_by_email_found(mock_read_admins):
 
 @patch('backend.services.admin_service.read_admins')
 def test_get_admin_by_email_not_found(mock_read_admins):
-    """Test that get_admin_by_email returns None for non-existent admin."""
+    """Unit test- Edge case:
+    Test that get_admin_by_email returns None for non-existent admin."""
     # Arrange
     mock_read_admins.return_value = {}
     
@@ -104,7 +110,8 @@ def test_get_admin_by_email_not_found(mock_read_admins):
 @patch('os.path.exists', return_value=False)
 @patch('builtins.open', new_callable=mock_open)
 def test_ensure_admin_csv_exists_creates_file(mock_file, mock_exists, mock_makedirs):
-    """Test that ensure_admin_csv_exists creates file with headers."""
+    """Unit Test - Positive path:
+    Test that ensure_admin_csv_exists creates file with headers."""
     # Act
     admin_service.ensure_admin_csv_exists()
     
@@ -121,7 +128,8 @@ def test_ensure_admin_csv_exists_creates_file(mock_file, mock_exists, mock_maked
 @patch('os.makedirs')
 @patch('builtins.open', new_callable=mock_open)
 def test_ensure_admin_csv_exists_skips_if_exists(mock_file, mock_makedirs, mock_exists):
-    """Test that ensure_admin_csv_exists doesn't recreate existing file."""
+    """Unit Test - Edge case:
+    Test that ensure_admin_csv_exists doesn't recreate existing file."""
     # Act
     admin_service.ensure_admin_csv_exists()
     

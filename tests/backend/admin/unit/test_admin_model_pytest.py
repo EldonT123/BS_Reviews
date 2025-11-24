@@ -6,7 +6,8 @@ from backend.models.user_model import User
 
 
 def test_admin_repr():
-    """Test Admin repr method."""
+    """Unit test - positive path
+    Test Admin repr method."""
     admin = Admin(
         email="admin@example.com",
         password_hash="hashed_password"
@@ -16,7 +17,8 @@ def test_admin_repr():
 
 
 def test_admin_to_dict():
-    """Test Admin to_dict method."""
+    """Unit test - edge case
+    Test Admin to_dict method."""
     admin = Admin("admin@test.com", "hash")
     admin_dict = admin.to_dict()
     
@@ -34,7 +36,8 @@ def test_admin_to_dict():
 # ==================== UNIT TESTS - Permission Checks ====================
 
 def test_admin_permissions():
-    """Test that all admin permission checks return True."""
+    """Unit test - positive path
+    Test that all admin permission checks return True."""
     admin = Admin("admin@test.com", "hash")
     
     assert admin.can_manage_users() is True
@@ -49,7 +52,8 @@ def test_admin_permissions():
 
 @patch('backend.services.user_service.update_user_tier')
 def test_admin_upgrade_user_tier_success(mock_update_tier):
-    """Test admin can upgrade user tier"""
+    """Unit Test - Positive path
+    Test admin can upgrade user tier"""
     # Arrange
     mock_update_tier.return_value = True
     admin = Admin("admin@test.com", "hash")
@@ -64,7 +68,8 @@ def test_admin_upgrade_user_tier_success(mock_update_tier):
 
 @patch('backend.services.user_service.update_user_tier')
 def test_admin_upgrade_user_tier_failure(mock_update_tier):
-    """Test admin upgrade fails for non-existent user"""
+    """Unit test - edge case:
+    Test admin upgrade fails for non-existent user"""
     # Arrange
     mock_update_tier.return_value = False
     admin = Admin("admin@test.com", "hash")
@@ -79,7 +84,8 @@ def test_admin_upgrade_user_tier_failure(mock_update_tier):
 
 @patch('backend.services.user_service.delete_user')
 def test_admin_delete_user_success(mock_delete_user):
-    """Test admin can delete user"""
+    """Unit Test - positive path
+    admin can delete user"""
     # Arrange
     mock_delete_user.return_value = True
     admin = Admin("admin@test.com", "hash")
@@ -94,7 +100,8 @@ def test_admin_delete_user_success(mock_delete_user):
 
 @patch('backend.services.user_service.delete_user')
 def test_admin_delete_user_failure(mock_delete_user):
-    """Test admin delete fails for non-existent user"""
+    """Unit test - Edge case
+    Test admin delete fails for non-existent user"""
     # Arrange
     mock_delete_user.return_value = False
     admin = Admin("admin@test.com", "hash")
@@ -109,7 +116,8 @@ def test_admin_delete_user_failure(mock_delete_user):
 
 @patch('backend.services.user_service.get_all_users')
 def test_admin_get_all_users(mock_get_all_users):
-    """Test admin can get all users"""
+    """Unit test - Positive path
+    Test admin can get all users"""
     # Arrange
     mock_user1 = Mock(spec=User)
     mock_user1.email = "user1@test.com"
@@ -131,7 +139,8 @@ def test_admin_get_all_users(mock_get_all_users):
 
 @patch('backend.services.user_service.get_all_users')
 def test_admin_get_all_users_empty(mock_get_all_users):
-    """Test admin get all users when no users exist"""
+    """Unit test - Edge case
+    Test admin get all users when no users exist"""
     # Arrange
     mock_get_all_users.return_value = []
     admin = Admin("admin@test.com", "hash")

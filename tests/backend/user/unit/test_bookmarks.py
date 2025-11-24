@@ -9,7 +9,7 @@ from backend.services import user_service
 @pytest.fixture
 def temp_user_and_bookmark_files(monkeypatch):
     """
-    Creates temporary CSV files for users and bookmarks so tests do not modify real data. 
+    Fixture: Creates temporary CSV files for users and bookmarks so tests do not modify real data. 
     Monkeypatches the service paths
     """
 
@@ -36,7 +36,7 @@ def temp_user_and_bookmark_files(monkeypatch):
 @pytest.fixture
 def create_test_user(temp_user_and_bookmark_files):
     """
-    Creates a test user in the temp CSV.
+    Fixture: Creates a test user in the temp CSV.
     """
     user_service.create_user(
         email="test@example.com",
@@ -48,7 +48,8 @@ def create_test_user(temp_user_and_bookmark_files):
 #Bookmark Tests
 
 def test_add_bookmark(create_test_user):
-    """Test adding a new bookmark."""
+    """Unit test - Positive path:
+    Test adding a new bookmark."""
     result = user_service.add_bookmark("test@example.com", "Avengers Endgame")
     assert result is True
 
@@ -57,7 +58,8 @@ def test_add_bookmark(create_test_user):
 
 
 def test_add_duplicate_bookmark(create_test_user):
-    """Adding the same movie again should fail."""
+    """Unit test - Edge case:
+    Adding the same movie again should fail."""
     user_service.add_bookmark("test@example.com", "Avengers Endgame")
     result = user_service.add_bookmark("test@example.com", "Avengers Endgame")
 
@@ -68,7 +70,8 @@ def test_add_duplicate_bookmark(create_test_user):
 
 
 def test_remove_bookmark(create_test_user):
-    """Removing a bookmark should work."""
+    """Unit test - Positive path:
+    Removing a bookmark should work."""
     user_service.add_bookmark("test@example.com", "Avengers Endgame")
 
     result = user_service.remove_bookmark("test@example.com", "Avengers Endgame")
@@ -79,13 +82,15 @@ def test_remove_bookmark(create_test_user):
 
 
 def test_remove_missing_bookmark(create_test_user):
-    """Removing a non-existent bookmark should return False."""
+    """Unit test - Edge case:
+    Removing a non-existent bookmark should return False."""
     result = user_service.remove_bookmark("test@example.com", "Thor Ragnarok")
     assert result is False
 
 
 def test_is_bookmarked(create_test_user):
-    """Check if bookmark exists."""
+    """Unit test - Positive/Edge check:
+    Check if bookmark exists."""
     user_service.add_bookmark("test@example.com", "Avengers Endgame")
 
     assert user_service.is_bookmarked("test@example.com", "Avengers Endgame") is True
@@ -93,7 +98,8 @@ def test_is_bookmarked(create_test_user):
 
 
 def test_get_bookmarks(create_test_user):
-    """Should return all bookmarked movie titles."""
+    """Unit test/ Positive path:
+    Should return all bookmarked movie titles."""
     user_service.add_bookmark("test@example.com", "Avengers Endgame")
     user_service.add_bookmark("test@example.com", "Forrest Gump")
 

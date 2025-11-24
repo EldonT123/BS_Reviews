@@ -5,12 +5,13 @@ from backend.services import file_service
 
 TEST_MOVIE = "Test_Movie"
 
-# Logic test with mocked filesystem
+# Unit test: Path building logic
 @patch("backend.services.file_service.DATABASE_PATH", "/fake/db")
 
 
 def test_get_movie_folder_path():
     """
+    Unit test positive path:
     Tests path building logic is correct
     """
     result = file_service.get_movie_folder(TEST_MOVIE)
@@ -35,14 +36,16 @@ def test_create_movie_folder_creates_files(temp_database_dir):
     assert reviews_path.is_file(), "movieReviews.csv was not created"
 
 """
-# Logic testing with mocking for test_check_metadata_exists_and_reviews_exists
-# and test_check_metadata_and_reviews_missing
+# Unit test: Existence Checks with Mocked Filesystem Logic
 @patch("backend.services.file_service.os.path.exists")
 @patch("backend.services.file_service.os.path.join", side_effect=lambda *a: "/mocked/path")
 
 
 def test_check_metadata_exists_and_reviews_exists(mock_join, mock_exists):
-     # Simulate metadata.json and movieReviews.csv bock exist
+    """
+    Unit test positive path
+    Simulate metadata.json and movieReviews.csv bock exist
+    """
     mock_exists.return_value = True
    
     assert file_service.check_metadata_exists(TEST_MOVIE) is True
@@ -53,7 +56,10 @@ def test_check_metadata_exists_and_reviews_exists(mock_join, mock_exists):
 
 
 def test_check_metadata_and_reviews_missing(mock_join, mock_exists):
-    """Mocks filesystem missing files."""
+    """
+    Unit test negative path/ edge case
+    Mocks filesystem missing files.
+    """
     # os.path.join → always return a fake consistent path
     mock_join.return_value = "/mocked/path"
 

@@ -9,7 +9,8 @@ TEST_ADMIN_PASSWORD = "AdminPass123!"
 # ==================== UNIT TESTS - Password Functions ====================
 
 def test_admin_password_hash_returns_string():
-    """Test that hash_password returns a hashed string."""
+    """Unit tests - Positive path:
+    Test that hash_password returns a hashed string."""
     hashed = admin_service.hash_password(TEST_ADMIN_PASSWORD)
     
     assert isinstance(hashed, str)
@@ -18,7 +19,8 @@ def test_admin_password_hash_returns_string():
 
 
 def test_admin_password_hash_different_for_same_password():
-    """Test that same password generates different hashes due to salt."""
+    """Unit test - Positive path/ Security edge case:
+    Test that same password generates different hashes due to salt."""
     hash1 = admin_service.hash_password(TEST_ADMIN_PASSWORD)
     hash2 = admin_service.hash_password(TEST_ADMIN_PASSWORD)
     
@@ -26,14 +28,16 @@ def test_admin_password_hash_different_for_same_password():
 
 
 def test_admin_verify_password_correct():
-    """Test that verify_password returns True for correct password."""
+    """Unit test - Positive path
+    Test that verify_password returns True for correct password."""
     hashed = admin_service.hash_password(TEST_ADMIN_PASSWORD)
     
     assert admin_service.verify_password(TEST_ADMIN_PASSWORD, hashed) is True
 
 
 def test_admin_verify_password_incorrect():
-    """Test that verify_password returns False for wrong password."""
+    """Unit tets - Edge case:
+    Test that verify_password returns False for wrong password."""
     hashed = admin_service.hash_password(TEST_ADMIN_PASSWORD)
     wrong_password = "WrongPassword456!"
     
@@ -41,7 +45,8 @@ def test_admin_verify_password_incorrect():
 
 
 def test_admin_password_truncation_long_password():
-    """Test that passwords longer than 72 bytes are handled correctly."""
+    """Unit test - Edge case
+    Test that passwords longer than 72 bytes are handled correctly."""
     long_password = "a" * 100
     hashed = admin_service.hash_password(long_password)
     
@@ -49,7 +54,8 @@ def test_admin_password_truncation_long_password():
 
 
 def test_admin_password_hash_bcrypt_format():
-    """Test that password hash uses bcrypt format."""
+    """Unit test - Positive path/ format check:
+    Test that password hash uses bcrypt format."""
     hashed = admin_service.hash_password(TEST_ADMIN_PASSWORD)
     
     # Bcrypt hashes start with $2b$ (or $2a$ or $2y$)

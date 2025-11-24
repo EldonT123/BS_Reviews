@@ -8,7 +8,7 @@ from backend.models.user_model import User
 
 @pytest.fixture(autouse=True)
 def clear_sessions():
-    """Clear session storage before each test."""
+    """Fixture: Clear session storage before each test."""
     user_service.user_sessions.clear()
     user_service.session_ids.clear()
     yield
@@ -35,7 +35,8 @@ class TestSessionManagement:
     """Tests for session token and session ID management."""
 
     def test_create_session(self):
-        """Test creating a session token."""
+        """Positive path:
+        Test creating a session token."""
         email = "test@example.com"
         token = user_service.create_session(email)
 
@@ -44,7 +45,8 @@ class TestSessionManagement:
         assert token in user_service.user_sessions
 
     def test_create_session_id(self):
-        """Test creating a random session ID."""
+        """Positive path:
+        Test creating a random session ID."""
         email = "test@example.com"
         session_id = user_service.create_session_id(email)
 
@@ -53,7 +55,8 @@ class TestSessionManagement:
         assert session_id in user_service.session_ids
 
     def test_session_id_is_random(self):
-        """Test that session IDs are randomly generated."""
+        """Edge case:
+        Test that session IDs are randomly generated."""
         email = "test@example.com"
         session_id1 = user_service.create_session_id(email)
         session_id2 = user_service.create_session_id(email)
@@ -62,7 +65,8 @@ class TestSessionManagement:
         assert session_id1 != session_id2
 
     def test_session_id_uniqueness(self):
-        """Test that duplicate session IDs are handled."""
+        """Edge case:
+        Test that duplicate session IDs are handled."""
         # This tests the while loop in create_session_id
         # that ensures uniqueness
         email = "test@example.com"
@@ -73,8 +77,11 @@ class TestSessionManagement:
             assert sid not in session_ids
             session_ids.add(sid)
 
+# ==================== TESTS - SESSION VERIFICATION ====================
+
     def test_verify_valid_session(self, mock_user_data):
-        """Test verifying a valid session token."""
+        """Positive path:
+        Test verifying a valid session token."""
         email = "test@example.com"
         token = user_service.create_session(email)
 
@@ -89,7 +96,8 @@ class TestSessionManagement:
             assert user.email == email
 
     def test_verify_valid_session_id(self, mock_user_data):
-        """Test verifying a valid session ID."""
+        """Positive path:
+        Test verifying a valid session ID."""
         email = "test@example.com"
         session_id = user_service.create_session_id(email)
 
@@ -104,17 +112,20 @@ class TestSessionManagement:
             assert user.email == email
 
     def test_verify_invalid_session(self):
-        """Test verifying an invalid session token."""
+        """Edge Case:
+        Test verifying an invalid session token."""
         user = user_service.verify_session("invalid-token")
         assert user is None
 
     def test_verify_invalid_session_id(self):
-        """Test verifying an invalid session ID."""
+        """Edge Case: 
+        Test verifying an invalid session ID."""
         user = user_service.verify_session_id("invalid-id")
         assert user is None
 
     def test_verify_expired_session(self, mock_user_data):
-        """Test that expired sessions are rejected."""
+        """Edge case:
+        Test that expired sessions are rejected."""
         email = "test@example.com"
         token = user_service.create_session(email)
 
@@ -128,7 +139,8 @@ class TestSessionManagement:
         assert token not in user_service.user_sessions
 
     def test_verify_expired_session_via_id(self, mock_user_data):
-        """Test that expired sessions via ID are rejected."""
+        """Edge case:
+        Test that expired sessions via ID are rejected."""
         email = "test@example.com"
         session_id = user_service.create_session_id(email)
         token = user_service.session_ids[session_id]
@@ -142,8 +154,11 @@ class TestSessionManagement:
         assert user is None
         assert token not in user_service.user_sessions
 
+# ==================== TESTS - SESSION REVOCATION ====================
+
     def test_revoke_session(self):
-        """Test revoking a session token."""
+        """Positive path:
+        Revoking a session token."""
         email = "test@example.com"
         token = user_service.create_session(email)
 
@@ -153,7 +168,8 @@ class TestSessionManagement:
         assert token not in user_service.user_sessions
 
     def test_revoke_session_id(self):
-        """Test revoking a session ID."""
+        """Positive path:
+        Test revoking a session ID."""
         email = "test@example.com"
         session_id = user_service.create_session_id(email)
         token = user_service.session_ids[session_id]
@@ -165,17 +181,20 @@ class TestSessionManagement:
         assert token not in user_service.user_sessions
 
     def test_revoke_nonexistent_session(self):
-        """Test revoking a non-existent session."""
+        """Edge case:
+        Test revoking a non-existent session."""
         success = user_service.revoke_session("nonexistent-token")
         assert success is False
 
     def test_revoke_nonexistent_session_id(self):
-        """Test revoking a non-existent session ID."""
+        """Edge case:
+        Test revoking a non-existent session ID."""
         success = user_service.revoke_session_id("nonexistent-id")
         assert success is False
 
     def test_revoke_all_user_sessions(self):
-        """Test revoking all sessions for a user."""
+        """Positive path:
+        Test revoking all sessions for a user."""
         email = "test@example.com"
         session_id1 = user_service.create_session_id(email)
         session_id2 = user_service.create_session_id(email)
@@ -198,7 +217,8 @@ class TestSessionManagement:
         assert session_id3 in user_service.session_ids
 
     def test_cleanup_expired_sessions(self):
-        """Test cleanup of expired sessions and IDs."""
+        """Edge case:
+        Test cleanup of expired sessions and IDs."""
         email1 = "test1@example.com"
         email2 = "test2@example.com"
 
@@ -222,12 +242,14 @@ class TestSessionManagement:
         assert token2 in user_service.user_sessions
         assert session_id2 in user_service.session_ids
 
+# ==================== TESTS - AUTHENTICATE USER ====================
 
 class TestAuthenticateUser:
     """Tests for authenticate_user with session ID."""
 
     def test_authenticate_returns_session_id(self):
-        """Test that authenticate returns a session ID."""
+        """Positive path:
+        Test that authenticate returns a session ID."""
         password = "password123"
         hashed = user_service.hash_password(password)
         mock_user = User("test@example.com", hashed, User.TIER_SNAIL)
@@ -248,7 +270,8 @@ class TestAuthenticateUser:
             assert session_id in user_service.session_ids
 
     def test_authenticate_creates_random_session_ids(self):
-        """Test that each login creates a unique session ID."""
+        """Edge case:
+        Test that each login creates a unique session ID."""
         password = "password123"
         hashed = user_service.hash_password(password)
         mock_user = User("test@example.com", hashed, User.TIER_SNAIL)
@@ -270,12 +293,14 @@ class TestAuthenticateUser:
             # Each login should get a different session ID
             assert session_id1 != session_id2
 
+# ==================== TESTS - SIGNOUT ====================
 
 class TestSignoutUser:
     """Tests for signout_user with session ID."""
 
     def test_signout_with_session_id(self):
-        """Test signing out using session ID."""
+        """Positive path:
+        Test signing out using session ID."""
         email = "test@example.com"
         session_id = user_service.create_session_id(email)
 
@@ -285,6 +310,7 @@ class TestSignoutUser:
         assert session_id not in user_service.session_ids
 
     def test_signout_with_invalid_session_id(self):
-        """Test signing out with invalid session ID."""
+        """Edge case:
+        Test signing out with invalid session ID."""
         success = user_service.signout_user("invalid-id")
         assert success is False

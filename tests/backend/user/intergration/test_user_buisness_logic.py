@@ -16,7 +16,7 @@ TEST_PASSWORD = "ValidPass123!"
 # ==================== INTEGRATION TESTS - User Service Business Logic ====================
 
 def test_create_user(temp_user_csv):
-    """Test user creation."""
+    """Positive path: Test user creation."""
     user = user_service.create_user(TEST_EMAIL, TEST_PASSWORD, User.TIER_SLUG)
     
     assert user.email == TEST_EMAIL.lower()
@@ -25,7 +25,7 @@ def test_create_user(temp_user_csv):
 
 
 def test_create_user_duplicate(temp_user_csv):
-    """Test that creating duplicate user raises error."""
+    """Edge Case: Test that creating duplicate user raises error."""
     user_service.create_user(TEST_EMAIL, TEST_PASSWORD)
     
     with pytest.raises(ValueError, match="already exists"):
@@ -33,7 +33,7 @@ def test_create_user_duplicate(temp_user_csv):
 
 
 def test_authenticate_user_success(temp_user_csv):
-    """Test successful authentication."""
+    """Positive path: Test successful authentication."""
     user_service.create_user(TEST_EMAIL, TEST_PASSWORD)
     user, token = user_service.authenticate_user(TEST_EMAIL, TEST_PASSWORD)  # Unpack tuple
     assert user is not None
@@ -43,7 +43,7 @@ def test_authenticate_user_success(temp_user_csv):
 
 
 def test_authenticate_user_wrong_password(temp_user_csv):
-    """Test authentication fails with wrong password."""
+    """Edge case: Test authentication fails with wrong password."""
     user_service.create_user(TEST_EMAIL, TEST_PASSWORD)
     
     with pytest.raises(ValueError, match="Invalid credentials"):
@@ -51,13 +51,13 @@ def test_authenticate_user_wrong_password(temp_user_csv):
 
 
 def test_authenticate_user_not_found(temp_user_csv):
-    """Test authentication fails for non-existent user."""
+    """Edge case: Test authentication fails for non-existent user."""
     with pytest.raises(ValueError, match="Invalid credentials"):
         user_service.authenticate_user("nonexistent@test.com", TEST_PASSWORD)
 
 
 def test_update_user_tier(temp_user_csv):
-    """Test updating user tier."""
+    """Positive path: Test updating user tier."""
     user_service.create_user(TEST_EMAIL, TEST_PASSWORD, User.TIER_SNAIL)
     
     success = user_service.update_user_tier(TEST_EMAIL, User.TIER_BANANA_SLUG)
@@ -69,7 +69,7 @@ def test_update_user_tier(temp_user_csv):
 
 
 def test_delete_user(temp_user_csv):
-    """Test deleting a user."""
+    """Positive path: Test deleting a user."""
     user_service.create_user(TEST_EMAIL, TEST_PASSWORD)
     
     success = user_service.delete_user(TEST_EMAIL)

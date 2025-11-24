@@ -1,4 +1,5 @@
-"""Tests for user authentication routes and services."""
+"""Tests for user authentication routes and services.
+Did not add mocking to test fastapi"""
 import pytest
 from fastapi.testclient import TestClient
 from pathlib import Path
@@ -16,7 +17,8 @@ TEST_PASSWORD = "ValidPass123!"
 # ==================== UNIT TESTS - Password Functions ====================
 
 def test_password_hash_returns_string():
-    """Test that hash_password returns a hashed string."""
+    """Unit test - Positive path:
+    Test that hash_password returns a hashed string."""
     hashed = user_service.hash_password(TEST_PASSWORD)
     
     assert isinstance(hashed, str)
@@ -25,7 +27,8 @@ def test_password_hash_returns_string():
 
 
 def test_password_hash_different_for_same_password():
-    """Test that same password generates different hashes due to salt."""
+    """Unit test - Edge case:
+    Test that same password generates different hashes due to salt."""
     hash1 = user_service.hash_password(TEST_PASSWORD)
     hash2 = user_service.hash_password(TEST_PASSWORD)
     
@@ -33,14 +36,17 @@ def test_password_hash_different_for_same_password():
 
 
 def test_verify_password_correct():
-    """Test that verify_password returns True for correct password."""
-    hashed = user_service.hash_password(TEST_PASSWORD)
+    """Unit test - Positive path:
+    Test that verify_password returns True for correct password."""
     
+    hashed = user_service.hash_password(TEST_PASSWORD)
+   
     assert user_service.verify_password(TEST_PASSWORD, hashed) is True
 
 
 def test_verify_password_incorrect():
-    """Test that verify_password returns False for wrong password."""
+    """Unit test - Positive path:
+    Test that verify_password returns False for wrong password."""
     hashed = user_service.hash_password(TEST_PASSWORD)
     wrong_password = "WrongPassword456!"
     
@@ -48,7 +54,8 @@ def test_verify_password_incorrect():
 
 
 def test_password_truncation_long_password():
-    """Test that passwords longer than 72 bytes are handled correctly."""
+    """Unit test - Edge case:
+    Test that passwords longer than 72 bytes are handled correctly."""
     long_password = "a" * 100
     hashed = user_service.hash_password(long_password)
     

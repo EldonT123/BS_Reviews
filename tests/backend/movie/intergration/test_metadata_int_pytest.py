@@ -4,7 +4,7 @@ from backend.services import metadata_service, file_service
 
 @pytest.fixture
 def temp_movie_env(tmp_path, monkeypatch):
-    """Create an isolated temporary movie folder for tests."""
+    """Fixture - Create an isolated temporary movie folder for tests."""
     temp_dir = tmp_path / "movies"
     temp_dir.mkdir(parents=True)
 
@@ -17,9 +17,13 @@ def temp_movie_env(tmp_path, monkeypatch):
     monkeypatch.setattr("backend.services.file_service.get_movie_folder", fake_get_movie_folder)
     return temp_dir
 
-# --- INTEGRATION TEST (Using real data copy) ---
+# Integration Tests (metadata operations)
 
 def test_read_and_update_real_metadata(fresh_movie_folder_with_metadata):
+    """
+    Integration test positive path / real metadata: 
+    Read and update real metadata.json contents
+    """
     target_movie_folder = fresh_movie_folder_with_metadata
     target_movie = target_movie_folder.name
     path = target_movie_folder / "metadata.json"

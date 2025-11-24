@@ -10,7 +10,8 @@ TEST_ADMIN_PASSWORD = "AdminPass123!"
 # ==================== INTEGRATION TESTS - Admin Service Business Logic ====================
 
 def test_create_admin(temp_admin_csv):
-    """Test admin creation."""
+    """Integration test - Positive path:
+    Test admin creation."""
     admin, token = admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
     
     assert admin.email == TEST_ADMIN_EMAIL.lower()
@@ -20,7 +21,8 @@ def test_create_admin(temp_admin_csv):
 
 
 def test_create_admin_duplicate(temp_admin_csv):
-    """Test that creating duplicate admin raises error."""
+    """Integration Test - Edge Case:
+    Test that creating duplicate admin raises error."""
     admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
     
     with pytest.raises(ValueError, match="already exists"):
@@ -28,7 +30,8 @@ def test_create_admin_duplicate(temp_admin_csv):
 
 
 def test_authenticate_admin_success(temp_admin_csv):
-    """Test successful admin authentication."""
+    """Integration Test - Positive path:
+    Test successful admin authentication."""
     admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
     
     admin, token = admin_service.authenticate_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
@@ -40,7 +43,8 @@ def test_authenticate_admin_success(temp_admin_csv):
 
 
 def test_authenticate_admin_wrong_password(temp_admin_csv):
-    """Test authentication fails with wrong password."""
+    """Integration test - Edge case:
+    Test authentication fails with wrong password."""
     admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
     
     with pytest.raises(ValueError, match="Invalid credentials"):
@@ -48,13 +52,14 @@ def test_authenticate_admin_wrong_password(temp_admin_csv):
 
 
 def test_authenticate_admin_not_found(temp_admin_csv):
-    """Test authentication fails for non-existent admin."""
+    """Integration test - Edge caseTest authentication fails for non-existent admin."""
     with pytest.raises(ValueError, match="Invalid credentials"):
         admin_service.authenticate_admin("nonexistent@test.com", TEST_ADMIN_PASSWORD)
 
 
 def test_admin_exists(temp_admin_csv):
-    """Test checking if admin exists."""
+    """Integration test - Positive path/ edge case
+    Test checking if admin exists."""
     assert admin_service.admin_exists(TEST_ADMIN_EMAIL) is False
     
     admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
@@ -63,7 +68,8 @@ def test_admin_exists(temp_admin_csv):
 
 
 def test_get_all_admins(temp_admin_csv):
-    """Test getting all admins."""
+    """Integration test - Positive path
+    Test getting all admins."""
     admin_service.create_admin("admin1@test.com", TEST_ADMIN_PASSWORD)
     admin_service.create_admin("admin2@test.com", TEST_ADMIN_PASSWORD)
     
@@ -74,7 +80,8 @@ def test_get_all_admins(temp_admin_csv):
 
 
 def test_delete_admin(temp_admin_csv):
-    """Test deleting an admin."""
+    """Integration test -  Positive path:
+    Test deleting an admin."""
     admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
     
     success = admin_service.delete_admin(TEST_ADMIN_EMAIL)
@@ -84,14 +91,16 @@ def test_delete_admin(temp_admin_csv):
 
 
 def test_delete_nonexistent_admin(temp_admin_csv):
-    """Test deleting non-existent admin returns False."""
+    """Integration test - Edge case:
+    Test deleting non-existent admin returns False."""
     success = admin_service.delete_admin("nonexistent@test.com")
     
     assert success is False
 
 
 def test_get_admin_by_email(temp_admin_csv):
-    """Test retrieving admin by email."""
+    """Integration test - Positive path:
+    Test retrieving admin by email."""
     admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
     
     admin = admin_service.get_admin_by_email(TEST_ADMIN_EMAIL)
@@ -101,14 +110,16 @@ def test_get_admin_by_email(temp_admin_csv):
 
 
 def test_get_admin_by_email_not_found(temp_admin_csv):
-    """Test that get_admin_by_email returns None for non-existent admin."""
+    """Integration test - Edge case:
+    Test that get_admin_by_email returns None for non-existent admin."""
     admin = admin_service.get_admin_by_email("doesnotexist@test.com")
     
     assert admin is None
 
 
 def test_token_generation(temp_admin_csv):
-    """Test that tokens are generated correctly."""
+    """Integration test - Positive Path:
+    Test that tokens are generated correctly."""
     admin1, token1 = admin_service.create_admin("admin1@test.com", TEST_ADMIN_PASSWORD)
     admin2, token2 = admin_service.create_admin("admin2@test.com", TEST_ADMIN_PASSWORD)
     
@@ -121,7 +132,8 @@ def test_token_generation(temp_admin_csv):
 
 
 def test_token_verification(temp_admin_csv):
-    """Test token verification."""
+    """Integration test - Positive path / Edge case
+    Test token verification."""
     admin, token = admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
     
     # Verify valid token
@@ -135,7 +147,8 @@ def test_token_verification(temp_admin_csv):
 
 
 def test_token_revocation(temp_admin_csv):
-    """Test token revocation."""
+    """Integration Test - Positive path/ Edge case
+    Test token revocation."""
     admin, token = admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
     
     # Token should work initially
@@ -153,7 +166,8 @@ def test_token_revocation(temp_admin_csv):
 
 
 def test_delete_admin_revokes_tokens(temp_admin_csv):
-    """Test that deleting admin revokes all their tokens."""
+    """Integration test - Positive path / Edge case:
+    Test that deleting admin revokes all their tokens."""
     admin, token = admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
     
     # Get another token for same admin

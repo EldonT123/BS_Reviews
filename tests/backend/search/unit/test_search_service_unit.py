@@ -1,3 +1,4 @@
+# Tests for SearchService module
 import pytest
 import json
 from unittest.mock import patch, mock_open
@@ -52,27 +53,32 @@ def sample_metadata_inception():
         "duration": 148
     }
 
+# ==================== Initialization Tests ====================
 
 class TestSearchServiceInitialization:
     """Tests for SearchService initialization"""
 
     def test_default_initialization(self):
-        """Test SearchService initializes with default path"""
+        """Unit test positive path:
+        Default DB path is set correctly"""
         service = SearchService()
         assert service.database_path == "database/archive"
 
     def test_custom_path_initialization(self):
-        """Test SearchService initializes with custom path"""
+        """Unit test positive path:
+        Custom path overrides default"""
         custom_path = "custom/path/to/movies"
         service = SearchService(database_path=custom_path)
         assert service.database_path == custom_path
 
+# ==================== Load Metadata Tests ====================
 
 class TestLoadMovieMetadata:
     """Tests for _load_movie_metadata method"""
 
     def test_load_metadata_success(self, search_service, sample_metadata):
-        """Test successfully loading metadata from JSON file"""
+        """Unit test positive path
+        Test successfully loading metadata from JSON file"""
         mock_file_data = json.dumps(sample_metadata)
 
         with patch('os.path.exists', return_value=True), \
@@ -87,19 +93,22 @@ class TestLoadMovieMetadata:
             assert result["title"] == "Avengers Endgame"
 
     def test_load_metadata_file_not_found(self, search_service):
-        """Test loading metadata when file doesn't exist"""
+        """Unit test edge case:
+        Test loading metadata when file doesn't exist"""
         with patch('os.path.exists', return_value=False):
             result = search_service._load_movie_metadata(
                 "NonexistentMovie"
             )
             assert result is None
 
+# ==================== Load Reviews Tests ====================
 
 class TestLoadMovieReviews:
     """Tests for _load_movie_reviews method"""
 
     def test_load_reviews_success(self, search_service):
-        """Test successfully loading reviews from CSV file"""
+        """Unit test positive path
+        Test successfully loading reviews from CSV file"""
         csv_data = (
             "Date of Review,User,Usefulness Vote,Total Votes,"
             "User's Rating out of 10,Review Title,Review\n"
@@ -121,19 +130,22 @@ class TestLoadMovieReviews:
             assert result[0]["User"] == "user123"
 
     def test_load_reviews_file_not_found(self, search_service):
-        """Test loading reviews when file doesn't exist"""
+        """Unit test edge case
+        Test loading reviews when file doesn't exist"""
         with patch('os.path.exists', return_value=False):
             result = search_service._load_movie_reviews(
                 "NonexistentMovie"
             )
             assert result == []
 
+# ==================== Folder Discovery Tests ====================
 
 class TestGetAllMovieFolders:
     """Tests for _get_all_movie_folders method"""
 
     def test_get_folders_success(self, search_service):
-        """Test getting all movie folders"""
+        """ Unit test positive path
+        Test getting all movie folders"""
         mock_folders = ["Avengers Endgame", "Joker", "Inception"]
 
         with patch('os.path.exists', return_value=True), \
@@ -145,11 +157,13 @@ class TestGetAllMovieFolders:
             assert len(result) == 3
 
     def test_get_folders_path_not_exists(self, search_service):
-        """Test getting folders when path doesn't exist"""
+        """Unit test positive path:
+        Test getting folders when path doesn't exist"""
         with patch('os.path.exists', return_value=False):
             result = search_service._get_all_movie_folders()
             assert result == []
 
+# ==================== Search by Title Tests ====================
 
 class TestSearchByTitle:
     """Tests for search_by_title method"""
@@ -226,13 +240,15 @@ class TestSearchByTitle:
             results = search_service.search_by_title("Nonexistent Movie")
             assert len(results) == 0
 
+# ==================== Search by Genre Tests ====================
 
 class TestSearchByGenre:
     """Tests for search_by_genre method"""
 
     def test_search_single_genre(self, search_service, sample_metadata,
                                  sample_metadata_joker):
-        """Test searching by single genre"""
+        """Unit test positive path:
+        Test searching by single genre"""
         with patch.object(
             search_service,
             '_get_all_movie_folders',
@@ -252,7 +268,8 @@ class TestSearchByGenre:
     def test_search_multiple_genres(self, search_service, sample_metadata,
                                     sample_metadata_joker,
                                     sample_metadata_inception):
-        """Test searching by multiple genres (OR logic)"""
+        """Unit test: Positive path
+        Test searching by multiple genres (OR logic)"""
         with patch.object(
             search_service,
             '_get_all_movie_folders',
@@ -285,7 +302,8 @@ class TestSearchByDateRange:
 
     def test_search_within_range(self, search_service, sample_metadata,
                                  sample_metadata_joker):
-        """Test searching within date range"""
+        """Unit test positive path
+        Test searching within date range"""
         with patch.object(
             search_service,
             '_get_all_movie_folders',
@@ -304,7 +322,8 @@ class TestSearchByDateRange:
 
     def test_search_only_start_date(self, search_service, sample_metadata,
                                     sample_metadata_inception):
-        """Test searching with only start date"""
+        """Unit test edge case/positive path
+        Test searching with only start date"""
         with patch.object(
             search_service,
             '_get_all_movie_folders',
@@ -325,7 +344,8 @@ class TestSearchByDateRange:
 
     def test_search_invalid_date_format(self, search_service,
                                         sample_metadata):
-        """Test searching with invalid date format raises error"""
+        """Unit test negative path/ error handling
+        Test searching with invalid date format raises error"""
         with patch.object(
             search_service,
             '_get_all_movie_folders',
@@ -348,7 +368,8 @@ class TestSearchByYear:
 
     def test_search_by_year(self, search_service, sample_metadata,
                             sample_metadata_joker):
-        """Test searching by specific year"""
+        """Unit test positive path
+        Test searching by specific year"""
         with patch.object(
             search_service,
             '_get_all_movie_folders',
@@ -369,7 +390,8 @@ class TestAdvancedSearch:
 
     def test_advanced_search_multiple_criteria(self, search_service,
                                                sample_metadata):
-        """Test advanced search with multiple criteria"""
+        """Unit test positive path
+        Test advanced search with multiple criteria"""
         with patch.object(
             search_service,
             '_get_all_movie_folders',
@@ -396,7 +418,8 @@ class TestAdvancedSearch:
     def test_advanced_search_rating_filter(self, search_service,
                                            sample_metadata,
                                            sample_metadata_inception):
-        """Test advanced search with rating filters"""
+        """Unit test positive path
+        Test advanced search with rating filters"""
         with patch.object(
             search_service,
             '_get_all_movie_folders',
@@ -419,7 +442,8 @@ class TestGetMovieWithReviews:
 
     def test_get_movie_with_reviews_success(self, search_service,
                                             sample_metadata):
-        """Test getting movie with reviews"""
+        """Unit test positive path
+        Test getting movie with reviews"""
         csv_data = (
             "Date of Review,User,Usefulness Vote,"
             "Total Votes,User's Rating out of 10,Review Title,Review\n"
@@ -446,7 +470,8 @@ class TestGetMovieWithReviews:
             assert result["review_count"] == 1
 
     def test_get_movie_with_reviews_not_found(self, search_service):
-        """Test getting movie that doesn't exist"""
+        """Unit test negative path
+        Test getting movie that doesn't exist"""
         with patch.object(
             search_service,
             '_load_movie_metadata',
@@ -464,7 +489,8 @@ class TestGetAllGenres:
     def test_get_all_genres(self, search_service, sample_metadata,
                             sample_metadata_joker,
                             sample_metadata_inception):
-        """Test getting all unique genres"""
+        """Unit test positive path
+        Test getting all unique genres"""
         with patch.object(
             search_service,
             '_get_all_movie_folders',
@@ -494,7 +520,8 @@ class TestGetAllGenres:
             assert genres == sorted(genres)  # Should be sorted
 
     def test_get_all_genres_empty(self, search_service):
-        """Test getting genres when no movies exist"""
+        """Unit test edge case/negative path
+        Test getting genres when no movies exist"""
         with patch.object(
             search_service,
             '_get_all_movie_folders',

@@ -19,7 +19,8 @@ TEST_USER_PASSWORD = "UserPass123!"
 # ==================== HELPER FUNCTIONS ====================
 
 def create_admin_and_get_token(email=TEST_ADMIN_EMAIL, password=TEST_ADMIN_PASSWORD):
-    """Helper function to create admin and return authentication token."""
+    """Helper function - Integration Utility:
+    Helper function to create admin and return authentication token."""
     response = client.post(
         "/api/admin/signup",
         json={"email": email, "password": password}
@@ -35,14 +36,16 @@ def create_admin_and_get_token(email=TEST_ADMIN_EMAIL, password=TEST_ADMIN_PASSW
 
 
 def get_auth_headers(token):
-    """Helper function to create authentication headers."""
+    """Helper function - Integration Utility:
+    Helper function to create authentication headers."""
     return {"X-Admin-Token": token}
 
 
 # ==================== INTEGRATION TESTS - Admin Signup Endpoint ====================
 
 def test_admin_signup_success(temp_admin_csv):
-    """Test successful admin signup."""
+    """Integration test - Positive path:
+    Test successful admin signup."""
     response = client.post(
         "/api/admin/signup",
         json={"email": TEST_ADMIN_EMAIL, "password": TEST_ADMIN_PASSWORD}
@@ -58,7 +61,8 @@ def test_admin_signup_success(temp_admin_csv):
 
 
 def test_admin_signup_duplicate_email(temp_admin_csv):
-    """Test admin signup fails with duplicate email."""
+    """Integration test - Edge case:
+    Test admin signup fails with duplicate email."""
     # First signup
     client.post(
         "/api/admin/signup",
@@ -76,7 +80,8 @@ def test_admin_signup_duplicate_email(temp_admin_csv):
 
 
 def test_admin_signup_case_insensitive_email(temp_admin_csv):
-    """Test that admin email comparison is case-insensitive."""
+    """Integration test - Edge case:
+    Test that admin email comparison is case-insensitive."""
     # Signup with lowercase
     client.post(
         "/api/admin/signup",
@@ -93,7 +98,8 @@ def test_admin_signup_case_insensitive_email(temp_admin_csv):
 
 
 def test_admin_signup_invalid_email():
-    """Test admin signup with invalid email format."""
+    """Integration test - Edge case:
+    Test admin signup with invalid email format."""
     response = client.post(
         "/api/admin/signup",
         json={"email": "not-an-email", "password": TEST_ADMIN_PASSWORD}
@@ -105,7 +111,8 @@ def test_admin_signup_invalid_email():
 # ==================== INTEGRATION TESTS - Admin Login Endpoint ====================
 
 def test_admin_login_success(temp_admin_csv):
-    """Test successful admin login with correct credentials."""
+    """Integration test - Positive path:
+    Test successful admin login with correct credentials."""
     # Create admin first
     client.post(
         "/api/admin/signup",
@@ -128,7 +135,8 @@ def test_admin_login_success(temp_admin_csv):
 
 
 def test_admin_login_wrong_password(temp_admin_csv):
-    """Test admin login fails with wrong password."""
+    """Integration test - Edge case:
+    Test admin login fails with wrong password."""
     # Create admin
     client.post(
         "/api/admin/signup",
@@ -146,7 +154,8 @@ def test_admin_login_wrong_password(temp_admin_csv):
 
 
 def test_admin_login_nonexistent_admin(temp_admin_csv):
-    """Test admin login fails for non-existent admin."""
+    """Integration test - Edge case:
+    Test admin login fails for non-existent admin."""
     response = client.post(
         "/api/admin/login",
         json={"email": "nonexistent@example.com", "password": TEST_ADMIN_PASSWORD}
@@ -156,7 +165,8 @@ def test_admin_login_nonexistent_admin(temp_admin_csv):
 
 
 def test_admin_login_case_insensitive_email(temp_admin_csv):
-    """Test that admin login works with different email casing."""
+    """Integration test - Edge case:
+    Test that admin login works with different email casing."""
     # Signup with lowercase
     client.post(
         "/api/admin/signup",
@@ -175,7 +185,8 @@ def test_admin_login_case_insensitive_email(temp_admin_csv):
 # ==================== INTEGRATION TESTS - User Management ====================
 
 def test_admin_get_all_users(temp_admin_csv, temp_user_csv):
-    """Test admin can view all users."""
+    """Integration test - positive path:
+    Test admin can view all users."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -193,7 +204,8 @@ def test_admin_get_all_users(temp_admin_csv, temp_user_csv):
 
 
 def test_admin_upgrade_user_tier(temp_admin_csv, temp_user_csv):
-    """Test admin upgrading user tier."""
+    """Integration test - positive path:
+    Test admin upgrading user tier."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -217,7 +229,8 @@ def test_admin_upgrade_user_tier(temp_admin_csv, temp_user_csv):
 
 
 def test_admin_upgrade_invalid_tier(temp_admin_csv, temp_user_csv):
-    """Test admin upgrade with invalid tier."""
+    """Integration test - Edge case:
+    Test admin upgrade with invalid tier."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -239,7 +252,8 @@ def test_admin_upgrade_invalid_tier(temp_admin_csv, temp_user_csv):
 
 
 def test_admin_upgrade_nonexistent_user(temp_admin_csv):
-    """Test admin upgrade fails for non-existent user."""
+    """Integration test - Edge case:
+    Test admin upgrade fails for non-existent user."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -255,7 +269,8 @@ def test_admin_upgrade_nonexistent_user(temp_admin_csv):
 
 
 def test_admin_delete_user(temp_admin_csv, temp_user_csv):
-    """Test admin deleting a user."""
+    """Integration test - Positive path:
+    Test admin deleting a user."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -284,7 +299,8 @@ def test_admin_delete_user(temp_admin_csv, temp_user_csv):
 
 
 def test_admin_delete_nonexistent_user(temp_admin_csv):
-    """Test admin delete fails for non-existent user."""
+    """Integration test - Edge case:
+    Test admin delete fails for non-existent user."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -303,7 +319,8 @@ def test_admin_delete_nonexistent_user(temp_admin_csv):
 # ==================== INTEGRATION TESTS - Admin Management ====================
 
 def test_admin_get_all_admins(temp_admin_csv):
-    """Test getting all admins."""
+    """Integration test - Positive path:
+    Test getting all admins."""
     # Create first admin and get token
     token = create_admin_and_get_token("admin1@test.com", TEST_ADMIN_PASSWORD)
     headers = get_auth_headers(token)
@@ -322,7 +339,8 @@ def test_admin_get_all_admins(temp_admin_csv):
 # ==================== INTEGRATION TESTS - End-to-End Flows ====================
 
 def test_integration_admin_signup_then_login(temp_admin_csv):
-    """Integration test: Complete admin signup and login flow."""
+    """Integration test - Positive path:
+    Integration test: Complete admin signup and login flow."""
     email = "flowadmin@example.com"
     password = "FlowAdmin123!"
     
@@ -352,7 +370,8 @@ def test_integration_admin_signup_then_login(temp_admin_csv):
 
 
 def test_integration_admin_manages_multiple_users(temp_admin_csv, temp_user_csv):
-    """Integration test: Admin managing multiple users."""
+    """Integration test - Positive path:
+    Admin managing multiple users."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -408,7 +427,8 @@ def test_integration_admin_manages_multiple_users(temp_admin_csv, temp_user_csv)
 
 
 def test_integration_admin_password_security(temp_admin_csv):
-    """Integration test: Verify admin passwords are hashed in storage."""
+    """Integration test - Edge case:
+    Verify admin passwords are hashed in storage."""
     password = "SecureAdminPass123!"
     
     # Create admin
@@ -434,7 +454,8 @@ def test_integration_admin_password_security(temp_admin_csv):
 
 
 def test_integration_separate_admin_and_user_accounts(temp_admin_csv, temp_user_csv):
-    """Integration test: Verify admin and user accounts are separate."""
+    """Integration test - Edge case:
+    Verify admin and user accounts are separate."""
     email = "same@example.com"
     
     # Create user with this email
@@ -451,7 +472,8 @@ def test_integration_separate_admin_and_user_accounts(temp_admin_csv, temp_user_
 
 
 def test_admin_authentication_required(temp_admin_csv, temp_user_csv):
-    """Test that protected endpoints require authentication."""
+    """Integration test - Edge case:
+    Test that protected endpoints require authentication."""
     # Try to access protected endpoints without token
     response = client.get("/api/admin/users")
     assert response.status_code == 401

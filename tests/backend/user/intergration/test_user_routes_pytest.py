@@ -39,7 +39,7 @@ def get_auth_headers(token):
 # ==================== INTEGRATION TESTS - Signup Endpoint ====================
 
 def test_signup_success(temp_user_csv):
-    """Test successful user signup."""
+    """Positive path: Test successful user signup."""
     response = client.post(
         "/api/signup",
         json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
@@ -54,7 +54,7 @@ def test_signup_success(temp_user_csv):
 
 
 def test_signup_duplicate_email(temp_user_csv):
-    """Test signup fails with duplicate email."""
+    """Negative path: Test signup fails with duplicate email."""
     # First signup
     client.post(
         "/api/signup",
@@ -72,7 +72,7 @@ def test_signup_duplicate_email(temp_user_csv):
 
 
 def test_signup_case_insensitive_email(temp_user_csv):
-    """Test that email comparison is case-insensitive."""
+    """Edge case: Test that email comparison is case-insensitive."""
     # Signup with lowercase
     client.post(
         "/api/signup",
@@ -89,7 +89,7 @@ def test_signup_case_insensitive_email(temp_user_csv):
 
 
 def test_signup_invalid_email():
-    """Test signup with invalid email format."""
+    """Edge case: Test signup with invalid email format."""
     response = client.post(
         "/api/signup",
         json={"email": "not-an-email", "password": TEST_PASSWORD}
@@ -99,7 +99,7 @@ def test_signup_invalid_email():
 
 
 def test_signup_missing_password():
-    """Test signup with missing password field."""
+    """Edge case: Test signup with missing password field."""
     response = client.post(
         "/api/signup",
         json={"email": TEST_EMAIL}
@@ -111,7 +111,7 @@ def test_signup_missing_password():
 # ==================== INTEGRATION TESTS - Login Endpoint ====================
 
 def test_login_success(temp_user_csv):
-    """Test successful login with correct credentials."""
+    """Positive path: Test successful login with correct credentials."""
     # Create user first
     client.post(
         "/api/signup",
@@ -132,7 +132,7 @@ def test_login_success(temp_user_csv):
 
 
 def test_login_wrong_password(temp_user_csv):
-    """Test login fails with wrong password."""
+    """Negative path: Test login fails with wrong password."""
     # Create user
     client.post(
         "/api/signup",
@@ -150,7 +150,7 @@ def test_login_wrong_password(temp_user_csv):
 
 
 def test_login_nonexistent_user(temp_user_csv):
-    """Test login fails for non-existent user."""
+    """Negative path: Test login fails for non-existent user."""
     response = client.post(
         "/api/login",
         json={"email": "nonexistent@example.com", "password": TEST_PASSWORD}
@@ -161,7 +161,7 @@ def test_login_nonexistent_user(temp_user_csv):
 
 
 def test_login_case_insensitive_email(temp_user_csv):
-    """Test that login works with different email casing."""
+    """Edge case: Test that login works with different email casing."""
     # Signup with lowercase
     client.post(
         "/api/signup",
@@ -178,7 +178,7 @@ def test_login_case_insensitive_email(temp_user_csv):
 
 
 def test_login_invalid_email_format():
-    """Test login with invalid email format."""
+    """Edge case: Test login with invalid email format."""
     response = client.post(
         "/api/login",
         json={"email": "not-an-email", "password": TEST_PASSWORD}
@@ -190,7 +190,7 @@ def test_login_invalid_email_format():
 # ==================== INTEGRATION TESTS - Tier System ====================
 
 def test_get_tier_info():
-    """Test getting tier information."""
+    """Positive path: Test getting tier information."""
     response = client.get("/api/tiers")
     
     assert response.status_code == 200
@@ -200,7 +200,7 @@ def test_get_tier_info():
 
 
 def test_get_user_profile(temp_user_csv):
-    """Test getting user profile - requires authentication."""
+    """Positive path: Test getting user profile - requires authentication."""
     # Create a user and login
     client.post(
         "/api/signup",
@@ -227,7 +227,7 @@ def test_get_user_profile(temp_user_csv):
 
 
 def test_get_user_profile_not_found(temp_user_csv):
-    """Test getting profile for non-existent user - requires authentication."""
+    """Negative path: Test getting profile for non-existent user - requires authentication."""
     # Create a user and login to get authentication
     client.post(
         "/api/signup",
@@ -252,7 +252,7 @@ def test_get_user_profile_not_found(temp_user_csv):
 # ==================== INTEGRATION TESTS - Admin Routes ====================
 
 def test_admin_upgrade_invalid_tier(temp_user_csv, temp_admin_csv):
-    """Test admin upgrade with invalid tier."""
+    """Negative path: Test admin upgrade with invalid tier."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -274,7 +274,7 @@ def test_admin_upgrade_invalid_tier(temp_user_csv, temp_admin_csv):
 
 
 def test_get_all_users(temp_user_csv, temp_admin_csv):
-    """Test getting all users."""
+    """Positive path: Test getting all users."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -294,7 +294,7 @@ def test_get_all_users(temp_user_csv, temp_admin_csv):
 # ==================== INTEGRATION TESTS - End-to-End Flows ====================
 
 def test_integration_signup_then_login(temp_user_csv):
-    """Integration test: Complete signup and login flow."""
+    """Positive and negative paths: Complete signup and login flow."""
     email = "flow@example.com"
     password = "FlowTest123!"
     
@@ -329,7 +329,7 @@ def test_integration_signup_then_login(temp_user_csv):
 
 
 def test_integration_tier_progression(temp_user_csv, temp_admin_csv):
-    """Integration test: User tier progression through admin actions."""
+    """Positive path: User tier progression through admin actions."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -380,7 +380,7 @@ def test_integration_tier_progression(temp_user_csv, temp_admin_csv):
 
 
 def test_integration_multiple_users(temp_user_csv, temp_admin_csv):
-    """Integration test: Managing multiple users."""
+    """Positive path: Managing multiple users."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -419,7 +419,7 @@ def test_integration_multiple_users(temp_user_csv, temp_admin_csv):
         assert response.json()["user"]["tier"] == expected_tier
 
 def test_integration_password_security(temp_user_csv):
-    """Integration test: Verify passwords are hashed in storage."""
+    """Edge case: Verify passwords are hashed in storage."""
     password = "SecurePassword123!"
     
     # Create user
