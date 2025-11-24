@@ -7,7 +7,7 @@ from datetime import datetime
 
 class SearchService:
     """Service for searching movies and reviews in the database"""
-    def __init__(self, database_path: str = "database/archive"):
+    def __init__(self, database_path: str = "/app/database/archive"):
         self.database_path = database_path
 
     def _load_movie_metadata(self,
