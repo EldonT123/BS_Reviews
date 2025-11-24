@@ -1,6 +1,6 @@
 import pytest
-from backend.models import movie_model
 from backend.services import metadata_service, review_service
+from backend.models import movie_model
 
 def test_movie_model_basic_properties(monkeypatch):
 
