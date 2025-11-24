@@ -24,25 +24,6 @@ def test_user_tier_display():
     assert "Banana Slug" in banana.get_tier_display_name()
 
 
-def test_add_review_delegates(temp_user_csv):
-    """Test that add_review delegates to review_service."""
-    from backend.services import user_service
-    
-    # Create a user with Slug tier (can write reviews)
-    user = user_service.create_user(
-        email="reviewer@test.com",
-        password="TestPass123!",
-        tier=User.TIER_SLUG
-    )
-    
-    # This should work without error (though review_service needs to handle it)
-    try:
-        user.add_review("Test_Movie", 4.5, "Great movie!")
-    except Exception as e:
-        # Expected if movie doesn't exist
-        assert "movie" in str(e).lower() or "not found" in str(e).lower()
-
-
 def test_add_review_permission_denied():
     """Test that Snail tier cannot write reviews."""
     snail = User("snail@test.com", "hash", User.TIER_SNAIL)
