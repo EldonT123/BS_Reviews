@@ -204,6 +204,101 @@ def delete_review(username: str, movie_name: str) -> bool:
         return False
 
 
+def report_review(username: str, movie_name: str, reason: str = "") -> bool:
+    """
+    Mark a user's review as reported.
+    Returns True if successful, False if review not found.
+    """
+    reviews = read_reviews(movie_name)
+
+    if not reviews:
+        return False
+
+    # Find the review
+    reported = False
+    for review in reviews:
+        if review.get("User", "").lower() == username.lower():
+            # Add or update a 'Reported' column
+            review["Reported"] = "Yes"
+            review["Report Reason"] = reason
+            reported = True
+            break
+
+    if not reported:
+        return False
+
+    # Write back all reviews
+    try:
+        movie_folder = file_service.get_movie_folder(movie_name)
+        path = os.path.join(movie_folder, "movieReviews.csv")
+
+        # Make sure 'Reported' and 'Report Reason' are in headers
+        fieldnames = [
+            "Date of Review", "User", "Usefulness Vote",
+            "Total Votes", "User's Rating out of 10",
+            "Review Title", "Review", "Reported", "Report Reason"
+        ]
+
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(reviews)
+
+        return True
+
+    except Exception as e:
+        print(f"Error reporting review: {e}")
+        return False
+
+
+def handle_reported_review(
+        username: str, movie_name: str, action: str = "keep"
+) -> bool:
+    """
+    Admin handles a reported review.
+    action: "remove" to delete it, "keep" to clear the report flag.
+    """
+    reviews = read_reviews(movie_name)
+    if not reviews:
+        return False
+
+    updated = False
+    for review in reviews:
+        if (
+            review.get("User", "").lower() == username.lower()
+            and review.get("Reported") == "Yes"
+        ):
+            if action == "remove":
+                return delete_review(username, movie_name)
+            else:  # keep
+                review["Reported"] = ""
+                review["Report Reason"] = ""
+            updated = True
+            break
+
+    if not updated:
+        return False
+
+    # Write updated reviews back to CSV (same as in report_review)
+    movie_folder = file_service.get_movie_folder(movie_name)
+    path = os.path.join(movie_folder, "movieReviews.csv")
+    fieldnames = [
+        "Date of Review", "User", "Usefulness Vote",
+        "Total Votes", "User's Rating out of 10",
+        "Review Title", "Review", "Reported", "Report Reason"
+    ]
+
+    try:
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(reviews)
+        return True
+    except Exception as e:
+        print(f"Error handling reported review: {e}")
+        return False
+
+
 # ==================== Calculations & Statistics ====================
 
 def recalc_average_rating(movie_name: str) -> float:
