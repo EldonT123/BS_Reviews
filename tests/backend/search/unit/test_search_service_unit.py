@@ -7,7 +7,7 @@ from backend.services.search_service import SearchService
 @pytest.fixture
 def search_service():
     """Fixture to create a SearchService instance"""
-    return SearchService(database_path="test_database/archive")
+    return SearchService(database_path="app/test_database/archive")
 
 
 @pytest.fixture
@@ -59,7 +59,7 @@ class TestSearchServiceInitialization:
     def test_default_initialization(self):
         """Test SearchService initializes with default path"""
         service = SearchService()
-        assert service.database_path == "database/archive"
+        assert service.database_path == "/app/database/archive"
 
     def test_custom_path_initialization(self):
         """Test SearchService initializes with custom path"""

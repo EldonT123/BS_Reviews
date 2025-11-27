@@ -6,10 +6,24 @@ from backend.services import file_service, review_service
 import json
 from pathlib import Path
 
-client = TestClient(app)
+@pytest.fixture
+def setup_test_database(temp_database_dir, monkeypatch):
+    """Set the DATABASE_DIR environment variable to temp directory."""
+    monkeypatch.setenv("DATABASE_DIR", str(temp_database_dir))
+    # Reload the module to pick up the new environment variable
+    from backend.routes import movie_routes
+    import importlib
+    importlib.reload(movie_routes)
+    yield
+    
 
+@pytest.fixture
+def client():
+    """Create a test client."""
+    from backend.main import app
+    return TestClient(app)
 
-def test_get_top_movies_success(temp_database_dir):
+def test_get_top_movies_success(temp_database_dir, setup_test_database, client):
     """Test getting top movies with mocked data."""
     # Create two test movies with metadata
     for i, (movie_name, rating) in enumerate([("Movie_A", 8.5), ("Movie_B", 7.2)]):
@@ -31,14 +45,14 @@ def test_get_top_movies_success(temp_database_dir):
     assert all("movieIMDbRating" in movie for movie in data)
 
 
-def test_get_poster_not_found():
+def test_get_poster_not_found(client):
     """Test poster endpoint with non-existent movie."""
     response = client.get("/api/movies/poster/nonexistentmovie")
     assert response.status_code == 404
     assert response.json() == {"detail": "Poster not found"}
 
 
-def test_get_most_commented_movies(temp_database_dir):
+def test_get_most_commented_movies(temp_database_dir, setup_test_database, client):
     """Test getting most commented movies with real folder structure."""
     # Create test movies with different comment counts
     movies_data = [
@@ -74,7 +88,7 @@ def test_get_most_commented_movies(temp_database_dir):
             "Movies should be sorted by commentCount descending"
 
 
-def test_get_most_commented_movies_with_real_data(temp_real_data_copy):
+def test_get_most_commented_movies_with_real_data(temp_real_data_copy, client):
     """Integration test: Get most commented movies from real data."""
     response = client.get("/api/movies/most_commented")
     assert response.status_code == 200
