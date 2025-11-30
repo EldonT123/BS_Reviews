@@ -12,8 +12,8 @@ router = APIRouter()
 
 class UserAuth(BaseModel):
     """Request model for login/signup."""
-    username: str
     email: EmailStr
+    username: str
     password: str
 
 
@@ -36,8 +36,8 @@ async def signup(user: UserAuth):
     """Create new user account - starts as Snail tier."""
     try:
         new_user = user_service.create_user(
-            username=user.username,
             email=user.email,
+            username=user.username,
             password=user.password,
             tier=User.TIER_SNAIL
         )
