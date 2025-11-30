@@ -1,16 +1,19 @@
 """Integration test for user add_review with real (isolated) environment"""
-import pytest
 from backend.models.user_model import User
 
-def test_add_review_real_integration(temp_real_data_copy, isolated_movie_env, tmp_path, monkeypatch):
+
+def test_add_review_real_integration(
+        temp_real_data_copy, isolated_movie_env, tmp_path, monkeypatch):
     """Positive path: Test that user can add review to movie"""
     from backend.services import user_service, file_service
 
     # Create an empty temporary user CSV file for this test
     temp_user_csv = tmp_path / "user_information.csv"
-    temp_user_csv.write_text("user_email,user_password,user_tier\n")  # write header only
+    temp_user_csv.write_text("user_email,user_password,user_tier\n")
+    # write header only
 
-    # Patch USER_CSV_PATH so user_service uses this empty CSV instead of the real one
+    # Patch USER_CSV_PATH so user_service uses this empty
+    # CSV instead of the real one
     monkeypatch.setattr(user_service, "USER_CSV_PATH", str(temp_user_csv))
 
     # Now create user should be creating fresh users isolated from real data

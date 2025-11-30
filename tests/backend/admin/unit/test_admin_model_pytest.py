@@ -1,5 +1,4 @@
 """Tests for Admin model."""
-import pytest
 from unittest.mock import Mock, patch
 from backend.models.admin_model import Admin
 from backend.models.user_model import User
@@ -12,7 +11,7 @@ def test_admin_repr():
         email="admin@example.com",
         password_hash="hashed_password"
     )
-    
+
     assert repr(admin) == "Admin(email=admin@example.com)"
 
 
@@ -21,7 +20,7 @@ def test_admin_to_dict():
     Test Admin to_dict method."""
     admin = Admin("admin@test.com", "hash")
     admin_dict = admin.to_dict()
-    
+
     assert admin_dict["email"] == "admin@test.com"
     assert admin_dict["role"] == "admin"
     assert "permissions" in admin_dict
@@ -39,7 +38,7 @@ def test_admin_permissions():
     """Unit test - positive path
     Test that all admin permission checks return True."""
     admin = Admin("admin@test.com", "hash")
-    
+
     assert admin.can_manage_users() is True
     assert admin.can_upgrade_tiers() is True
     assert admin.can_delete_users() is True
@@ -57,10 +56,10 @@ def test_admin_upgrade_user_tier_success(mock_update_tier):
     # Arrange
     mock_update_tier.return_value = True
     admin = Admin("admin@test.com", "hash")
-    
+
     # Act
     success = admin.upgrade_user_tier("user@test.com", User.TIER_SLUG)
-    
+
     # Assert
     assert success is True
     mock_update_tier.assert_called_once_with("user@test.com", User.TIER_SLUG)
@@ -73,13 +72,14 @@ def test_admin_upgrade_user_tier_failure(mock_update_tier):
     # Arrange
     mock_update_tier.return_value = False
     admin = Admin("admin@test.com", "hash")
-    
+
     # Act
     success = admin.upgrade_user_tier("nonexistent@test.com", User.TIER_SLUG)
-    
+
     # Assert
     assert success is False
-    mock_update_tier.assert_called_once_with("nonexistent@test.com", User.TIER_SLUG)
+    mock_update_tier.assert_called_once_with(
+        "nonexistent@test.com", User.TIER_SLUG)
 
 
 @patch('backend.services.user_service.delete_user')
@@ -89,10 +89,10 @@ def test_admin_delete_user_success(mock_delete_user):
     # Arrange
     mock_delete_user.return_value = True
     admin = Admin("admin@test.com", "hash")
-    
+
     # Act
     success = admin.delete_user("user@test.com")
-    
+
     # Assert
     assert success is True
     mock_delete_user.assert_called_once_with("user@test.com")
@@ -105,10 +105,10 @@ def test_admin_delete_user_failure(mock_delete_user):
     # Arrange
     mock_delete_user.return_value = False
     admin = Admin("admin@test.com", "hash")
-    
+
     # Act
     success = admin.delete_user("nonexistent@test.com")
-    
+
     # Assert
     assert success is False
     mock_delete_user.assert_called_once_with("nonexistent@test.com")
@@ -124,12 +124,12 @@ def test_admin_get_all_users(mock_get_all_users):
     mock_user2 = Mock(spec=User)
     mock_user2.email = "user2@test.com"
     mock_get_all_users.return_value = [mock_user1, mock_user2]
-    
+
     admin = Admin("admin@test.com", "hash")
-    
+
     # Act
     users = admin.get_all_users()
-    
+
     # Assert
     assert len(users) == 2
     assert users[0].email == "user1@test.com"
@@ -144,12 +144,11 @@ def test_admin_get_all_users_empty(mock_get_all_users):
     # Arrange
     mock_get_all_users.return_value = []
     admin = Admin("admin@test.com", "hash")
-    
+
     # Act
     users = admin.get_all_users()
-    
+
     # Assert
     assert len(users) == 0
     assert users == []
     mock_get_all_users.assert_called_once()
-

@@ -11,8 +11,8 @@ TEST_ADMIN_PASSWORD = "AdminPass123!"
 
 def test_create_admin(temp_admin_csv):
     """Positive path: Test admin creation."""
-    admin, token = admin_service.create_admin
-    (TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
+    admin, token = admin_service.create_admin(
+        TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
 
     assert admin.email == TEST_ADMIN_EMAIL.lower()
     assert admin.password_hash != TEST_ADMIN_PASSWORD
@@ -32,8 +32,8 @@ def test_authenticate_admin_success(temp_admin_csv):
     """Positive path: Test successful admin authentication."""
     admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
 
-    admin, token = admin_service.authenticate_admin
-    (TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
+    admin, token = admin_service.authenticate_admin(
+        TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
 
     assert admin is not None
     assert admin.email == TEST_ADMIN_EMAIL.lower()
@@ -52,8 +52,8 @@ def test_authenticate_admin_wrong_password(temp_admin_csv):
 def test_authenticate_admin_not_found(temp_admin_csv):
     """Edge case: Test authentication fails for non-existent admin."""
     with pytest.raises(ValueError, match="Invalid credentials"):
-        admin_service.authenticate_admin
-        ("nonexistent@test.com", TEST_ADMIN_PASSWORD)
+        admin_service.authenticate_admin(
+            "nonexistent@test.com", TEST_ADMIN_PASSWORD)
 
 
 def test_admin_exists(temp_admin_csv):
@@ -119,10 +119,10 @@ def test_get_admin_by_email_not_found(temp_admin_csv):
 def test_token_generation(temp_admin_csv):
     """Integration test - Positive Path:
     Test that tokens are generated correctly."""
-    admin1, token1 = admin_service.create_admin
-    ("admin1@test.com", TEST_ADMIN_PASSWORD)
-    admin2, token2 = admin_service.create_admin
-    ("admin2@test.com", TEST_ADMIN_PASSWORD)
+    admin1, token1 = admin_service.create_admin(
+        "admin1@test.com", TEST_ADMIN_PASSWORD)
+    admin2, token2 = admin_service.create_admin(
+        "admin2@test.com", TEST_ADMIN_PASSWORD)
 
     # Tokens should be different
     assert token1 != token2
@@ -135,8 +135,8 @@ def test_token_generation(temp_admin_csv):
 def test_token_verification(temp_admin_csv):
     """Integration test - Positive path / Edge case
     Test token verification."""
-    admin, token = admin_service.create_admin
-    (TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
+    admin, token = admin_service.create_admin(
+        TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
 
     # Verify valid token
     verified_admin = admin_service.verify_admin_token(token)
@@ -151,8 +151,8 @@ def test_token_verification(temp_admin_csv):
 def test_token_revocation(temp_admin_csv):
     """Integration Test - Positive path/ Edge case
     Test token revocation."""
-    admin, token = admin_service.create_admin
-    (TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
+    admin, token = admin_service.create_admin(
+        TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
 
     # Token should work initially
     assert admin_service.verify_admin_token(token) is not None
@@ -171,12 +171,12 @@ def test_token_revocation(temp_admin_csv):
 def test_delete_admin_revokes_tokens(temp_admin_csv):
     """Integration test - Positive path / Edge case:
     Test that deleting admin revokes all their tokens."""
-    admin, token = admin_service.create_admin
-    (TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
+    admin, token = admin_service.create_admin(
+        TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
 
     # Get another token for same admin
-    _, token2 = admin_service.authenticate_admin
-    (TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
+    _, token2 = admin_service.authenticate_admin(
+        TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
 
     # Both tokens should work
     assert admin_service.verify_admin_token(token) is not None

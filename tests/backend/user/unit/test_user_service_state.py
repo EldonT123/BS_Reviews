@@ -118,7 +118,7 @@ class TestSessionManagement:
         assert user is None
 
     def test_verify_invalid_session_id(self):
-        """Edge Case: 
+        """Edge Case:
         Test verifying an invalid session ID."""
         user = user_service.verify_session_id("invalid-id")
         assert user is None
@@ -244,6 +244,7 @@ class TestSessionManagement:
 
 # ==================== TESTS - AUTHENTICATE USER ====================
 
+
 class TestAuthenticateUser:
     """Tests for authenticate_user with session ID."""
 
@@ -294,6 +295,7 @@ class TestAuthenticateUser:
             assert session_id1 != session_id2
 
 # ==================== TESTS - SIGNOUT ====================
+
 
 class TestSignoutUser:
     """Tests for signout_user with session ID."""

@@ -236,7 +236,7 @@ class TestSearchServiceIntegration:
     def test_search_by_title_partial_match_integration(
         self, search_service_with_data
     ):
-        """Integration test positive path / partial match: 
+        """Integration test positive path / partial match:
         Partial title search returns multiple results"""
         results = search_service_with_data.search_by_title("the")
 
@@ -258,7 +258,7 @@ class TestSearchServiceIntegration:
     def test_search_by_multiple_genres_integration(
         self, search_service_with_data
     ):
-        """Integration test positive path: 
+        """Integration test positive path:
         Search by multiple genres"""
         results = search_service_with_data.search_by_genre(
             ["Crime", "Sci-Fi"]
@@ -287,7 +287,7 @@ class TestSearchServiceIntegration:
         assert "Joker" in titles
 
     def test_search_by_year_integration(self, search_service_with_data):
-        """Integration test positive path: 
+        """Integration test positive path:
         Search by specific year"""
         results = search_service_with_data.search_by_year(2019)
 
@@ -345,7 +345,7 @@ class TestSearchServiceIntegration:
     def test_get_movie_with_reviews_not_found_integration(
         self, search_service_with_data
     ):
-        """Integration test negative path and error handling: 
+        """Integration test negative path and error handling:
         Get movie that doesn't exist"""
         result = search_service_with_data.get_movie_with_reviews(
             "Nonexistent Movie"
@@ -354,7 +354,7 @@ class TestSearchServiceIntegration:
         assert result is None
 
     def test_get_all_genres_integration(self, search_service_with_data):
-        """Integration test positive path: 
+        """Integration test positive path:
         Get all unique genres from database"""
         genres = search_service_with_data.get_all_genres()
 
@@ -372,7 +372,8 @@ class TestSearchServiceIntegration:
         assert genres == sorted(genres)
 
     def test_full_workflow_integration(self, search_service_with_data):
-        """Integration test positive path / full workflow: Complete search workflow"""
+        """Integration test positive path / full workflow:
+        Complete search workflow"""
         # 1. Get all available genres
         all_genres = search_service_with_data.get_all_genres()
         assert "Action" in all_genres
@@ -440,7 +441,7 @@ class TestSearchRoutesIntegration:
         assert "Action" in data["genres"]
 
     def test_search_year_endpoint_integration(self, client):
-        """Integration test positive path: 
+        """Integration test positive path:
         Search by year endpoint"""
         response = client.get("/api/search/year/2019")
 
@@ -450,7 +451,7 @@ class TestSearchRoutesIntegration:
         assert data["year"] == 2019
 
     def test_search_date_range_endpoint_integration(self, client):
-        """Integration test Positive path: 
+        """Integration test Positive path:
         Search by date range endpoint"""
         response = client.get(
             "/api/search/date-range?"
@@ -462,7 +463,7 @@ class TestSearchRoutesIntegration:
         assert data["count"] == 2
 
     def test_advanced_search_endpoint_integration(self, client):
-        """Integration test positive path: 
+        """Integration test positive path:
         Advanced search endpoint"""
         response = client.get(
             "/api/search/advanced?genres=Action&min_rating=8.5"
@@ -474,7 +475,7 @@ class TestSearchRoutesIntegration:
         assert data["search_criteria"]["min_rating"] == 8.5
 
     def test_get_movie_endpoint_integration(self, client):
-        """Integration test positive path: 
+        """Integration test positive path:
         Get movie with reviews endpoint"""
         response = client.get("/api/search/movie/Inception")
 
@@ -484,7 +485,7 @@ class TestSearchRoutesIntegration:
         assert data["review_count"] == 2
 
     def test_get_genres_endpoint_integration(self, client):
-        """Integration test positive path: 
+        """Integration test positive path:
         Get all genres endpoint"""
         response = client.get("/api/search/genres")
 
@@ -494,14 +495,14 @@ class TestSearchRoutesIntegration:
         assert "Action" in data["genres"]
 
     def test_invalid_year_endpoint_integration(self, client):
-        """Integration test negative path/ error handling: 
+        """Integration test negative path/ error handling:
         Invalid year returns error"""
         response = client.get("/api/search/year/3000")
 
         assert response.status_code == 400
 
     def test_movie_not_found_endpoint_integration(self, client):
-        """Integration test Negative path/ error handling: 
+        """Integration test Negative path/ error handling:
         Movie not found returns 404"""
         response = client.get("/api/search/movie/Nonexistent%20Movie")
 

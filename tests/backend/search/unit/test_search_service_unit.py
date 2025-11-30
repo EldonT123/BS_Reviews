@@ -55,6 +55,7 @@ def sample_metadata_inception():
 
 # ==================== Initialization Tests ====================
 
+
 class TestSearchServiceInitialization:
     """Tests for SearchService initialization"""
 
@@ -72,6 +73,7 @@ class TestSearchServiceInitialization:
         assert service.database_path == custom_path
 
 # ==================== Load Metadata Tests ====================
+
 
 class TestLoadMovieMetadata:
     """Tests for _load_movie_metadata method"""
@@ -102,6 +104,7 @@ class TestLoadMovieMetadata:
             assert result is None
 
 # ==================== Load Reviews Tests ====================
+
 
 class TestLoadMovieReviews:
     """Tests for _load_movie_reviews method"""
@@ -140,6 +143,7 @@ class TestLoadMovieReviews:
 
 # ==================== Folder Discovery Tests ====================
 
+
 class TestGetAllMovieFolders:
     """Tests for _get_all_movie_folders method"""
 
@@ -164,6 +168,7 @@ class TestGetAllMovieFolders:
             assert result == []
 
 # ==================== Search by Title Tests ====================
+
 
 class TestSearchByTitle:
     """Tests for search_by_title method"""
@@ -241,6 +246,7 @@ class TestSearchByTitle:
             assert len(results) == 0
 
 # ==================== Search by Genre Tests ====================
+
 
 class TestSearchByGenre:
     """Tests for search_by_genre method"""

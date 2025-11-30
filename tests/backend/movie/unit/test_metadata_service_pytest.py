@@ -1,9 +1,10 @@
 """Tests for metadata_service using isolated temporary directories."""
-import json
 import pytest
 from backend.services import metadata_service, file_service
 
 # Fixtures: Temporary movie environment
+
+
 @pytest.fixture
 def temp_movie_env(tmp_path, monkeypatch):
     """
@@ -13,13 +14,13 @@ def temp_movie_env(tmp_path, monkeypatch):
     temp_dir = tmp_path / "movies"
     temp_dir.mkdir(parents=True)
 
-    
     def fake_get_movie_folder(movie_name):
         folder = temp_dir / movie_name
         folder.mkdir(parents=True, exist_ok=True)
         return str(folder)
-    
-    monkeypatch.setattr("backend.services.file_service.get_movie_folder", fake_get_movie_folder)
+
+    monkeypatch.setattr("backend.services.file_service.get_movie_folder",
+                        fake_get_movie_folder)
     return temp_dir
 
 
@@ -33,8 +34,9 @@ def test_read_metadata_missing_file(monkeypatch, tmp_path):
     """
     dummy_folder = tmp_path / "NoMovie"
     dummy_folder.mkdir()
-    #Force metadata_service to look inside dummy folder
-    monkeypatch.setattr(file_service, "get_movie_folder", lambda name: str(dummy_folder))
+    # Force metadata_service to look inside dummy folder
+    monkeypatch.setattr(file_service, "get_movie_folder",
+                        lambda name: str(dummy_folder))
     result = metadata_service.read_metadata("NoMovie")
     assert result == {}, "Expected empty dict for missing metadata.json"
 
@@ -81,5 +83,3 @@ def test_update_review_count(temp_movie_env):
 
     result = metadata_service.read_metadata(movie_name)
     assert result["total_reviews"] == 10, "Review count was not updated"
-
-

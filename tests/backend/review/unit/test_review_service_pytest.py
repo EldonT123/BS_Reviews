@@ -1,8 +1,7 @@
 # tests/test_review_service.py
 """Unit tests for review service with proper mocking."""
 import pytest
-from unittest.mock import patch, mock_open, MagicMock
-from datetime import datetime
+from unittest.mock import patch, mock_open
 from backend.services import review_service
 from backend.models.user_model import User
 
@@ -82,7 +81,8 @@ class TestReadReviews:
     @patch('backend.services.review_service.os.path.exists')
     @patch('backend.services.review_service.file_service.get_movie_folder')
     def test_read_reviews_no_file(self, mock_get_folder, mock_exists):
-        """Functional test: Should return empty list if review file doesn't exist."""
+        """Functional test: Should return
+        empty list if review file doesn't exist."""
         mock_get_folder.return_value = "/fake/path/movie"
         mock_exists.return_value = False
 
@@ -91,10 +91,11 @@ class TestReadReviews:
         assert result == []
         mock_exists.assert_called_once()
 
-    @patch('backend.services.review_service.os.path.exists')
+    # flaking error cannot be fixed or will break code
+    @patch('builtins.open', new_callable=mock_open,read_data="Date of Review,User,Usefulness Vote,Total Votes,User's Rating out of 10,Review Title,Review\n2024-01-15,alice@example.com,10,12,8.5,Great!,Love it\n")
     @patch('backend.services.review_service.file_service.get_movie_folder')
-    @patch('builtins.open', new_callable=mock_open, read_data="Date of Review,User,Usefulness Vote,Total Votes,User's Rating out of 10,Review Title,Review\n2024-01-15,alice@example.com,10,12,8.5,Great!,Love it\n")
-    def test_read_reviews_success(self, mock_file, mock_get_folder, mock_exists):
+    @patch('backend.services.review_service.os.path.exists')
+    def test_read_reviews_success(self, mock_exists, mock_get_folder, mock_open_file):
         """Functional test: Should successfully read reviews from CSV."""
         mock_get_folder.return_value = "/fake/path/movie"
         mock_exists.return_value = True
@@ -110,7 +111,8 @@ class TestReadReviews:
         """Functional test: Should find a specific user's review."""
         mock_read.return_value = sample_reviews
 
-        result = review_service.get_review_by_user("Test Movie", "alice@example.com")
+        result = review_service.get_review_by_user(
+            "Test Movie", "alice@example.com")
 
         assert result is not None
         assert result["User"] == "alice@example.com"
@@ -121,16 +123,19 @@ class TestReadReviews:
         """Functional test: Should return None if user hasn't reviewed."""
         mock_read.return_value = sample_reviews
 
-        result = review_service.get_review_by_user("Test Movie", "nobody@example.com")
+        result = review_service.get_review_by_user(
+            "Test Movie", "nobody@example.com")
 
         assert result is None
 
     @patch('backend.services.review_service.read_reviews')
-    def test_get_review_by_user_case_insensitive(self, mock_read, sample_reviews):
+    def test_get_review_by_user_case_insensitive(
+                                            self, mock_read, sample_reviews):
         """Functional test: Should match user email case-insensitively."""
         mock_read.return_value = sample_reviews
 
-        result = review_service.get_review_by_user("Test Movie", "ALICE@EXAMPLE.COM")
+        result = review_service.get_review_by_user(
+            "Test Movie", "ALICE@EXAMPLE.COM")
 
         assert result is not None
         assert result["User"] == "alice@example.com"
@@ -140,7 +145,8 @@ class TestReadReviews:
         """Functional test: Should return True if user has reviewed."""
         mock_get.return_value = {"User": "alice@example.com"}
 
-        result = review_service.user_has_reviewed("Test Movie", "alice@example.com")
+        result = review_service.user_has_reviewed(
+            "Test Movie", "alice@example.com")
 
         assert result is True
 
@@ -149,7 +155,8 @@ class TestReadReviews:
         """Functional test: Should return False if user hasn't reviewed."""
         mock_get.return_value = None
 
-        result = review_service.user_has_reviewed("Test Movie", "alice@example.com")
+        result = review_service.user_has_reviewed(
+            "Test Movie", "alice@example.com")
 
         assert result is False
 
@@ -159,15 +166,18 @@ class TestReadReviews:
 class TestAddReview:
     """Tests for adding new reviews."""
 
-    @patch('backend.services.review_service.os.path.exists')
-    @patch('backend.services.review_service.os.path.getsize')
-    @patch('backend.services.review_service.file_service.get_movie_folder')
-    @patch('backend.services.review_service.file_service.create_movie_folder')
     @patch('builtins.open', new_callable=mock_open)
-    def test_add_review_new_file(self, mock_file, mock_create, mock_get_folder, mock_getsize, mock_exists):
-        """Functional test: Should create file with header when adding first review."""
+    @patch('backend.services.review_service.file_service.create_movie_folder')
+    @patch('backend.services.review_service.file_service.get_movie_folder')
+    @patch('backend.services.review_service.os.path.getsize')
+    @patch('backend.services.review_service.os.path.exists')
+    def test_add_review_new_file(
+            self, mock_exists, mock_getsize, mock_get_folder, mock_create, mock_file):
+        """Functional test: Should create file with header
+        when adding first review."""
         mock_get_folder.return_value = "/fake/path/movie"
-        mock_exists.side_effect = [False, False]  # folder doesn't exist, file doesn't exist
+        mock_exists.side_effect = [False, False]
+        # folder doesn't exist, file doesn't exist
 
         result = review_service.add_review(
             username="alice@example.com",
@@ -185,7 +195,8 @@ class TestAddReview:
     @patch('backend.services.review_service.os.path.getsize')
     @patch('backend.services.review_service.file_service.get_movie_folder')
     @patch('builtins.open', new_callable=mock_open)
-    def test_add_review_existing_file(self, mock_file, mock_get_folder, mock_getsize, mock_exists):
+    def test_add_review_existing_file(
+                self, mock_file, mock_get_folder, mock_getsize, mock_exists):
         """Functional test: Should append to existing file without header."""
         mock_get_folder.return_value = "/fake/path/movie"
         mock_exists.return_value = True
@@ -205,7 +216,8 @@ class TestAddReview:
     @patch('backend.services.review_service.os.path.getsize')
     @patch('backend.services.review_service.file_service.get_movie_folder')
     @patch('builtins.open', new_callable=mock_open)
-    def test_add_review_rating_only(self, mock_file, mock_get_folder, mock_getsize, mock_exists):
+    def test_add_review_rating_only(
+            self, mock_file, mock_get_folder, mock_getsize, mock_exists):
         """Functional test: Should allow adding rating without comment."""
         mock_get_folder.return_value = "/fake/path/movie"
         mock_exists.return_value = True
@@ -225,8 +237,11 @@ class TestAddReview:
     @patch('backend.services.review_service.os.path.getsize')
     @patch('backend.services.review_service.file_service.get_movie_folder')
     @patch('builtins.open', new_callable=mock_open)
-    def test_add_review_auto_date(self, mock_file, mock_get_folder, mock_getsize, mock_exists, mock_datetime):
-        """Functional test: Should automatically set current date if not provided."""
+    def test_add_review_auto_date(
+            self, mock_file, mock_get_folder,
+            mock_getsize, mock_exists, mock_datetime):
+        """Functional test: Should automatically set
+        current date if not provided."""
         mock_get_folder.return_value = "/fake/path/movie"
         mock_exists.return_value = True
         mock_getsize.return_value = 100  # File has content
@@ -263,7 +278,8 @@ class TestUpdateReview:
     @patch('backend.services.review_service.read_reviews')
     @patch('backend.services.review_service.file_service.get_movie_folder')
     @patch('builtins.open', new_callable=mock_open)
-    def test_update_review_success(self, mock_file, mock_get_folder, mock_read, sample_reviews):
+    def test_update_review_success(
+            self, mock_file, mock_get_folder, mock_read, sample_reviews):
         """Functional test: Should successfully update existing review."""
         mock_read.return_value = sample_reviews.copy()
         mock_get_folder.return_value = "/fake/path/movie"
@@ -301,19 +317,22 @@ class TestDeleteReview:
         """Functional test: Should return False if no reviews exist."""
         mock_read.return_value = []
 
-        result = review_service.delete_review("alice@example.com", "Test Movie")
+        result = review_service.delete_review(
+            "alice@example.com", "Test Movie")
 
         assert result is False
 
     @patch('backend.services.review_service.read_reviews')
     @patch('backend.services.review_service.file_service.get_movie_folder')
     @patch('builtins.open', new_callable=mock_open)
-    def test_delete_review_success(self, mock_file, mock_get_folder, mock_read, sample_reviews):
+    def test_delete_review_success(
+            self, mock_file, mock_get_folder, mock_read, sample_reviews):
         """Functional test: Should successfully delete user's review."""
         mock_read.return_value = sample_reviews.copy()
         mock_get_folder.return_value = "/fake/path/movie"
 
-        result = review_service.delete_review("alice@example.com", "Test Movie")
+        result = review_service.delete_review(
+            "alice@example.com", "Test Movie")
 
         assert result is True
 
@@ -322,7 +341,8 @@ class TestDeleteReview:
         """Functional test: Should return False if user hasn't reviewed."""
         mock_read.return_value = sample_reviews
 
-        result = review_service.delete_review("nobody@example.com", "Test Movie")
+        result = review_service.delete_review(
+            "nobody@example.com", "Test Movie")
 
         assert result is False
 
@@ -371,7 +391,9 @@ class TestCalculations:
 
     @patch('backend.services.review_service.read_reviews')
     @patch('backend.services.review_service.user_service.get_user_by_email')
-    def test_get_review_stats(self, mock_get_user, mock_read, sample_reviews, banana_slug_user, slug_user):
+    def test_get_review_stats(
+            self, mock_get_user, mock_read,
+            sample_reviews, banana_slug_user, slug_user):
         """Functional, positive path
         Should calculate comprehensive review statistics."""
         mock_read.return_value = sample_reviews
@@ -412,7 +434,8 @@ class TestSorting:
     """Tests for review sorting by tier."""
 
     @patch('backend.services.review_service.user_service.get_user_by_email')
-    def test_sort_reviews_by_tier(self, mock_get_user, sample_reviews, banana_slug_user, slug_user, snail_user):
+    def test_sort_reviews_by_tier(self, mock_get_user, sample_reviews,
+                                  banana_slug_user, slug_user, snail_user):
         """Functional, positive path
         Should sort Banana Slug reviews first."""
         def get_user_side_effect(email):
@@ -459,7 +482,8 @@ class TestValidation:
         Snail tier should not be able to write reviews."""
         mock_get_user.return_value = snail_user
 
-        has_permission, error_msg = review_service.validate_review_permission("viewer@example.com")
+        has_permission, error_msg = review_service.validate_review_permission(
+            "viewer@example.com")
 
         assert has_permission is False
         assert "cannot write reviews" in error_msg
@@ -470,18 +494,21 @@ class TestValidation:
         Slug tier should be able to write reviews."""
         mock_get_user.return_value = slug_user
 
-        has_permission, error_msg = review_service.validate_review_permission("regular@example.com")
+        has_permission, error_msg = review_service.validate_review_permission(
+            "regular@example.com")
 
         assert has_permission is True
         assert error_msg is None
 
     @patch('backend.services.review_service.user_service.get_user_by_email')
-    def test_validate_review_permission_banana_slug(self, mock_get_user, banana_slug_user):
+    def test_validate_review_permission_banana_slug(
+            self, mock_get_user, banana_slug_user):
         """Permission check, positive path
         Banana Slug tier should be able to write reviews."""
         mock_get_user.return_value = banana_slug_user
 
-        has_permission, error_msg = review_service.validate_review_permission("vip@example.com")
+        has_permission, error_msg = review_service.validate_review_permission(
+            "vip@example.com")
 
         assert has_permission is True
         assert error_msg is None
@@ -492,7 +519,8 @@ class TestValidation:
         Should return False if user doesn't exist."""
         mock_get_user.return_value = None
 
-        has_permission, error_msg = review_service.validate_review_permission("nobody@example.com")
+        has_permission, error_msg = review_service.validate_review_permission(
+            "nobody@example.com")
 
         assert has_permission is False
         assert "not found" in error_msg
@@ -527,7 +555,8 @@ class TestValidation:
         Snail tier should not be able to edit reviews."""
         mock_get_user.return_value = snail_user
 
-        has_permission, error_msg = review_service.validate_edit_permission("viewer@example.com")
+        has_permission, error_msg = review_service.validate_edit_permission(
+            "viewer@example.com")
 
         assert has_permission is False
         assert "cannot edit reviews" in error_msg

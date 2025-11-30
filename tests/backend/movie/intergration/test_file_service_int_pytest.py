@@ -8,7 +8,7 @@ TEST_MOVIE = "Test_Movie"
 
 
 def test_integration_create_and_verify_movie_folder(temp_database_dir):
-    """Integration test with positive path: 
+    """Integration test with positive path:
     Create movie folder and verify all components."""
     movie_name = "Integration_Movie"
 
@@ -19,8 +19,10 @@ def test_integration_create_and_verify_movie_folder(temp_database_dir):
     assert folder_path.exists(), "Movie folder was not created"
 
     # Verify metadata and reviews files exist
-    assert file_service.check_metadata_exists(movie_name), "Metadata file missing after creation"
-    assert file_service.check_reviews_exists(movie_name), "Reviews file missing after creation"
+    assert file_service.check_metadata_exists(
+        movie_name), "Metadata file missing after creation"
+    assert file_service.check_reviews_exists(
+        movie_name), "Reviews file missing after creation"
 
     # Verify specific files in folder
     files = [f.name for f in folder_path.iterdir()]
@@ -29,15 +31,17 @@ def test_integration_create_and_verify_movie_folder(temp_database_dir):
 
 
 def test_integration_create_and_delete_movie_folder(temp_database_dir):
-    """Integration test with positive path: 
+    """Integration test with positive path:
     Create a movie folder and then delete it."""
     # Step 1: Create the folder
     folder_path = Path(file_service.create_movie_folder(TEST_MOVIE))
 
     # Verify folder and files exist
     assert folder_path.exists(), "Movie folder was not created"
-    assert file_service.check_metadata_exists(TEST_MOVIE), "Metadata file missing after creation"
-    assert file_service.check_reviews_exists(TEST_MOVIE), "Reviews file missing after creation"
+    assert file_service.check_metadata_exists(
+        TEST_MOVIE), "Metadata file missing after creation"
+    assert file_service.check_reviews_exists(
+        TEST_MOVIE), "Reviews file missing after creation"
 
     # Step 2: Delete the folder
     result = file_service.delete_movie_folder(TEST_MOVIE)
