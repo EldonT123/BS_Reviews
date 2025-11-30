@@ -122,7 +122,9 @@ def test_token_generation(temp_admin_csv):
 
 def test_token_verification(temp_admin_csv):
     """Test token verification."""
-    admin, token = admin_service.create_admin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
+    admin, token = admin_service.create_admin(
+        TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD
+        )
     
     # Verify valid token
     verified_admin = admin_service.verify_admin_token(token)
