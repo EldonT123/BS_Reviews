@@ -26,12 +26,24 @@ def temp_database_dir(tmp_path):
 
 
 @pytest.fixture(scope="function")
-def temp_real_data_copy(tmp_path):
+def temp_real_data_copy(tmp_path, monkeypatch):
     """Copy real database archive to temp dir for integration tests."""
-    real_data_path = Path('./database/archive')
+    # Try multiple possible paths for the real data
+    possible_paths = [
+        Path('./app/database/archive'),
+        Path('./database/archive'),
+        Path('app/database/archive'),
+        Path('database/archive')
+    ]
+    
+    real_data_path = None
+    for path in possible_paths:
+        if path.exists():
+            real_data_path = path
+            break
     
     # Skip test if real data doesn't exist
-    if not real_data_path.exists():
+    if not real_data_path:
         pytest.skip("Real data archive not found")
     
     dest_path = tmp_path / 'archive'
@@ -40,6 +52,14 @@ def temp_real_data_copy(tmp_path):
     # Patch DATABASE_PATH to use the temp copy
     original_path = file_service.DATABASE_PATH
     file_service.DATABASE_PATH = str(dest_path)
+    
+    # Also set DATABASE_DIR environment variable for movie_routes
+    monkeypatch.setenv("DATABASE_DIR", str(dest_path))
+    
+    # Reload movie_routes to pick up new DATABASE_DIR
+    from backend.routes import movie_routes
+    import importlib
+    importlib.reload(movie_routes)
     
     yield dest_path
     
@@ -61,9 +81,30 @@ def isolated_movie_env(tmp_path):
 
 
 @pytest.fixture
+def setup_test_database(temp_database_dir, monkeypatch):
+    """Set the DATABASE_DIR environment variable to temp directory for API tests."""
+    monkeypatch.setenv("DATABASE_DIR", str(temp_database_dir))
+    
+    # Reload the module to pick up the new environment variable
+    from backend.routes import movie_routes
+    import importlib
+    importlib.reload(movie_routes)
+    
+    yield temp_database_dir
+
+
+@pytest.fixture
+def client():
+    """Create a FastAPI test client."""
+    from fastapi.testclient import TestClient
+    from backend.main import app
+    return TestClient(app)
+
+
+@pytest.fixture
 def temp_user_csv(tmp_path, monkeypatch):
     """Create temporary user CSV file with proper structure for testing."""
-    from backend.services import user_service  # Changed from user_routes
+    from backend.services import user_service
     
     # Create a temp CSV file
     user_csv_path = tmp_path / "user_information.csv"
@@ -71,7 +112,7 @@ def temp_user_csv(tmp_path, monkeypatch):
     # Create the CSV with headers
     with open(user_csv_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(["user_email", "user_password", "user_tier"])  # Added user_tier
+        writer.writerow(["user_email", "user_password", "user_tier"])
     
     # Patch the USER_CSV_PATH to use our temp file
     original_path = user_service.USER_CSV_PATH
@@ -79,7 +120,6 @@ def temp_user_csv(tmp_path, monkeypatch):
     
     yield user_csv_path
     
-    # Cleanup is automatic with tmp_path
     # Restore original path
     user_service.USER_CSV_PATH = original_path
 
@@ -98,12 +138,11 @@ def temp_admin_csv(tmp_path, monkeypatch):
     monkeypatch.setattr(admin_service, "ADMIN_CSV_PATH", str(temp_csv))
     
     yield str(temp_csv)
-    
-    # Cleanup (optional, tmp_path handles this automatically)
 
 
 @pytest.fixture
 def fresh_movie_folder_with_metadata(temp_real_data_copy, tmp_path):
+    """Get a fresh copy of a movie folder with metadata for testing."""
     # Find a movie folder with metadata.json file
     movie_folders = [f for f in temp_real_data_copy.iterdir() if f.is_dir() and (f / "metadata.json").exists()]
     if not movie_folders:
@@ -116,17 +155,34 @@ def fresh_movie_folder_with_metadata(temp_real_data_copy, tmp_path):
     shutil.copytree(original_folder, fresh_folder)
     
     yield fresh_folder
+
+
 @pytest.fixture
 def anymovie_temp_folder(tmp_path):
-    # Path to your real data archive (adjust as needed)
-    real_data_path = Path('./database/archive')
-
+    """Copy a random movie folder from archive to temp directory for testing."""
+    # Try multiple possible paths for the real data
+    possible_paths = [
+        Path('./app/database/archive'),
+        Path('./database/archive'),
+        Path('app/database/archive'),
+        Path('database/archive')
+    ]
+    
+    real_data_path = None
+    for path in possible_paths:
+        if path.exists() and any(path.iterdir()):
+            real_data_path = path
+            break
+    
     # Check if real data exists; skip test if not
-    if not real_data_path.exists() or not any(real_data_path.iterdir()):
+    if not real_data_path:
         pytest.skip("Real data archive not found or empty")
 
     # Select a random movie folder from the archive
     movie_folders = [f for f in real_data_path.iterdir() if f.is_dir()]
+    if not movie_folders:
+        pytest.skip("No movie folders found in archive")
+    
     selected_folder = random.choice(movie_folders)
 
     # Destination folder inside tmp_path (named "anymovie")
@@ -137,8 +193,6 @@ def anymovie_temp_folder(tmp_path):
 
     # Yield path for tests to use
     yield dest_folder
-
-    # Cleanup is automatic: tmp_path and contents deleted after test
 
 # ==================== Combined Fixtures ====================
 
