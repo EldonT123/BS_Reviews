@@ -35,9 +35,9 @@ def test_create_movie_folder_creates_files(temp_database_dir):
 
 
 # Unit test: Existence Checks with Mocked Filesystem Logic
+# Can not fix flaking error or will break code
 @patch("backend.services.file_service.os.path.exists")
-@patch("backend.services.file_service.os.path.join",
-       side_effect=lambda *a: "/mocked/path")
+@patch("backend.services.file_service.os.path.join", side_effect=lambda *a: "/mocked/path")
 def test_check_metadata_exists_and_reviews_exists(mock_join, mock_exists):
     """Unit test positive path
     Simulate metadata.json and movieReviews.csv bock exist"""
@@ -46,17 +46,16 @@ def test_check_metadata_exists_and_reviews_exists(mock_join, mock_exists):
     assert file_service.check_metadata_exists(TEST_MOVIE) is True
     assert file_service.check_reviews_exists(TEST_MOVIE) is True
 
+# Can not fix flaking error or will break code
 
-@patch("backend.services.file_service.os.path.join")
+
 @patch("backend.services.file_service.os.path.exists")
+@patch("backend.services.file_service.os.path.join", return_value="/mocked/path")
 def test_check_metadata_and_reviews_missing(mock_join, mock_exists):
     """Unit test negative path/ edge case
     Mocks filesystem missing files."""
-    # os.path.join → always return a fake consistent path
-    mock_join.return_value = "/mocked/path"
-
-    # os.path.exists → always return False
+    # os.path.exists will always return False
     mock_exists.return_value = False
 
-    assert not file_service.check_metadata_exists(TEST_MOVIE) is False
-    assert not file_service.check_reviews_exists(TEST_MOVIE) is False
+    assert file_service.check_metadata_exists(TEST_MOVIE) is False
+    assert file_service.check_reviews_exists(TEST_MOVIE) is False
