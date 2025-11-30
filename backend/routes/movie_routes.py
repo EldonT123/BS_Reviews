@@ -5,8 +5,10 @@ import json
 
 router = APIRouter()
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATABASE_DIR = os.getenv("DATABASE_DIR", os.path.join(BASE_DIR, "database", "archive"))
+BASE_DIR = os.path.dirname(os.path.dirname
+                           (os.path.dirname(os.path.abspath(__file__))))
+DATABASE_DIR = os.getenv("DATABASE_DIR", os.path.join(
+    BASE_DIR, "database", "archive"))
 
 
 @router.get("/top")
@@ -51,7 +53,8 @@ async def get_most_commented_movies():
                 movies.append({
                     "title": data.get("title", folder),
                     "commentCount": data.get("commentCount", 0),
-                    "posterPath": f"http://localhost:5000/movies/poster/{folder}"
+                    "posterPath":
+                    f"http://localhost:5000/movies/poster/{folder}"
                 })
             except Exception as e:
                 print(f"Error reading metadata for {folder}: {e}")
