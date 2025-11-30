@@ -2,15 +2,20 @@
 import pytest
 from backend.models.user_model import User
 
+TEST_EMAIL = "test@email.com"
+TEST_USERNAME = "testuser"
+TEST_PASSWORD = "pass123!"
+
 def test_user_repr():
     """Test User repr method."""
     user = User(
-        email="alice@example.com",
-        password_hash="hashed_password",
+        email=TEST_EMAIL,
+        username=TEST_USERNAME,
+        password_hash=TEST_PASSWORD,
         tier=User.TIER_SLUG
     )
     
-    assert repr(user) == "User(email=alice@example.com, tier=slug)"
+    assert repr(user) == "User(email={TEST_EMAIL}, tier=slug)"
 
 
 def test_user_tier_display():
