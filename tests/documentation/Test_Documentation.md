@@ -51,6 +51,51 @@ Tests password hashing, session security, token generation, and authentication m
 **Description:**
 Implemented complete search functionality for movies including search by title, genre, date range, and advanced multi-criteria searches. Includes comprehensive unit and integration tests.
 
+### PR #40: Bookmarking movie implementation
+**Branch:** `bookmark-movies`  
+**Files Changed:**
+- `backend/routes/user_routes.py` 
+- `backend/services/user_service.py`
+- `database/users/user_bookmarks.csv` (New)
+- `tests/backend/user/unit/test_bookmarks.py` (New)
+
+**Description:**
+Implemented the ability for users to bookmark movies.
+
+### PR #53: Test mocking and comments
+**Branch:** `test_mocking`  
+**Files Changed:**
+- `backend/app/user/auth_service.py`
+- `backend/app/user/test_bookmark.py`
+- `backend/models/movie_model.py`
+- `backend/models/user_model.py`
+- `tests/backend/admin/integration/test_admin_business_logic.py`
+- `tests/backend/admin/integration/test_admin_routes_pytest.py`
+- `tests/backend/admin/unit/test_admin_model_pytest.py`
+- `tests/backend/admin/unit/test_admin_service_CSV.py`
+- `tests/backend/admin/unit/test_admin_service_passwords.py`
+- `tests/backend/movie/intergration/test_file_service_int_pytest.py`
+- `tests/backend/movie/intergration/test_metadata_int_pytest.py`
+- `tests/backend/movie/unit/test_file_service_pytest.py`
+- `tests/backend/movie/unit/test_metadata_service_pytest.py`
+- `tests/backend/movie/unit/test_movie_model_pytest.py`
+- `tests/backend/review/intergration/test_review_service_int_pytest.py`
+- `tests/backend/review/unit/test_review_service_pytest.py`
+- `tests/backend/search/intergration/test_search_intergration.py`
+- `tests/backend/search/unit/test_search_service_unit.py`
+- `tests/backend/user/intergration/test_user_buisness_logic.py`
+- `tests/backend/user/intergration/test_user_review_pytest.py`
+- `tests/backend/user/intergration/test_user_routes_pytest.py`
+- `tests/backend/user/intergration/test_user_routes_state.py`
+- `tests/backend/user/unit/test_bookmarks.py`
+- `tests/backend/user/unit/test_user_model_pytest.py`
+- `tests/backend/user/unit/test_user_service_CSV.py`
+- `tests/backend/user/unit/test_user_service_passwords.py`
+- `tests/backend/user/unit/test_user_service_state.py`
+
+**Description:**
+Implementing mocking into all tests and identify test type into all tests. Also flaking all test files.
+
 ---
 
 ### 1. Mocking (Unit Tests)
