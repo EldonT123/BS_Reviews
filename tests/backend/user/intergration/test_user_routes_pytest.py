@@ -93,7 +93,7 @@ def test_signup_invalid_email():
     """Test signup with invalid email format."""
     response = client.post(
         "/api/users/signup",
-        json={"email": "not-an-email", "password": TEST_PASSWORD}
+        json={"email": "not-an-email", "username": TEST_USERNAME, "password": TEST_PASSWORD}
     )
     
     assert response.status_code == 422
@@ -103,7 +103,17 @@ def test_signup_missing_password():
     """Test signup with missing password field."""
     response = client.post(
         "/api/users/signup",
-        json={"email": TEST_EMAIL}
+        json={"email": TEST_EMAIL, "username": TEST_USERNAME}
+    )
+    
+    assert response.status_code == 422
+
+
+def test_signup_missing_username():
+    """Test signup with missing username field."""
+    response = client.post(
+        "/api/users/signup",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
     
     assert response.status_code == 422
@@ -122,7 +132,7 @@ def test_login_success(temp_user_csv):
     # Now login
     response = client.post(
         "/api/users/login",
-        json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
     
     assert response.status_code == 200
@@ -143,7 +153,7 @@ def test_login_wrong_password(temp_user_csv):
     # Try login with wrong password
     response = client.post(
         "/api/users/login",
-        json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": "WrongPassword456!"}
+        json={"email": TEST_EMAIL, "password": "WrongPassword456!"}
     )
     
     assert response.status_code == 401
@@ -154,7 +164,7 @@ def test_login_nonexistent_user(temp_user_csv):
     """Test login fails for non-existent user."""
     response = client.post(
         "/api/users/login",
-        json={"email": "nonexistent@example.com", "username": TEST_USERNAME, "password": TEST_PASSWORD}
+        json={"email": "nonexistent@example.com", "password": TEST_PASSWORD}
     )
     
     assert response.status_code == 401
@@ -172,7 +182,7 @@ def test_login_case_insensitive_email(temp_user_csv):
     # Login with uppercase
     response = client.post(
         "/api/users/login",
-        json={"email": "USER@EXAMPLE.COM", "username": TEST_USERNAME, "password": TEST_PASSWORD}
+        json={"email": "USER@EXAMPLE.COM", "password": TEST_PASSWORD}
     )
     
     assert response.status_code == 200
@@ -211,7 +221,7 @@ def test_get_user_profile(temp_user_csv):
     # Login to get session
     login_response = client.post(
         "/api/users/login",
-        json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
     session_id = login_response.json()["session_id"]
     
@@ -237,7 +247,7 @@ def test_get_user_profile_not_found(temp_user_csv):
     
     login_response = client.post(
         "/api/users/login",
-        json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
     session_id = login_response.json()["session_id"]
     
@@ -308,7 +318,7 @@ def test_integration_signup_then_login(temp_user_csv):
     # Step 2: Login with same credentials
     login_response = client.post(
         "/api/users/login",
-        json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
     assert login_response.status_code == 200
     
@@ -322,7 +332,7 @@ def test_integration_signup_then_login(temp_user_csv):
     # Step 4: Login with wrong password (should fail)
     wrong_login_response = client.post(
         "/api/users/login",
-        json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": "WrongPassword789!"}
+        json={"email": TEST_EMAIL, "password": "WrongPassword789!"}
     )
     assert wrong_login_response.status_code == 401
 
@@ -352,7 +362,7 @@ def test_integration_tier_progression(temp_user_csv, temp_admin_csv):
     # Login and check new permissions
     login_response = client.post(
         "/api/users/login",
-        json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
     assert login_response.json()["user"]["tier"] == User.TIER_SLUG
     assert login_response.json()["user"]["permissions"]["can_write_reviews"] is True
@@ -369,7 +379,7 @@ def test_integration_tier_progression(temp_user_csv, temp_admin_csv):
     # Login and check VIP permissions
     login_response = client.post(
         "/api/users/login",
-        json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
     assert login_response.json()["user"]["tier"] == User.TIER_BANANA_SLUG
     assert login_response.json()["user"]["permissions"]["has_priority_reviews"] is True
@@ -409,7 +419,7 @@ def test_integration_multiple_users(temp_user_csv, temp_admin_csv):
     for email, username, password, expected_tier in users:
         response = client.post(
             "/api/users/login",
-            json={"email": email, "username": username, "password": password}
+            json={"email": email, "password": password}
         )
         assert response.status_code == 200
         assert response.json()["user"]["tier"] == expected_tier
@@ -421,7 +431,7 @@ def test_integration_password_security(temp_user_csv):
     # Create user
     client.post(
         "/api/users/signup",
-        json={"email": TEST_EMAIL, "password": password}
+        json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": password}
     )
     
     # Read CSV directly and verify password is hashed
@@ -433,7 +443,7 @@ def test_integration_password_security(temp_user_csv):
         next(reader)  # Skip header
         for row in reader:
             if row[0] == TEST_EMAIL.lower():
-                stored_password = row[1]
+                stored_password = row[2]
                 # Password should be hashed (bcrypt hashes start with $2b$)
                 assert stored_password.startswith('$2b$')
                 assert stored_password != password

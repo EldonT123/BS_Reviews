@@ -50,7 +50,6 @@ class TestLogin:
                 "/api/users/login",
                 json={
                     "email": "test@example.com",
-                    "username": "testuser",
                     "password": "password123"
                 }
             )
@@ -77,7 +76,6 @@ class TestLogin:
                 "/api/users/login",
                 json={
                     "email": "test@example.com",
-                    "username": "testuser",
                     "password": "password123"
                 }
             )
@@ -95,7 +93,6 @@ class TestLogin:
                 "/api/users/login",
                 json={
                     "email": "test@example.com",
-                    "username": "testuser",
                     "password": "wrongpassword"
                 }
             )
@@ -223,7 +220,6 @@ class TestUserWorkflow:
                 "/api/users/login",
                 json={
                     "email": "test@example.com",
-                    "username": "testuser",
                     "password": "password123"
                 }
             )
@@ -287,7 +283,6 @@ class TestUserWorkflow:
                     "/api/users/login",
                     json={
                         "email": "test@example.com",
-                        "username": "testuser",
                         "password": "password123"
                     }
                 )
