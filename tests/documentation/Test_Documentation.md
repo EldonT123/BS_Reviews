@@ -50,7 +50,6 @@ Tests password hashing, session security, token generation, and authentication m
 
 **Description:**
 Implemented complete search functionality for movies including search by title, genre, date range, and advanced multi-criteria searches. Includes comprehensive unit and integration tests.
-
 ---
 
 ### 1. Mocking (Unit Tests)
@@ -1631,6 +1630,235 @@ def test_submit_review_invalid_rating(client):
 
 **Status Codes Tested:** 200 (Success), 201 (Created), 404 (Not Found), 422 (Validation Error), 500 (Server Error)
 
+### PR #6: Bookmarking movies
+**Branch:** `bookmark-movies`
+**Files Changed:**
+
+- `backend/routes/user_routes.py` (Modified)
+- `backend/services/user_service.py` (Modified)
+- `database/users/user_bookmarks.csv` (New)
+- `tests/backend/user/unit/test_bookmarks.py` (New)
+
+**Description:**
+Implemented the ability for users to bookmark movies. Created methods to prevent duplicate bookmarks, remove existing bookmarks, Figure out whether or not a movie is bookmarked and retrieve all bookmarks.
+
+#### Original Testing Approach
+
+### 1. Test Fixtures (Foundation Testing Infrastructure)
+**Purpose:** Create reusable, isolated test environments for consistent testing
+
+**Example - Sample Create User Fixture:**
+```python
+@pytest.fixture
+def create_test_user(temp_user_and_bookmark_files):
+    """Fixture: Creates a test user in the temp CSV."""
+    user_service.create_user(
+        email="test@example.com",
+        password="password123",
+        tier="Snail"
+    )
+    return "test@example.com"
+```
+**Methodology:** Fixtures provided consistent test data across multiple test functions, eliminating data setup duplication.
+
+### 2. Unit Testing - Services Layer
+**Purpose:** Validate individual service functions in isolation
+
+**Example - Add bookmark tests**
+```python
+def test_add_bookmark(create_test_user):
+    """Unit test - Positive path:
+    Test adding a new bookmark."""
+    result = user_service.add_bookmark("test@example.com", "Avengers Endgame")
+    assert result is True
+
+    bookmarks = user_service.get_user_bookmarks("test@example.com")
+    assert bookmarks == ["Avengers Endgame"]
+```
+**Methodology:** Tested file operations using temporary directories, ensuring no impact on actual data.
+
+#### 3. Integration Testing - API Routes
+- Full end-to-end flows are tested using the FastAPI `TestClient`.  
+  These include:
+  1. **Login → Add Bookmark → Retrieve Bookmarks**  
+     Ensures correct state persistence throughout the API flow.
+  2. **Login → Add Bookmark → Remove Bookmark → Retrieve Bookmarks**  
+     Confirms modifications persist across operations.
+  3. **Bookmark operations during a download workflow**  
+     Ensures the presence of bookmark logic does not break or interfere with download handling.  
+- Integration tests rely on the mocked CSV environment created 
+
+#### Mocking
+- `csv` file I/O is fully mocked using the shared `mock_csv_files` fixture to avoid any reads or writes to the real filesystem.  
+- `user_service.read_user_info` and `user_service.write_user_info` are mocked to provide deterministic bookmark state and prevent accidental mutation.  
+- Authentication dependencies such as `oauth2_scheme` are mocked so tests can directly supply a user ID without generating real tokens.  
+- When bookmark behavior intersects with download workflows, `get_download_service` is mocked to isolate logic under test.
+
+#### Equivalence Partitioning
+- Tests validate the addition of a bookmark to:
+  - a user with no existing bookmarks  
+  - a user with an existing bookmark list  
+- Tests validate removal of:
+  - an existing bookmark  
+  - a bookmark that is not in the user’s list  
+- Tests verify correct return structure for:
+  - empty bookmark lists  
+  - populated bookmark lists  
+- Duplicate-protection is validated by attempting to add the same bookmark twice and confirming the list remains unique.
+
+#### Fault Injection
+- Missing or malformed bookmark fields in the user data result in an appropriate error response.  
+- Attempting bookmark operations for users not present in the mocked data results in controlled error handling rather than unexpected crashes.  
+- Simulated write failures (via `side_effect`) ensure the bookmark update path surfaces the error properly.  
+- Invalid request bodies (e.g., `None` bookmark ID) produce error responses validated by the tests.
+
+### PR #7: Test mocking and comments
+
+**Branch:** `test_mocking`
+
+**Files Changed:**
+
+- `backend/app/user/auth_service.py`
+- `backend/app/user/test_bookmark.py`
+- `backend/models/movie_model.py`
+- `backend/models/user_model.py`
+- `tests/backend/admin/integration/test_admin_business_logic.py`
+- `tests/backend/admin/integration/test_admin_routes_pytest.py`
+- `tests/backend/admin/unit/test_admin_model_pytest.py`
+- `tests/backend/admin/unit/test_admin_service_CSV.py`
+- `tests/backend/admin/unit/test_admin_service_passwords.py`
+- `tests/backend/movie/intergration/test_file_service_int_pytest.py`
+- `tests/backend/movie/intergration/test_metadata_int_pytest.py`
+- `tests/backend/movie/unit/test_file_service_pytest.py`
+- `tests/backend/movie/unit/test_metadata_service_pytest.py`
+- `tests/backend/movie/unit/test_movie_model_pytest.py`
+- `tests/backend/review/intergration/test_review_service_int_pytest.py`
+- `tests/backend/review/unit/test_review_service_pytest.py`
+- `tests/backend/search/intergration/test_search_intergration.py`
+- `tests/backend/search/unit/test_search_service_unit.py`
+- `tests/backend/user/intergration/test_user_buisness_logic.py`
+- `tests/backend/user/intergration/test_user_review_pytest.py`
+- `tests/backend/user/intergration/test_user_routes_pytest.py`
+- `tests/backend/user/intergration/test_user_routes_state.py`
+- `tests/backend/user/unit/test_bookmarks.py`
+- `tests/backend/user/unit/test_user_model_pytest.py`
+- `tests/backend/user/unit/test_user_service_CSV.py`
+- `tests/backend/user/unit/test_user_service_passwords.py`
+- `tests/backend/user/unit/test_user_service_state.py`
+
+**Description:**
+Implementing mocking into all tests and identify test type into all tests. Also flaking all test files.
+
+### Core Components Implemented
+
+#### 1. **Data Models**
+Edited two Movie models for flaking errors
+
+- **Movie Model (`movie_model.py`):**
+- **User Model (`user_model.py`):**
+
+#### 2. **Backend Services**
+Altered to fix testing errors
+
+- **Auth Service(`backend/app/user/auth_service.py`):**
+
+---
+
+### Testing Implementation
+
+**Important Note on Test Status:**
+The comprehensive test suite developed for this PR has been significantly modified and reorganized in subsequent PRs testing. The original tests from this foundation PR have been:
+- Edited to implement mocking
+- Enhanced with added comments identifying test types
+- Reorganized to comply with flaking requirements
+
+As a result, the **original test files from this PR no longer exist in their initial form**. The testing methodologies and approaches documented here represent the testing philosophy established during foundation development, but the actual test code has evolved substantially.
+
+#### Original Testing Approach
+
+### 1. Test Fixtures (Foundation Testing Infrastructure)
+**Purpose:** Create reusable, isolated test environments for consistent testing
+
+**Example - Sample Temporary movie environment:**
+```python
+@pytest.fixture
+def temp_movie_env(tmp_path, monkeypatch):
+    """
+    Test fixture with isolated filesystem
+    Create temp movie directory and patch get movie folder
+    """
+    temp_dir = tmp_path / "movies"
+    temp_dir.mkdir(parents=True)
+
+    def fake_get_movie_folder(movie_name):
+        folder = temp_dir / movie_name
+        folder.mkdir(parents=True, exist_ok=True)
+        return str(folder)
+
+    monkeypatch.setattr("backend.services.file_service.get_movie_folder",
+                        fake_get_movie_folder)
+    return temp_dir
+```
+**Methodology:** Fixtures provided consistent test data across multiple test functions, eliminating data setup duplication.
+
+### 2. Unit Testing - Services Layer
+**Purpose:** Validate individual service functions in isolation
+
+**Example - Custom path initialization:**
+```python
+def test_custom_path_initialization(self):
+        """Unit test positive path:
+        Custom path overrides default"""
+        custom_path = "custom/path/to/movies"
+        service = SearchService(database_path=custom_path)
+        assert service.database_path == custom_path
+```
+**Methodology:** Tested file operations using temporary directories, ensuring no impact on actual data.
+
+### 3. Integration Testing - API Routes
+**Purpose:** Test complete request-response cycles with all components
+
+**Example - Wrong password:**
+```python
+def test_login_wrong_password(temp_user_csv):
+    """Negative path: Test login fails with wrong password."""
+    # Create user
+    client.post(
+        "/api/signup",
+        json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
+    )
+
+    # Try login with wrong password
+    response = client.post(
+        "/api/login",
+        json={"email": TEST_EMAIL, "password": "WrongPassword456!"}
+    )
+
+    assert response.status_code == 401
+    assert "Invalid credentials" in response.json()["detail"]
+```
+**Methodology:** Used FastAPI TestClient with populated test database to validate complete workflows.
+
+### 5. Error Handling and Edge Cases
+**Example - Case insensitive email:**
+```python
+def test_signup_case_insensitive_email(temp_user_csv):
+    """Edge case: Test that email comparison is case-insensitive."""
+    # Signup with lowercase
+    client.post(
+        "/api/signup",
+        json={"email": "user@example.com", "password": TEST_PASSWORD}
+    )
+
+    # Try signup with uppercase
+    response = client.post(
+        "/api/signup",
+        json={"email": "USER@EXAMPLE.COM", "password": "Different123!"}
+    )
+
+    assert response.status_code == 400
+```
+
 ---
 
 
@@ -1803,4 +2031,22 @@ Cain's PR's:
 - **Added Framework for Rank based system and Re-organized Test Folder Structure**
 - **Add authentication features(login/signup)**
 - **User review movies branch**: added all functionalities asked for in the User Reviews issue in Project backlog. Baseline of entire project structure off of this PR
+- **Implemented Directory Navigation & File Handling Feature**: Old code that was eventually intergrated into User Review PR.
+
+Grayson's PR's:
+- **Adding Bookmarks** Added bookmarks and related functions
+- **Test Mocking** Adding mocking to all tests and flaking
+- **All unit test documentation** All unit test documentation and edits to test documentation file
+Below are all simple PRs for updated documentation
+- **Admin Integration Test** Added test documentation for admin integration
+- **Add files via upload** Added bookmarking tests documentation
+- **Add files via upload for test** Added test_admin_business_logic.py documentation
+- **Add documentation for admin integration test** Added admin integration tests
+- **Admin unit test documentation** Admin unit tests documentation
+- **Admin routes test documentation** Admin routes test documentation
+- **Admin unit test** Admin unit test documentation updated
+- **Movie tests documentation** All movie documentation tests
+- **Review test doc** All review test documentation
+- **Search test doc** All search test documentation
+
 - **Implemented Directory Navigation & File Handling Feature**: Old code that was eventually intergrated into User Review PR. 
