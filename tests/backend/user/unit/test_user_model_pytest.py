@@ -3,28 +3,29 @@ import pytest
 from unittest.mock import patch
 from backend.models.user_model import User
 
-# ==================== UNIT TESTS - User Representation ====================
-
+TEST_EMAIL = "test@email.com"
+TEST_USERNAME = "testuser"
+TEST_PASSWORD = "pass123!"
 
 def test_user_repr():
     """Unit test - Positive path:
     Test User repr method."""
     user = User(
-        email="alice@example.com",
-        password_hash="hashed_password",
+        email=TEST_EMAIL,
+        username=TEST_USERNAME,
+        password_hash=TEST_PASSWORD,
         tier=User.TIER_SLUG
     )
-
-    assert repr(user) == "User(email=alice@example.com, tier=slug)"
+    
+    assert repr(user) == f"User(email={TEST_EMAIL}, username={TEST_USERNAME}, tier=slug)"
 
 
 def test_user_tier_display():
-    """Unit test - Positive path:
-    Test tier display names."""
-    snail = User("user@test.com", "hash", User.TIER_SNAIL)
-    slug = User("user@test.com", "hash", User.TIER_SLUG)
-    banana = User("user@test.com", "hash", User.TIER_BANANA_SLUG)
-
+    """Test tier display names."""
+    snail = User("snail@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SNAIL)
+    slug = User("slug@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
+    banana = User("banana@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_BANANA_SLUG)
+    
     assert "Snail" in snail.get_tier_display_name()
     assert "Slug" in slug.get_tier_display_name()
     assert "Banana Slug" in banana.get_tier_display_name()
@@ -63,12 +64,11 @@ def test_add_review_permission_denied():
 
 
 def test_user_tier_checks():
-    """Unit tets- Positive path:
-    Users should correctly report their tier type through helper methods."""
-    snail = User("snail@test.com", "hash", User.TIER_SNAIL)
-    slug = User("slug@test.com", "hash", User.TIER_SLUG)
-    banana = User("banana@test.com", "hash", User.TIER_BANANA_SLUG)
-
+    """Users should correctly report their tier type through helper methods."""
+    snail = User("snail@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SNAIL)
+    slug = User("slug@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
+    banana = User("banana@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_BANANA_SLUG)
+    
     # Snail checks
     assert snail.is_snail() is True
     assert snail.is_slug() is False
@@ -86,12 +86,11 @@ def test_user_tier_checks():
 
 
 def test_user_permissions():
-    """Unit test - Positive/ Edge path:
-    Permission helpers should enforce the correct rules for each tier."""
-    snail = User("snail@test.com", "hash", User.TIER_SNAIL)
-    slug = User("slug@test.com", "hash", User.TIER_SLUG)
-    banana = User("banana@test.com", "hash", User.TIER_BANANA_SLUG)
-
+    """Permission helpers should enforce the correct rules for each tier."""
+    snail = User("snail@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SNAIL)
+    slug = User("slug@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
+    banana = User("banana@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_BANANA_SLUG)
+    
     # Everyone can browse
     assert snail.can_browse() is True
     assert slug.can_browse() is True
@@ -109,12 +108,12 @@ def test_user_permissions():
 
 
 def test_user_to_dict():
-    """Unit test - Positive path:
-    Test User to_dict method."""
-    user = User("test@test.com", "hash", User.TIER_SLUG)
+    """Test User to_dict method."""
+    user = User(TEST_EMAIL, TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
     user_dict = user.to_dict()
-
-    assert user_dict["email"] == "test@test.com"
+    
+    assert user_dict["email"] == TEST_EMAIL
+    assert user_dict["username"] == TEST_USERNAME
     assert user_dict["tier"] == User.TIER_SLUG
     assert "permissions" in user_dict
     assert user_dict["permissions"]["can_write_reviews"] is True

@@ -38,11 +38,13 @@ app.add_middleware(
 )
 
 # Register routers from routes folder
-app.include_router(movie_routes.router, prefix="/movies", tags=["Movies"])
-app.include_router(review_routes.router, prefix="/reviews", tags=["Reviews"])
-app.include_router(user_routes.router, prefix="/api", tags=["users"])
-app.include_router(admin_routes.router, prefix="/api/admin", tags=["admin"])
-app.include_router(search_routes.router, prefix="/api", tags=["search"])
+app.include_router(movie_routes.router, prefix="/api/movies", tags=["Movies"])
+app.include_router(
+    review_routes.router, prefix="/api/reviews", tags=["Reviews"]
+    )
+app.include_router(user_routes.router, prefix="/api/users", tags=["Users"])
+app.include_router(admin_routes.router, prefix="/api/admin", tags=["Admin"])
+app.include_router(search_routes.router, prefix="/api/search", tags=["Search"])
 
 
 @app.get("/")
@@ -52,4 +54,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="localhost", port=5000)
+    uvicorn.run(app, host="localhost", port=8000)

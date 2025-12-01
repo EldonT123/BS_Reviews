@@ -19,6 +19,7 @@ def test_add_review_real_integration(
     # Now create user should be creating fresh users isolated from real data
     user = user_service.create_user(
         email="realuser@test.com",
+        username="realuser",
         password="Pass123!",
         tier=User.TIER_SLUG
     )

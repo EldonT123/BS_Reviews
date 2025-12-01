@@ -9,8 +9,11 @@ class User:
     TIER_SLUG = "slug"
     TIER_BANANA_SLUG = "banana_slug"
 
-    def __init__(self, email: str, password_hash: str, tier: str = TIER_SNAIL):
+    def __init__(
+            self, email: str, username: str,
+            password_hash: str, tier: str = TIER_SNAIL):
         self.email = email
+        self.username = username
         self.password_hash = password_hash
         self.tier = tier
 
@@ -90,6 +93,7 @@ class User:
         """Convert user to dictionary for JSON responses."""
         return {
             "email": self.email,
+            "username": self.username,
             "tier": self.tier,
             "tier_display": self.get_tier_display_name(),
             "permissions": {
@@ -102,4 +106,8 @@ class User:
         }
 
     def __repr__(self):
-        return f"User(email={self.email}, tier={self.tier})"
+        return (
+            f"User(email={self.email}, "
+            f"username={self.username}, "
+            f"tier={self.tier})"
+        )

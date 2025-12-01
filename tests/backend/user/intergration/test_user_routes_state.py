@@ -26,13 +26,13 @@ def clear_sessions():
 @pytest.fixture
 def mock_user():
     """Fixture with a mock user."""
-    return User("test@example.com", "hashed_password", User.TIER_SNAIL)
+    return User("test@example.com", "testuser", "hashed_password", User.TIER_SNAIL)
 
 
 @pytest.fixture
 def mock_slug_user():
     """Fixture with a mock Slug tier user."""
-    return User("slug@example.com", "hashed_password", User.TIER_SLUG)
+    return User("slug@example.com", "sluguser", "hashed_password", User.TIER_SLUG)
 
 # ==================== Login Tests ====================
 
@@ -49,7 +49,7 @@ class TestLogin:
             mock_auth.return_value = (mock_user, "abc123XY")
 
             response = client.post(
-                "/api/login",
+                "/api/users/login",
                 json={
                     "email": "test@example.com",
                     "password": "password123"
@@ -72,7 +72,7 @@ class TestLogin:
         )as mock_auth:
             mock_auth.return_value = (mock_user, "new_session")
             response = client.post(
-                "/api/login",
+                "/api/users/login",
                 json={
                     "email": "test@example.com",
                     "password": "password123"
@@ -88,7 +88,7 @@ class TestLogin:
             mock_auth.side_effect = ValueError("Invalid credentials")
 
             response = client.post(
-                "/api/login",
+                "/api/users/login",
                 json={
                     "email": "test@example.com",
                     "password": "wrongpassword"
@@ -102,7 +102,7 @@ class TestLogin:
 # ==================== Check Session Tests ====================
 
 class TestCheckSession:
-    """Tests for /api/check-session/{session_id} endpoint."""
+    """Tests for /api/users/check-session/{session_id} endpoint."""
 
     def test_check_valid_session(self, client, mock_user):
         """Positive path: Test checking a valid session ID."""
@@ -111,7 +111,7 @@ class TestCheckSession:
         ) as mock_verify:
             mock_verify.return_value = mock_user
 
-            response = client.get("/api/check-session/abc123XY")
+            response = client.get("/api/users/check-session/abc123XY")
 
             assert response.status_code == 200
             data = response.json()
@@ -126,7 +126,7 @@ class TestCheckSession:
         ) as mock_verify:
             mock_verify.return_value = None
 
-            response = client.get("/api/check-session/invalid-id")
+            response = client.get("/api/users/check-session/invalid-id")
 
             assert response.status_code == 401
             assert "Invalid or expired session" in response.json()["detail"]
@@ -139,7 +139,7 @@ class TestCheckSession:
             mock_verify.return_value = mock_user
 
             # Session ID is in the URL, not in request body
-            response = client.get("/api/check-session/testSessionID")
+            response = client.get("/api/users/check-session/testSessionID")
 
             mock_verify.assert_called_once_with("testSessionID")
             assert response.status_code == 200
@@ -149,7 +149,7 @@ class TestCheckSession:
 
 
 class TestSignout:
-    """Tests for /api/signout endpoint with session ID."""
+    """Tests for /api/users/signout endpoint with session ID."""
 
     def test_signout_success_with_auth(self, client, mock_user):
         """Positive path: Test successful signout with valid authentication."""
@@ -163,7 +163,7 @@ class TestSignout:
             mock_signout.return_value = True
 
             response = client.post(
-                "/api/signout",
+                "/api/users/signout",
                 json={"session_id": "abc123XY"},
                 headers={"Authorization": "Bearer abc123XY"}
             )
@@ -176,7 +176,7 @@ class TestSignout:
     def test_signout_without_auth_header(self, client):
         """Negative pathTest signout fails without Authorization header."""
         response = client.post(
-            "/api/signout",
+            "/api/users/signout",
             json={"session_id": "abc123XY"}
         )
 
@@ -191,7 +191,7 @@ class TestSignout:
             mock_verify.return_value = None
 
             response = client.post(
-                "/api/signout",
+                "/api/users/signout",
                 json={"session_id": "abc123XY"},
                 headers={"Authorization": "Bearer invalid"}
             )
@@ -217,7 +217,7 @@ class TestUserWorkflow:
             mock_auth.return_value = (mock_user, session_id)
 
             login_response = client.post(
-                "/api/login",
+                "/api/users/login",
                 json={
                     "email": "test@example.com",
                     "password": "password123"
@@ -234,7 +234,7 @@ class TestUserWorkflow:
             mock_verify.return_value = mock_user
 
             profile_response = client.get(
-                "/api/profile/me",
+                "/api/users/profile/me",
                 headers={"Authorization": f"Bearer {session_id}"}
             )
             assert profile_response.status_code == 200
@@ -252,7 +252,7 @@ class TestUserWorkflow:
             mock_signout.return_value = True
 
             signout_response = client.post(
-                "/api/signout",
+                "/api/users/signout",
                 json={"session_id": session_id},
                 headers={"Authorization": f"Bearer {session_id}"}
             )
@@ -265,7 +265,7 @@ class TestUserWorkflow:
             mock_verify.return_value = None
 
             profile_response = client.get(
-                "/api/profile/me",
+                "/api/users/profile/me",
                 headers={"Authorization": f"Bearer {session_id}"}
             )
             assert profile_response.status_code == 401
@@ -281,7 +281,7 @@ class TestUserWorkflow:
                 mock_auth.return_value = (mock_user, f"session{i}")
 
                 response = client.post(
-                    "/api/login",
+                    "/api/users/login",
                     json={
                         "email": "test@example.com",
                         "password": "password123"

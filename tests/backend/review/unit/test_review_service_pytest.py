@@ -1,7 +1,8 @@
 # tests/test_review_service.py
 """Unit tests for review service with proper mocking."""
 import pytest
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, MagicMock  # noqa: F401
+from datetime import datetime  # noqa: F401
 from backend.services import review_service
 from backend.models.user_model import User
 
@@ -47,6 +48,7 @@ def banana_slug_user():
     """Fixture - Create a Banana Slug tier user."""
     return User(
         "vip@example.com",
+        "vipuser",
         "hashed_password",
         User.TIER_BANANA_SLUG
     )
@@ -57,6 +59,7 @@ def slug_user():
     """Fixture - Create a Slug tier user."""
     return User(
         "regular@example.com",
+        "reguser",
         "hashed_password",
         User.TIER_SLUG
     )
@@ -67,6 +70,7 @@ def snail_user():
     """Fixture - Create a Snail tier user."""
     return User(
         "viewer@example.com",
+        "viewuser"
         "hashed_password",
         User.TIER_SNAIL
     )
@@ -94,9 +98,19 @@ class TestReadReviews:
     # flaking error cannot be fixed or will break code
     @patch('builtins.open', new_callable=mock_open,read_data="Date of Review,User,Usefulness Vote,Total Votes,User's Rating out of 10,Review Title,Review\n2024-01-15,alice@example.com,10,12,8.5,Great!,Love it\n")
     @patch('backend.services.review_service.file_service.get_movie_folder')
-    @patch('backend.services.review_service.os.path.exists')
-    def test_read_reviews_success(self, mock_exists, mock_get_folder, mock_open_file):
-        """Functional test: Should successfully read reviews from CSV."""
+    @patch(
+        'builtins.open',
+        new_callable=mock_open,
+        read_data=(
+            "Date of Review,User,Usefulness Vote,Total Votes,"
+            "User's Rating out of 10,Review Title,Review\n"
+            "2024-01-15,alice@example.com,10,12,8.5,Great!,Love it\n"
+        )
+    )
+    def test_read_reviews_success(
+        self, mock_file, mock_get_folder, mock_exists
+    ):
+        """Should successfully read reviews from CSV."""
         mock_get_folder.return_value = "/fake/path/movie"
         mock_exists.return_value = True
 
@@ -112,7 +126,8 @@ class TestReadReviews:
         mock_read.return_value = sample_reviews
 
         result = review_service.get_review_by_user(
-            "Test Movie", "alice@example.com")
+            "Test Movie", "alice@example.com"
+        )
 
         assert result is not None
         assert result["User"] == "alice@example.com"
@@ -130,12 +145,14 @@ class TestReadReviews:
 
     @patch('backend.services.review_service.read_reviews')
     def test_get_review_by_user_case_insensitive(
-                                            self, mock_read, sample_reviews):
-        """Functional test: Should match user email case-insensitively."""
+        self, mock_read, sample_reviews
+    ):
+        """Should match user email case-insensitively."""
         mock_read.return_value = sample_reviews
 
         result = review_service.get_review_by_user(
-            "Test Movie", "ALICE@EXAMPLE.COM")
+            "Test Movie", "ALICE@EXAMPLE.COM"
+        )
 
         assert result is not None
         assert result["User"] == "alice@example.com"
@@ -196,8 +213,9 @@ class TestAddReview:
     @patch('backend.services.review_service.file_service.get_movie_folder')
     @patch('builtins.open', new_callable=mock_open)
     def test_add_review_existing_file(
-                self, mock_file, mock_get_folder, mock_getsize, mock_exists):
-        """Functional test: Should append to existing file without header."""
+        self, mock_file, mock_get_folder, mock_getsize, mock_exists
+    ):
+        """Should append to existing file without header."""
         mock_get_folder.return_value = "/fake/path/movie"
         mock_exists.return_value = True
         mock_getsize.return_value = 100  # File has content
@@ -342,7 +360,140 @@ class TestDeleteReview:
         mock_read.return_value = sample_reviews
 
         result = review_service.delete_review(
-            "nobody@example.com", "Test Movie")
+            "nobody@example.com", "Test Movie"
+        )
+
+        assert result is False
+
+
+class TestReportReview:
+    """Tests for reporting reviews."""
+
+    @patch('backend.services.review_service.read_reviews')
+    def test_report_review_no_reviews(self, mock_read):
+        """Should return False if there are no reviews."""
+        mock_read.return_value = []
+
+        result = review_service.report_review(
+            movie_name="Test Movie",
+            username="alice@example.com",
+            reason="Inappropriate content"
+        )
+
+        assert result is False
+
+    @patch('backend.services.review_service.read_reviews')
+    def test_report_review_user_not_found(self, mock_read, sample_reviews):
+        """Should return False if specified user has no review."""
+        mock_read.return_value = sample_reviews
+
+        result = review_service.report_review(
+            movie_name="Test Movie",
+            username="not_a_user@example.com",
+            reason="Spam"
+        )
+
+        assert result is False
+
+    @patch('backend.services.review_service.read_reviews')
+    @patch('backend.services.review_service.file_service.get_movie_folder')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_report_review_success(
+        self, mock_file, mock_get_folder, mock_read, sample_reviews
+    ):
+        """Should successfully mark a review as reported and rewrite file."""
+        mock_read.return_value = sample_reviews.copy()
+        mock_get_folder.return_value = "/fake/path/movie"
+
+        result = review_service.report_review(
+            movie_name="Test Movie",
+            username="alice@example.com",
+            reason="Offensive language"
+        )
+
+        assert result is True
+        mock_file.assert_called_once()
+
+        # ensure the review had fields added
+        review = next(
+            r for r in mock_read.return_value
+            if r["User"] == "alice@example.com"
+        )
+
+        assert review["Reported"] == "Yes"
+        assert review["Report Reason"] == "Offensive language"
+
+
+class TestHandleReportedReview:
+    """Tests for handling reported reviews (admin resolves reports)."""
+
+    @patch('backend.services.review_service.read_reviews')
+    @patch('backend.services.review_service.file_service.get_movie_folder')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_handle_reported_review_remove_success(
+        self, mock_file, mock_get_folder, mock_read, sample_reviews
+    ):
+        """Should successfully remove a reported review."""
+        # Mark a review as reported in the sample
+        reported_review = sample_reviews.copy()[0]
+        reported_review["Reported"] = "Yes"
+        reported_review["Report Reason"] = "Offensive language"
+
+        mock_read.return_value = [reported_review] + sample_reviews[1:]
+        mock_get_folder.return_value = "/fake/path/movie"
+
+        # Call the handle_reported_review function
+        result = review_service.handle_reported_review(
+            movie_name="Test Movie",
+            username="alice@example.com",
+            action="remove"
+        )
+
+        assert result is True
+        mock_file.assert_called_once()  # Ensure file was written
+
+    @patch('backend.services.review_service.read_reviews')
+    @patch('backend.services.review_service.file_service.get_movie_folder')
+    @patch('builtins.open', new_callable=mock_open)
+    def test_handle_reported_review_keep_success(
+        self, mock_file, mock_get_folder, mock_read, sample_reviews
+    ):
+        """Should mark a reported review as handled without removing it."""
+        reported_review = sample_reviews.copy()[0]
+        reported_review["Reported"] = "Yes"
+        reported_review["Report Reason"] = "Spam"
+
+        mock_read.return_value = [reported_review] + sample_reviews[1:]
+        mock_get_folder.return_value = "/fake/path/movie"
+
+        from backend.services import review_service
+        result = review_service.handle_reported_review(
+            movie_name="Test Movie",
+            username="alice@example.com"
+        )
+
+        assert result is True
+        mock_file.assert_called_once()
+
+        # The review should no longer be marked as reported
+        updated_review = next(
+            r for r in mock_read.return_value
+            if r["User"] == "alice@example.com"
+        )
+        assert updated_review.get("Reported") == ""
+        assert updated_review.get("Report Reason") == ""
+
+    @patch('backend.services.review_service.read_reviews')
+    def test_handle_reported_review_not_found(self, mock_read):
+        """Should return False if review to handle doesn't exist."""
+        mock_read.return_value = []
+
+        from backend.services import review_service
+        result = review_service.handle_reported_review(
+            movie_name="Test Movie",
+            username="nobody@example.com",
+            action="remove"
+        )
 
         assert result is False
 

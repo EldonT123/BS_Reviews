@@ -2,14 +2,11 @@ from fastapi import APIRouter, Query, HTTPException
 from typing import List, Optional
 from backend.services.search_service import SearchService
 
-router = APIRouter(
-    prefix="/search",
-    tags=["search"]
-)
+router = APIRouter()
 
 
 # Initialize the search service
-search_service = SearchService(database_path="../database/archive")
+search_service = SearchService(database_path="/app/database/archive")
 
 
 @router.get("/title")
