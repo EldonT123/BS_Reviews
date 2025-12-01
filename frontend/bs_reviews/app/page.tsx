@@ -21,7 +21,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchTopMovies() {
       try {
-        const res = await fetch("http://localhost:8000/movies/top");
+        const res = await fetch("http://localhost:8000/api/movies/top");
         const data = await res.json();
         setTopMovies(data);
       } catch (error) {
@@ -33,7 +33,7 @@ export default function Home() {
 
     async function fetchMostCommentedMovies() {
       try {
-        const res = await fetch("http://localhost:8000/movies/most_commented");
+        const res = await fetch("http://localhost:8000/api/movies/most_commented");
         const data = await res.json();
         setMostCommentedMovies(data);
       } catch (error) {
