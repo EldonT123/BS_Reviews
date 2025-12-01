@@ -6,6 +6,7 @@ import Image from "next/image";
 
 type User = {
   email: string;
+  username: string;
   tier: string;
   tier_display_name: string;
 };
@@ -146,7 +147,7 @@ export default function AccountPage() {
             className="bg-gray-800 text-gray-300 placeholder-gray-500 rounded-md px-4 py-2 focus:outline-yellow-400 focus:ring-1 focus:ring-yellow-400 w-48 sm:w-64"
           />
           <Link
-            href="/user/account"
+            href="/user/account_page"
             className="bg-yellow-400 text-black font-semibold px-4 py-2 rounded hover:bg-yellow-500 transition"
           >
             Account
@@ -160,12 +161,21 @@ export default function AccountPage() {
           {/* Header with upgrade button */}
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-4xl font-bold">Account Information</h1>
-            <button
-              onClick={handleUpgrade}
-              className="bg-green-600 text-white font-semibold px-6 py-3 rounded hover:bg-green-700 transition"
-            >
-              Upgrade Account
-            </button>
+            <div className="flex items-center space-x-4">
+              <Link
+                href="/user/account_page/settings_page"
+                className="bg-gray-600 text-white font-semibold px-6 py-3 rounded hover:bg-gray-700 transition"
+                title="Settings"
+              >
+                ⚙️ Settings
+              </Link>
+              <button
+                onClick={handleUpgrade}
+                className="bg-green-600 text-white font-semibold px-6 py-3 rounded hover:bg-green-700 transition"
+              >
+                Upgrade Account
+              </button>
+            </div>
           </div>
 
           {/* User Info Cards */}
@@ -179,7 +189,7 @@ export default function AccountPage() {
             {/* Username Card */}
             <div className="bg-gray-700 rounded-lg p-6">
               <p className="text-gray-400 text-sm mb-2">Username</p>
-              <p className="text-xl font-semibold">{user.email.split("@")[0]}</p>
+              <p className="text-xl font-semibold">{user.username}</p>
             </div>
 
             {/* Tier Card (Clickable) */}
