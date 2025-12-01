@@ -48,6 +48,7 @@ def banana_slug_user():
     """Create a Banana Slug tier user."""
     return User(
         "vip@example.com",
+        "vipuser",
         "hashed_password",
         User.TIER_BANANA_SLUG
     )
@@ -58,6 +59,7 @@ def slug_user():
     """Create a Slug tier user."""
     return User(
         "regular@example.com",
+        "reguser",
         "hashed_password",
         User.TIER_SLUG
     )
@@ -68,6 +70,7 @@ def snail_user():
     """Create a Snail tier user."""
     return User(
         "viewer@example.com",
+        "viewuser"
         "hashed_password",
         User.TIER_SNAIL
     )

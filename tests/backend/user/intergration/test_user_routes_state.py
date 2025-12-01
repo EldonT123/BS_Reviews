@@ -26,13 +26,13 @@ def clear_sessions():
 @pytest.fixture
 def mock_user():
     """Fixture with a mock user."""
-    return User("test@example.com", "hashed_password", User.TIER_SNAIL)
+    return User("test@example.com", "testuser", "hashed_password", User.TIER_SNAIL)
 
 
 @pytest.fixture
 def mock_slug_user():
     """Fixture with a mock Slug tier user."""
-    return User("slug@example.com", "hashed_password", User.TIER_SLUG)
+    return User("slug@example.com", "sluguser", "hashed_password", User.TIER_SLUG)
 
 # ==================== Login Tests ====================
 
@@ -50,6 +50,7 @@ class TestLogin:
                 "/api/users/login",
                 json={
                     "email": "test@example.com",
+                    "username": "testuser",
                     "password": "password123"
                 }
             )
@@ -76,6 +77,7 @@ class TestLogin:
                 "/api/users/login",
                 json={
                     "email": "test@example.com",
+                    "username": "testuser",
                     "password": "password123"
                 }
             )
@@ -93,6 +95,7 @@ class TestLogin:
                 "/api/users/login",
                 json={
                     "email": "test@example.com",
+                    "username": "testuser",
                     "password": "wrongpassword"
                 }
             )
@@ -220,6 +223,7 @@ class TestUserWorkflow:
                 "/api/users/login",
                 json={
                     "email": "test@example.com",
+                    "username": "testuser",
                     "password": "password123"
                 }
             )
@@ -283,6 +287,7 @@ class TestUserWorkflow:
                     "/api/users/login",
                     json={
                         "email": "test@example.com",
+                        "username": "testuser",
                         "password": "password123"
                     }
                 )
