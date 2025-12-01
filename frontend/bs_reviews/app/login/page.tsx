@@ -13,23 +13,28 @@ export default function LoginPage() {
     e.preventDefault();
 
     try {
-        const response = await fetch("http://localhost:8000/api/users/login", {
+      const response = await fetch("http://localhost:8000/api/users/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
-        });
+      });
 
-        if (!response.ok) {
+      if (!response.ok) {
         const data = await response.json();
         alert(data.detail || "Login failed");
         return;
-        }
+      }
 
-        router.push("/user/landing_page"); // or your landing page
+      const data = await response.json();
+      
+      // Save session_id to localStorage
+      localStorage.setItem("sessionId", data.session_id);
+      
+      router.push("/user/account_page");
     } catch (error) {
-        alert("Login error, please try again.");
+      alert("Login error, please try again.");
     }
-};
+  };
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       {/* Header Home Button */}
