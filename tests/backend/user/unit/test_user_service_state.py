@@ -21,10 +21,12 @@ def mock_user_data():
     """Fixture with mock user data."""
     return {
         "test@example.com": (
+            "testuser",
             "$2b$12$abcdefghijklmnopqrstuv",
             User.TIER_SNAIL
         ),
         "alice@example.com": (
+            "alice123",
             "$2b$12$zyxwvutsrqponmlkjihgfe",
             User.TIER_SLUG
         )
@@ -230,7 +232,7 @@ class TestAuthenticateUser:
         """Test that authenticate returns a session ID."""
         password = "password123"
         hashed = user_service.hash_password(password)
-        mock_user = User("test@example.com", hashed, User.TIER_SNAIL)
+        mock_user = User("test@example.com", "testuser", hashed, User.TIER_SNAIL)
 
         with patch.object(
             user_service,
@@ -251,7 +253,7 @@ class TestAuthenticateUser:
         """Test that each login creates a unique session ID."""
         password = "password123"
         hashed = user_service.hash_password(password)
-        mock_user = User("test@example.com", hashed, User.TIER_SNAIL)
+        mock_user = User("test@example.com", "testuser", hashed, User.TIER_SNAIL)
 
         with patch.object(
             user_service,
