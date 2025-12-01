@@ -28,7 +28,7 @@ async def get_top_movies():
                     "title": data.get("title", folder),
                     "movieIMDbRating": float(data.get("movieIMDbRating", 0)),
                     "posterPath":
-                    f"http://localhost:5000/movies/poster/{folder}"
+                    f"http://localhost:8000/movies/poster/{folder}"
                 })
             except Exception as e:
                 print(f"Error reading metadata for {folder}: {e}")
@@ -54,7 +54,7 @@ async def get_most_commented_movies():
                     "title": data.get("title", folder),
                     "commentCount": data.get("commentCount", 0),
                     "posterPath":
-                    f"http://localhost:5000/movies/poster/{folder}"
+                    f"http://localhost:8000/movies/poster/{folder}"
                 })
             except Exception as e:
                 print(f"Error reading metadata for {folder}: {e}")
