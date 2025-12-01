@@ -184,9 +184,9 @@ def test_admin_get_all_users(temp_admin_csv, temp_user_csv):
     headers = get_auth_headers(token)
 
     # Create some users
-    client.post("/api/signup", json={"email": "user1@test.com",
+    client.post("/api/users/signup", json={"email": "user1@test.com", "username": "testuser1",
                                      "password": TEST_USER_PASSWORD})
-    client.post("/api/signup", json={"email": "user2@test.com",
+    client.post("/api/users/signup", json={"email": "user2@test.com", "username": "testuser2",
                                      "password": TEST_USER_PASSWORD})
 
     response = client.get("/api/admin/users", headers=headers)
@@ -450,11 +450,10 @@ def test_integration_separate_admin_and_user_accounts(
         temp_admin_csv, temp_user_csv):
     """Integration test - Edge case:
     Verify admin and user accounts are separate."""
-    email = "same@example.com"
 
     # Create user with this email
-    user_response = client.post("/api/signup", json={
-        "email": email, "password": "UserPass123!"})
+    user_response = client.post("/api/users/signup", json={
+        "email": TEST_USER_EMAIL, "username": TEST_USER_USERNAME, "password": TEST_USER_PASSWORD})
     assert user_response.status_code == 200
 
     # Create admin with same email (should work - different systems)

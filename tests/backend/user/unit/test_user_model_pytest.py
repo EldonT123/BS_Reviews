@@ -40,7 +40,7 @@ def test_add_review_delegates(mock_add_review):
     mock_add_review.return_value = True
 
     # Create a user with Slug tier (can write reviews)
-    user = User("reviewer@test.com", "hash", User.TIER_SLUG)
+    user = User(TEST_EMAIL, TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
 
     # Act
     result = user.add_review("Test_Movie", 4.5, "Great movie!")

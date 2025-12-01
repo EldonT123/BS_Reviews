@@ -96,7 +96,7 @@ class TestReadReviews:
         mock_exists.assert_called_once()
 
     # flaking error cannot be fixed or will break code
-    @patch('builtins.open', new_callable=mock_open,read_data="Date of Review,User,Usefulness Vote,Total Votes,User's Rating out of 10,Review Title,Review\n2024-01-15,alice@example.com,10,12,8.5,Great!,Love it\n")
+    @patch('backend.services.review_service.os.path.exists')
     @patch('backend.services.review_service.file_service.get_movie_folder')
     @patch(
         'builtins.open',
