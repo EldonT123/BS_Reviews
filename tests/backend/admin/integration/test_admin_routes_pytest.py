@@ -13,6 +13,7 @@ client = TestClient(app)
 TEST_ADMIN_EMAIL = "admin@example.com"
 TEST_ADMIN_PASSWORD = "AdminPass123!"
 TEST_USER_EMAIL = "user@example.com"
+TEST_USER_USERNAME = "testuser"
 TEST_USER_PASSWORD = "UserPass123!"
 
 
@@ -181,8 +182,8 @@ def test_admin_get_all_users(temp_admin_csv, temp_user_csv):
     headers = get_auth_headers(token)
     
     # Create some users
-    client.post("/api/users/signup", json={"email": "user1@test.com", "password": TEST_USER_PASSWORD})
-    client.post("/api/users/signup", json={"email": "user2@test.com", "password": TEST_USER_PASSWORD})
+    client.post("/api/users/signup", json={"email": "user1@test.com", "username": "testuser1", "password": TEST_USER_PASSWORD})
+    client.post("/api/users/signup", json={"email": "user2@test.com", "username": "testuser2", "password": TEST_USER_PASSWORD})
     
     response = client.get("/api/admin/users", headers=headers)
     
@@ -201,7 +202,7 @@ def test_admin_upgrade_user_tier(temp_admin_csv, temp_user_csv):
     # Create a user
     client.post(
         "/api/users/signup",
-        json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
+        json={"email": TEST_USER_EMAIL, "username": TEST_USER_USERNAME, "password": TEST_USER_PASSWORD}
     )
     
     # Upgrade to Slug
@@ -263,7 +264,7 @@ def test_admin_delete_user(temp_admin_csv, temp_user_csv):
     # Create a user
     client.post(
         "/api/users/signup",
-        json={"email": TEST_USER_EMAIL, "password": TEST_USER_PASSWORD}
+        json={"email": TEST_USER_EMAIL, "username": TEST_USER_USERNAME, "password": TEST_USER_PASSWORD}
     )
     
     # Delete the user
@@ -358,16 +359,16 @@ def test_integration_admin_manages_multiple_users(temp_admin_csv, temp_user_csv)
     headers = get_auth_headers(token)
     
     users = [
-        ("user1@example.com", "Password1!"),
-        ("user2@example.com", "Password2!"),
-        ("user3@example.com", "Password3!")
+        ("user1@example.com", "testuser1", "Password1!"),
+        ("user2@example.com", "testuser2", "Password2!"),
+        ("user3@example.com", "testuser3", "Password3!")
     ]
     
     # Create all users
-    for email, password in users:
+    for email, username, password in users:
         response = client.post(
             "/api/users/signup",
-            json={"email": email, "password": password}
+            json={"email": email, "username": username, "password": password}
         )
         assert response.status_code == 200
     
@@ -435,19 +436,18 @@ def test_integration_admin_password_security(temp_admin_csv):
 
 def test_integration_separate_admin_and_user_accounts(temp_admin_csv, temp_user_csv):
     """Integration test: Verify admin and user accounts are separate."""
-    email = "same@example.com"
-    
+
     # Create user with this email
-    user_response = client.post("/api/users/signup", json={"email": email, "password": "UserPass123!"})
+    user_response = client.post("/api/users/signup", json={"email": TEST_USER_EMAIL, "username": TEST_USER_USERNAME, "password": TEST_USER_PASSWORD})
     assert user_response.status_code == 200
     
     # Create admin with same email (should work - different systems)
-    admin_response = client.post("/api/admin/signup", json={"email": email, "password": "AdminPass123!"})
+    admin_response = client.post("/api/admin/signup", json={"email": TEST_USER_EMAIL, "password": TEST_ADMIN_PASSWORD})
     assert admin_response.status_code == 200
     
     # Verify both exist independently
-    assert user_service.user_exists(email) is True
-    assert admin_service.admin_exists(email) is True
+    assert user_service.user_exists(TEST_USER_EMAIL) is True
+    assert admin_service.admin_exists(TEST_USER_EMAIL) is True
 
 
 def test_admin_authentication_required(temp_admin_csv, temp_user_csv):

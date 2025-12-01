@@ -11,32 +11,35 @@ from backend.services.user_service import USER_CSV_PATH
 client = TestClient(app)
 
 TEST_EMAIL = "test@example.com"
+TEST_USERNAME = "testuser"
 TEST_PASSWORD = "ValidPass123!"
 
 # ==================== INTEGRATION TESTS - User Service Business Logic ====================
 
 def test_create_user(temp_user_csv):
     """Test user creation."""
-    user = user_service.create_user(TEST_EMAIL, TEST_PASSWORD, User.TIER_SLUG)
+    user = user_service.create_user(TEST_EMAIL, TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
     
     assert user.email == TEST_EMAIL.lower()
+    assert user.username == TEST_USERNAME
     assert user.tier == User.TIER_SLUG
     assert user.password_hash != TEST_PASSWORD
 
 
 def test_create_user_duplicate(temp_user_csv):
     """Test that creating duplicate user raises error."""
-    user_service.create_user(TEST_EMAIL, TEST_PASSWORD)
+    user_service.create_user(TEST_EMAIL, TEST_USERNAME, TEST_PASSWORD)
     
     with pytest.raises(ValueError, match="already exists"):
-        user_service.create_user(TEST_EMAIL, "DifferentPass123!")
+        user_service.create_user(TEST_EMAIL, TEST_USERNAME, "DifferentPass123!")
 
 
 def test_authenticate_user_success(temp_user_csv):
     """Test successful authentication."""
-    user_service.create_user(TEST_EMAIL, TEST_PASSWORD)
+    user_service.create_user(TEST_EMAIL, TEST_USERNAME, TEST_PASSWORD)
     user, token = user_service.authenticate_user(TEST_EMAIL, TEST_PASSWORD)  # Unpack tuple
     assert user is not None
+    assert user.username == TEST_USERNAME
     assert user.email == TEST_EMAIL.lower()
     assert token is not None  # Also verify token was created
     assert len(token) > 0
@@ -44,7 +47,7 @@ def test_authenticate_user_success(temp_user_csv):
 
 def test_authenticate_user_wrong_password(temp_user_csv):
     """Test authentication fails with wrong password."""
-    user_service.create_user(TEST_EMAIL, TEST_PASSWORD)
+    user_service.create_user(TEST_EMAIL, TEST_USERNAME, TEST_PASSWORD)
     
     with pytest.raises(ValueError, match="Invalid credentials"):
         user_service.authenticate_user(TEST_EMAIL, "WrongPassword123!")
@@ -70,7 +73,7 @@ def test_update_user_tier(temp_user_csv):
 
 def test_delete_user(temp_user_csv):
     """Test deleting a user."""
-    user_service.create_user(TEST_EMAIL, TEST_PASSWORD)
+    user_service.create_user(TEST_EMAIL, TEST_USERNAME, TEST_PASSWORD)
     
     success = user_service.delete_user(TEST_EMAIL)
     

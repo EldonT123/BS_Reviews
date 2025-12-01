@@ -13,6 +13,7 @@ router = APIRouter()
 class UserAuth(BaseModel):
     """Request model for login/signup."""
     email: EmailStr
+    username: str
     password: str
 
 
@@ -36,6 +37,7 @@ async def signup(user: UserAuth):
     try:
         new_user = user_service.create_user(
             email=user.email,
+            username=user.username,
             password=user.password,
             tier=User.TIER_SNAIL
         )
@@ -178,9 +180,7 @@ async def get_user_profile(
         )
 
     return {"user": user.to_dict()}
-    return {
-        "user": user.to_dict()
-    }
+
 # ==================== Bookmark Routes ====================
 
 
