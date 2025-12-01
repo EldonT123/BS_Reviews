@@ -6,7 +6,7 @@ router = APIRouter()
 
 
 # Initialize the search service
-search_service = SearchService(database_path="../database/archive")
+search_service = SearchService(database_path="/app/database/archive")
 
 
 @router.get("/title")
