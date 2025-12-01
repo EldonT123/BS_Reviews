@@ -38,7 +38,8 @@ def ensure_user_csv_exists():
     if not os.path.exists(USER_CSV_PATH):
         with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(["user_email", "username", "user_password", "user_tier"])
+            writer.writerow(
+                ["user_email", "username", "user_password", "user_tier"])
 
 
 def ensure_bookmark_csv_exists():
@@ -51,7 +52,7 @@ def ensure_bookmark_csv_exists():
             writer = csv.writer(csvfile)
             writer.writerow(["user_email", "movie_title"])
 
-# TODO finish adding username here.
+
 def read_users() -> Dict[str, tuple[str, str, str]]:
     """
     Read all users from CSV.
@@ -75,7 +76,8 @@ def read_users() -> Dict[str, tuple[str, str, str]]:
     return users
 
 
-def save_user(email: str, username: str, password_hash: str, tier: str = User.TIER_SNAIL):
+def save_user(email: str, username: str,
+              password_hash: str, tier: str = User.TIER_SNAIL):
     """Save a new user to the CSV file."""
     ensure_user_csv_exists()
     with open(USER_CSV_PATH, "a", newline="", encoding="utf-8") as csvfile:
@@ -114,7 +116,8 @@ def update_user_tier(email: str, new_tier: str) -> bool:
     ensure_user_csv_exists()
     with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["user_email", "username", "user_password", "user_tier"])
+        writer.writerow(
+            ["user_email", "username", "user_password", "user_tier"])
         for user_email, (username, pwd_hash, tier) in users.items():
             writer.writerow([user_email, username, pwd_hash, tier])
 
@@ -416,7 +419,8 @@ def delete_user(email: str) -> bool:
     ensure_user_csv_exists()
     with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["user_email", "username", "user_password", "user_tier"])
+        writer.writerow(
+            ["user_email", "username", "user_password", "user_tier"])
         for user_email, (username, password_hash, tier) in users.items():
             writer.writerow([user_email, username, password_hash, tier])
 

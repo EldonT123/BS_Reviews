@@ -9,7 +9,9 @@ class User:
     TIER_SLUG = "slug"
     TIER_BANANA_SLUG = "banana_slug"
 
-    def __init__(self, email: str, username: str, password_hash: str, tier: str = TIER_SNAIL):
+    def __init__(
+            self, email: str, username: str,
+            password_hash: str, tier: str = TIER_SNAIL):
         self.email = email
         self.username = username
         self.password_hash = password_hash
@@ -103,4 +105,8 @@ class User:
         }
 
     def __repr__(self):
-        return f"User(email={self.email}, username={self.username}, tier={self.tier})"
+        return (
+            f"User(email={self.email}, "
+            f"username={self.username}, "
+            f"tier={self.tier})"
+        )
