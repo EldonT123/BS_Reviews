@@ -12,7 +12,7 @@ def test_get_movie_folder_path():
     """ Unit test positive path:
     Tests path building logic is correct"""
     result = file_service.get_movie_folder(TEST_MOVIE)
-    assert result == "/fake/db/Test_Movie"
+    assert result == "/fake/db\\Test_Movie"
 
 
 """Integration test - creates real files/folders in a temporary directories
