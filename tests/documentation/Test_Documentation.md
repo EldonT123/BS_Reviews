@@ -174,7 +174,511 @@ def test_movie_not_found_endpoint_integration(self, client):
 
 ---
 
-### PR #2: User Authentication and Session Management
+### PR #2: Admin and User Separation with Authentication Middleware
+**Branch:** `split_admin_and_user_classes`  
+**Files Changed:**
+- `backend/models/admin_model.py` (New)
+- `backend/main.py` (Modified)
+- `backend/services/admin_service.py` (New)
+- `backend/routes/admin_routes.py` (New)
+- `backend/middleware/auth_middleware.py` (New)
+- `backend/routes/user_routes.py` (Modified - authentication added)
+- `backend/models/user_model.py` (Modified - authentication added)
+- `backend/services/user_service.py` (Modified - authentication added)
+- `tests/backend/admin/unit/test_admin_model_pytest.py` (New)
+- `tests/backend/admin/unit/test_admin_service_CSV.py` (New)
+- `tests/backend/admin/unit/test_admin_service_passwords.py` (New)
+- `tests/backend/admin/integration/test_admin_routes_pytest.py` (New)
+- `tests/backend/user/integration/test_user_buisness_logic.py` (Moved because was integration test)
+- `tests/backend/user/integration/test_user_routes.py` (Modified - authentication added)
+- `tests/backend/user/unit/test_user_model_pytest.py` (Modified - authentication added)
+
+**Description:**
+Separated admin and user functionality into distinct classes with independent authentication systems. Implemented FastAPI middleware authentication for admin routes, created comprehensive admin model with permission system, and established clear separation between user and admin accounts allowing same email for both systems.
+
+---
+
+#### Test Files Overview
+**Admin Tests:**
+- `test_admin_model_pytest.py` - Unit tests for Admin model and permissions
+- `test_admin_service_CSV.py` - Unit tests for admin CSV operations (mocked)
+- `test_admin_service_passwords.py` - Unit tests for admin password hashing
+- `test_admin_business_logic.py` - Integration tests for admin service layer
+- `test_admin_routes_pytest.py` - Integration tests for admin API endpoints
+
+**User Tests:**
+- `test_user_model_pytest.py` - Unit tests for User model and tier system
+- `test_user_service_CSV.py` - Unit tests for user CSV operations
+- `test_user_service_passwords.py` - Unit tests for user password hashing
+- `test_user_buisness_logic.py` - Integration tests for user service layer
+- `test_user_routes_pytest.py` - Integration tests for user API endpoints
+
+---
+
+### Predominant Testing Methodologies
+
+#### 1. Security Testing (Authentication & Password Management)
+**Purpose:** Validate password hashing, token generation, and authentication security
+
+**Example - Admin Password Hashing:**
+```python
+def test_admin_password_hash_bcrypt_format(self):
+    """Test that password hash uses bcrypt format."""
+    hashed = admin_service.hash_password(TEST_ADMIN_PASSWORD)
+    
+    # Bcrypt hashes start with $2b$ (or $2a$ or $2y$)
+    assert hashed.startswith('$2b$')
+    # Bcrypt hashes are 60 characters long
+    assert len(hashed) == 60
+```
+**Methodology:** Tests cryptographic security using bcrypt with proper salt generation.
+
+**Example - Token Security:**
+```python
+def test_token_generation(self):
+    """Test that tokens are generated correctly."""
+    admin1, token1 = admin_service.create_admin("admin1@test.com", TEST_PASSWORD)
+    admin2, token2 = admin_service.create_admin("admin2@test.com", TEST_PASSWORD)
+    
+    # Tokens should be different
+    assert token1 != token2
+    
+    # Tokens should be reasonably long (secure)
+    assert len(token1) > 20
+    assert len(token2) > 20
+```
+**Methodology:** Tests cryptographic randomness and sufficient token length.
+
+**Example - Password Storage Verification:**
+```python
+def test_integration_admin_password_security(self):
+    """Integration test: Verify admin passwords are hashed in storage."""
+    password = "SecureAdminPass123!"
+    
+    # Create admin
+    client.post("/api/admin/signup", json={"email": TEST_EMAIL, "password": password})
+    
+    # Read CSV directly and verify password is hashed
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        next(reader)  # Skip header
+        for row in reader:
+            if row[0] == TEST_ADMIN_EMAIL.lower():
+                stored_password = row[1]
+                # Password should be hashed (bcrypt hashes start with $2b$)
+                assert stored_password.startswith('$2b$')
+                assert stored_password != password
+                break
+```
+**Methodology:** Validates passwords are never stored in plaintext.
+
+#### 2. Mocking (Unit Test Isolation)
+**Purpose:** Isolate business logic from file I/O and external dependencies
+
+**Example - Admin Model with Mocked User Service:**
+```python
+@patch('backend.services.user_service.update_user_tier')
+def test_admin_upgrade_user_tier_success(mock_update_tier):
+    """Test admin can upgrade user tier"""
+    # Arrange
+    mock_update_tier.return_value = True
+    admin = Admin("admin@test.com", "hash")
+    
+    # Act
+    success = admin.upgrade_user_tier("user@test.com", User.TIER_SLUG)
+    
+    # Assert
+    assert success is True
+    mock_update_tier.assert_called_once_with("user@test.com", User.TIER_SLUG)
+```
+**Methodology:** Mocks `user_service` to test admin actions independently.
+
+**Example - CSV Operations with Mock File System:**
+```python
+@patch('builtins.open', new_callable=mock_open, 
+       read_data='admin_email,admin_password\nadmin1@test.com,hash1\n')
+@patch('os.path.exists', return_value=True)
+def test_read_admins_with_data(mock_exists, mock_file):
+    """Test reading admins from populated CSV."""
+    # Act
+    admins = admin_service.read_admins()
+    
+    # Assert
+    assert "admin1@test.com" in admins
+    assert admins["admin1@test.com"] == "hash1"
+    mock_file.assert_called_once()
+```
+**Methodology:** Mocks file operations for fast, isolated tests.
+
+**Example - Admin Permission Checks:**
+```python
+@patch('backend.services.user_service.get_all_users')
+def test_admin_get_all_users(mock_get_all_users):
+    """Test admin can get all users"""
+    # Arrange
+    mock_user1 = Mock(spec=User)
+    mock_user1.email = "user1@test.com"
+    mock_user2 = Mock(spec=User)
+    mock_user2.email = "user2@test.com"
+    mock_get_all_users.return_value = [mock_user1, mock_user2]
+    
+    admin = Admin("admin@test.com", "hash")
+    
+    # Act
+    users = admin.get_all_users()
+    
+    # Assert
+    assert len(users) == 2
+    mock_get_all_users.assert_called_once()
+```
+**Methodology:** Mocks user retrieval to test admin functionality.
+
+#### 3. Equivalence Partitioning
+**Applied to:** Authentication states, user tiers, admin permissions, email formats
+
+**Authentication Partitions:**
+- **Partition 1:** Valid credentials → Success (200)
+- **Partition 2:** Wrong password → Unauthorized (401)
+- **Partition 3:** Non-existent user/admin → Unauthorized (401)
+- **Partition 4:** Duplicate signup → Bad Request (400)
+
+**Tier Management Partitions:**
+- **Partition 1:** Valid tier upgrade (snail→slug) → Success
+- **Partition 2:** Invalid tier name → Bad Request (400)
+- **Partition 3:** Non-existent user → Not Found (404)
+- **Partition 4:** Same tier (no change) → Success
+
+**Email Format Partitions:**
+- **Partition 1:** Valid lowercase email → Normalized
+- **Partition 2:** Valid uppercase email → Normalized to lowercase
+- **Partition 3:** Invalid format → Validation Error (422)
+- **Partition 4:** Duplicate email → Conflict (400)
+
+**Admin Permission Partitions:**
+- **Partition 1:** Admin with token → All permissions granted
+- **Partition 2:** No token → Unauthorized (401)
+- **Partition 3:** Invalid token → Unauthorized (401)
+- **Partition 4:** User trying admin route → Unauthorized (401)
+
+#### 4. Exception Handling
+**Purpose:** Validate all error paths and proper HTTP status codes
+
+**Example - Authentication Failures:**
+```python
+def test_admin_login_wrong_password(self):
+    """Test admin login fails with wrong password."""
+    # Create admin
+    client.post("/api/admin/signup", 
+                json={"email": TEST_EMAIL, "password": TEST_ADMIN_PASSWORD})
+    
+    # Try login with wrong password
+    response = client.post("/api/admin/login",
+                          json={"email": TEST_EMAIL, "password": "WrongPassword456!"})
+    
+    assert response.status_code == 401
+    assert "Invalid admin credentials" in response.json()["detail"]
+```
+**Status Codes Tested:** 200 (Success), 400 (Bad Request), 401 (Unauthorized), 404 (Not Found), 422 (Validation Error)
+
+**Example - Service Layer Exceptions:**
+```python
+def test_create_admin_duplicate(self):
+    """Test that creating duplicate admin raises error."""
+    admin_service.create_admin(TEST_EMAIL, TEST_PASSWORD)
+    
+    with pytest.raises(ValueError, match="already exists"):
+        admin_service.create_admin(TEST_EMAIL, "DifferentPass123!")
+```
+**Methodology:** Tests that service layer properly raises ValueError for business logic violations.
+
+**Example - Tier Management Errors:**
+```python
+def test_admin_upgrade_invalid_tier(self):
+    """Test admin upgrade with invalid tier."""
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
+    # Create a user
+    client.post("/api/signup", json={"email": TEST_EMAIL, "password": TEST_PASSWORD})
+    
+    # Try invalid tier
+    response = client.post("/api/admin/users/upgrade-tier",
+                          headers=headers,
+                          json={"email": TEST_EMAIL, "new_tier": "super_slug"})
+    
+    assert response.status_code == 400
+```
+**Methodology:** Validates input validation for tier upgrades.
+
+#### 5. Integration Testing (End-to-End Workflows)
+**Purpose:** Test complete workflows across multiple components
+
+**Example - Complete Admin Workflow:**
+```python
+def test_integration_admin_signup_then_login(self):
+    """Integration test: Complete admin signup and login flow."""
+    email = "flowadmin@example.com"
+    password = "FlowAdmin123!"
+    
+    # Step 1: Signup
+    signup_response = client.post("/api/admin/signup",
+                                  json={"email": email, "password": password})
+    assert signup_response.status_code == 200
+    assert signup_response.json()["admin"]["role"] == "admin"
+    assert "token" in signup_response.json()
+    
+    # Step 2: Login with same credentials
+    login_response = client.post("/api/admin/login",
+                                 json={"email": email, "password": password})
+    assert login_response.status_code == 200
+    assert "token" in login_response.json()
+    
+    # Step 3: Try to signup again (should fail)
+    duplicate_response = client.post("/api/admin/signup",
+                                     json={"email": email, "password": "NewPass!"})
+    assert duplicate_response.status_code == 400
+```
+**Methodology:** Tests authentication flow from signup through login to duplicate prevention.
+
+**Example - Admin Managing Multiple Users:**
+```python
+def test_integration_admin_manages_multiple_users(self):
+    """Integration test: Admin managing multiple users."""
+    # Get admin token
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
+    users = [
+        ("user1@example.com", "Password1!"),
+        ("user2@example.com", "Password2!"),
+        ("user3@example.com", "Password3!")
+    ]
+    
+    # Create all users
+    for email, password in users:
+        response = client.post("/api/signup", 
+                              json={"email": email, "password": password})
+        assert response.status_code == 200
+    
+    # Admin upgrades different users to different tiers
+    client.post("/api/admin/users/upgrade-tier", headers=headers,
+                json={"email": users[0][0], "new_tier": User.TIER_SLUG})
+    client.post("/api/admin/users/upgrade-tier", headers=headers,
+                json={"email": users[1][0], "new_tier": User.TIER_BANANA_SLUG})
+    
+    # Verify all users exist with correct tiers
+    response = client.get("/api/admin/users", headers=headers)
+    user_list = response.json()["users"]
+    
+    tier_map = {u["email"]: u["tier"] for u in user_list}
+    assert tier_map[users[0][0]] == User.TIER_SLUG
+    assert tier_map[users[1][0]] == User.TIER_BANANA_SLUG
+    assert tier_map[users[2][0]] == User.TIER_SNAIL
+    
+    # Admin deletes one user
+    client.request("DELETE", "/api/admin/users",
+                   content=json.dumps({"email": users[2][0]}),
+                   headers={**headers, "Content-Type": "application/json"})
+    
+    # Verify user count decreased
+    response = client.get("/api/admin/users", headers=headers)
+    assert response.json()["total"] == 2
+```
+**Methodology:** Tests complete admin user management workflow with multiple operations.
+
+**Example - User Tier Progression:**
+```python
+def test_integration_tier_progression(self):
+    """Integration test: User tier progression through admin actions."""
+    token = create_admin_and_get_token()
+    headers = get_auth_headers(token)
+    
+    email = "progression@test.com"
+    password = "Progress123!"
+    
+    # Signup (Snail tier)
+    signup_response = client.post("/api/signup", 
+                                  json={"email": email, "password": password})
+    assert signup_response.json()["user"]["tier"] == User.TIER_SNAIL
+    assert signup_response.json()["user"]["permissions"]["can_write_reviews"] is False
+    
+    # Upgrade to Slug (via admin endpoint)
+    upgrade_response = client.post("/api/admin/users/upgrade-tier",
+                                   headers=headers,
+                                   json={"email": email, "new_tier": User.TIER_SLUG})
+    assert upgrade_response.status_code == 200
+    
+    # Login and check new permissions
+    login_response = client.post("/api/login", 
+                                 json={"email": email, "password": password})
+    assert login_response.json()["user"]["tier"] == User.TIER_SLUG
+    assert login_response.json()["user"]["permissions"]["can_write_reviews"] is True
+    
+    # Upgrade to Banana Slug
+    upgrade_response = client.post("/api/admin/users/upgrade-tier",
+                                   headers=headers,
+                                   json={"email": email, "new_tier": User.TIER_BANANA_SLUG})
+    
+    # Login and check VIP permissions
+    login_response = client.post("/api/login", 
+                                 json={"email": email, "password": password})
+    assert login_response.json()["user"]["tier"] == User.TIER_BANANA_SLUG
+    assert login_response.json()["user"]["permissions"]["has_priority_reviews"] is True
+```
+**Methodology:** Tests complete tier progression workflow with permission verification.
+
+#### 6. Boundary Testing
+**Purpose:** Test edge cases and system boundaries
+
+**Example - Token Revocation:**
+```python
+def test_token_revocation(self):
+    """Test token revocation."""
+    admin, token = admin_service.create_admin(TEST_EMAIL, TEST_PASSWORD)
+    
+    # Token should work initially
+    assert admin_service.verify_admin_token(token) is not None
+    
+    # Revoke token
+    success = admin_service.revoke_token(token)
+    assert success is True
+    
+    # Token should no longer work
+    assert admin_service.verify_admin_token(token) is None
+    
+    # Revoking again should return False
+    assert admin_service.revoke_token(token) is False
+```
+**Methodology:** Tests boundary between valid and revoked tokens.
+
+**Example - Admin Deletion Cascades:**
+```python
+def test_delete_admin_revokes_tokens(self):
+    """Test that deleting admin revokes all their tokens."""
+    admin, token = admin_service.create_admin(TEST_EMAIL, TEST_PASSWORD)
+    
+    # Get another token for same admin
+    _, token2 = admin_service.authenticate_admin(TEST_EMAIL, TEST_PASSWORD)
+    
+    # Both tokens should work
+    assert admin_service.verify_admin_token(token) is not None
+    assert admin_service.verify_admin_token(token2) is not None
+    
+    # Delete admin
+    admin_service.delete_admin(TEST_EMAIL)
+    
+    # Both tokens should be revoked
+    assert admin_service.verify_admin_token(token) is None
+    assert admin_service.verify_admin_token(token2) is None
+```
+**Methodology:** Tests cascade deletion ensures no orphaned tokens.
+
+**Example - Empty State Handling:**
+```python
+@patch('backend.services.user_service.get_all_users')
+def test_admin_get_all_users_empty(mock_get_all_users):
+    """Test admin get all users when no users exist"""
+    # Arrange
+    mock_get_all_users.return_value = []
+    admin = Admin("admin@test.com", "hash")
+    
+    # Act
+    users = admin.get_all_users()
+    
+    # Assert
+    assert len(users) == 0
+    assert users == []
+```
+**Methodology:** Tests boundary of empty collections.
+
+#### 7. System Separation Testing
+**Purpose:** Validate independent admin and user systems
+
+**Example - Separate Account Systems:**
+```python
+def test_integration_separate_admin_and_user_accounts(self):
+    """Integration test: Verify admin and user accounts are separate."""
+    email = "same@example.com"
+    
+    # Create user with this email
+    user_response = client.post("/api/signup", 
+                                json={"email": email, "password": "UserPass123!"})
+    assert user_response.status_code == 200
+    
+    # Create admin with same email (should work - different systems)
+    admin_response = client.post("/api/admin/signup",
+                                 json={"email": email, "password": "AdminPass123!"})
+    assert admin_response.status_code == 200
+    
+    # Verify both exist independently
+    assert user_service.user_exists(email) is True
+    assert admin_service.admin_exists(email) is True
+```
+**Methodology:** Tests complete separation of admin and user databases.
+
+**Example - Authentication Boundary:**
+```python
+def test_admin_authentication_required(self):
+    """Test that protected endpoints require authentication."""
+    # Try to access protected endpoints without token
+    response = client.get("/api/admin/users")
+    assert response.status_code == 401
+    
+    response = client.get("/api/admin/admins")
+    assert response.status_code == 401
+    
+    response = client.post("/api/admin/users/upgrade-tier",
+                          json={"email": "test@test.com", "new_tier": "slug"})
+    assert response.status_code == 401
+```
+**Methodology:** Tests authentication boundary for protected routes.
+
+#### 8. Permission System Testing
+**Purpose:** Validate tier-based permissions and admin privileges
+
+**Example - User Tier Permission Checks:**
+```python
+def test_user_permissions(self):
+    """Permission helpers should enforce the correct rules for each tier."""
+    snail = User("snail@test.com", "hash", User.TIER_SNAIL)
+    slug = User("slug@test.com", "hash", User.TIER_SLUG)
+    banana = User("banana@test.com", "hash", User.TIER_BANANA_SLUG)
+    
+    # Everyone can browse
+    assert snail.can_browse() is True
+    assert slug.can_browse() is True
+    assert banana.can_browse() is True
+    
+    # Only Slug+ can write reviews
+    assert snail.can_write_reviews() is False
+    assert slug.can_write_reviews() is True
+    assert banana.can_write_reviews() is True
+    
+    # Only Banana Slugs have priority
+    assert snail.has_priority_reviews() is False
+    assert slug.has_priority_reviews() is False
+    assert banana.has_priority_reviews() is True
+```
+**Methodology:** Tests permission matrix across all tiers.
+
+**Example - Admin Permission Checks:**
+```python
+def test_admin_permissions(self):
+    """Test that all admin permission checks return True."""
+    admin = Admin("admin@test.com", "hash")
+    
+    assert admin.can_manage_users() is True
+    assert admin.can_upgrade_tiers() is True
+    assert admin.can_delete_users() is True
+    assert admin.can_view_all_users() is True
+    assert admin.can_manage_movies() is True
+    assert admin.can_moderate_reviews() is True
+```
+**Methodology:** Validates admin has all elevated permissions.
+
+---
+
+### PR #3: User Authentication and Session Management
 **Branch:** `State_tracking`  
 **Files Changed:**
 - `backend/services/user_service.py` (Modified - added session management)
@@ -383,7 +887,7 @@ def test_revoke_all_user_sessions(self):
 
 ---
 
-## Pull Request #3: User Ranking System and Test Structure Refactor
+## Pull Request #4: User Ranking System and Test Structure Refactor
 **Branch:** `feature/rank-system`  
 **Files Cahnged:** 
 - `backend/models/user_model.py` 
@@ -625,7 +1129,7 @@ This PR reorganized tests into:
 - `docs/test_screenshots/PR3_ranking/tier_progression_test.png`
 - `docs/test_screenshots/PR3_ranking/permission_validation.png`
 
-### PR #4: User Authentication System with Password Security
+### PR #5: User Authentication System with Password Security
 **Branch:** `auth_feature`  
 **Files Changed:**
 - `backend/services/user_service.py` (New)
@@ -1545,3 +2049,4 @@ Below are all simple PRs for updated documentation
 - **Review test doc** All review test documentation
 - **Search test doc** All search test documentation
 
+- **Implemented Directory Navigation & File Handling Feature**: Old code that was eventually intergrated into User Review PR. 

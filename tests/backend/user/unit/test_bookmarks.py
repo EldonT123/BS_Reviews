@@ -21,7 +21,7 @@ def temp_user_and_bookmark_files(monkeypatch):
     # Write CSV headers
     with open (temp_users.name, "w", newline = "", encoding = "utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["user_email", "user_password", "user_tier"])
+        writer.writerow(["user_email", "user_username", "user_password", "user_tier"])
 
     with open(temp_bookmarks.name, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -44,6 +44,7 @@ def create_test_user(temp_user_and_bookmark_files):
     """
     user_service.create_user(
         email="test@example.com",
+        username="testuser",
         password="password123",
         tier="Snail"
     )

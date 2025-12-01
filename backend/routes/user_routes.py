@@ -10,8 +10,15 @@ router = APIRouter()
 # ==================== Request Models ====================
 
 
-class UserAuth(BaseModel):
-    """Request model for login/signup."""
+class UserSignupAuth(BaseModel):
+    """Request model for signup."""
+    email: EmailStr
+    username: str
+    password: str
+
+
+class UserLoginAuth(BaseModel):
+    """Request model for login"""
     email: EmailStr
     password: str
 
@@ -31,11 +38,12 @@ class SignoutRequest(BaseModel):
 
 
 @router.post("/signup")
-async def signup(user: UserAuth):
+async def signup(user: UserSignupAuth):
     """Create new user account - starts as Snail tier."""
     try:
         new_user = user_service.create_user(
             email=user.email,
+            username=user.username,
             password=user.password,
             tier=User.TIER_SNAIL
         )
@@ -54,7 +62,7 @@ async def signup(user: UserAuth):
 
 
 @router.post("/login")
-async def login(user: UserAuth):
+async def login(user: UserLoginAuth):
     """Authenticate user and return user info with session ID."""
     try:
         authenticated_user, session_id = user_service.authenticate_user(
@@ -178,9 +186,7 @@ async def get_user_profile(
         )
 
     return {"user": user.to_dict()}
-    return {
-        "user": user.to_dict()
-    }
+
 # ==================== Bookmark Routes ====================
 
 
