@@ -259,8 +259,8 @@ async def upload_profile_image(email: str = Form(...), profile_image: UploadFile
             detail="Only Banana Slug tier users can upload profile images"
         )
     
-    # Save image to server
-    try:
+    # Commented out image upload functionality to be implemented later when storage is set up
+    """try:
         success = user_service.save_profile_image(email, profile_image)
         if not success:
             raise HTTPException(
@@ -272,7 +272,7 @@ async def upload_profile_image(email: str = Form(...), profile_image: UploadFile
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
-        )
+        )"""
 
 # ==================== Bookmark Routes ====================
 
