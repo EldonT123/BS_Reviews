@@ -1,5 +1,5 @@
-user_email,username,user_password,user_tier
-testuser@gmail.com,testuser,testuser#123,snail
-xbonealpha@gmail.com,xbonealpha,$2b$12$0Xz0dfocSG8abkQu6O2rdeiGWUqmzp9Xf1zP/.BPHRsqqUFcgN1CG,admin
-newuser@example.com,newuser,$2b$12$3UggW4EDxfJ834bF4rDaW.ilVzuVtGZr/ES86y4MRnNlle8YmHHQi,snail
-ctipto01@student.ubc.ca,Cain,$2b$12$hfJNSGkBisRvLRUoC6rFTOxEMetOfZzPAfgR.EM72r5jG.JjsTMaa,snail
+user_email,username,user_password,user_tier,tokens
+testuser@gmail.com,testuser,testuser#123,snail,
+xbonealpha@gmail.com,xbonealpha,$2b$12$0Xz0dfocSG8abkQu6O2rdeiGWUqmzp9Xf1zP/.BPHRsqqUFcgN1CG,admin,
+newuser@example.com,newuser,$2b$12$3UggW4EDxfJ834bF4rDaW.ilVzuVtGZr/ES86y4MRnNlle8YmHHQi,snail,
+ctipto01@student.ubc.ca,Cain,$2b$12$hfJNSGkBisRvLRUoC6rFTOxEMetOfZzPAfgR.EM72r5jG.JjsTMaa,snail,

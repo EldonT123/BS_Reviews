@@ -1,0 +1,6 @@
+purchase_id,user_email,item_id,item_type,item_name,amount_cad,amount_tokens,payment_method_last4,tokens_received,rank_upgrade,purchase_date,status,transaction_id
+PUR-A75E032584E98204,ctipto01@student.ubc.ca,tokens_1000,tokens,1000 Tokens,34.99,,3456,1000,,2025-12-02T14:54:25.733907,completed,TXN-16A078F025AAA65430865691
+PUR-4E037FE1D06818D1,ctipto01@student.ubc.ca,rank_banana_slug,rank,Upgrade to Banana Slug,19.99,,3456,,banana_slug,2025-12-02T15:04:04.731627,completed,TXN-62B0F233052840571AAA5447
+PUR-36DC76213C320C03,ctipto01@student.ubc.ca,tokens_1000,tokens,1000 Tokens,34.99,,3456,1000,,2025-12-02T15:23:51.401740,completed,TXN-7D662D8AACECDEDA0BDDCE64
+PUR-6FB92E2C5D43A378,ctipto01@student.ubc.ca,tokens_1000,tokens,1000 Tokens,34.99,,3456,1000,,2025-12-02T15:27:55.965510,completed,TXN-59B3FF913595A8EF35AFDB66
+PUR-CB6F62B3F0CD34B9,ctipto01@student.ubc.ca,tokens_1000,tokens,1000 Tokens,34.99,,3456,1000,,2025-12-02T15:28:45.876392,completed,TXN-5E1820F1C9DD1B188E119559

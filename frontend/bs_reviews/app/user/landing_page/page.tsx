@@ -2,17 +2,25 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import TokenBalance from "@/components/TokenBalance";
 
+type User = {
+  email: string;
+  username: string;
+  tier: string;
+  tier_display_name: string;
+  tokens?: number;
+};
 
 type Movie = {
   title: string;
   movieIMDbRating: number;
   posterPath: string;
-  commentCount?: number; // for most commented movies
+  commentCount?: number;
 };
 
 export default function Home() {
-  
+  const [user, setUser] = useState<User | null>(null);
   const [topMovies, setTopMovies] = useState<Movie[]>([]);
   const [mostCommentedMovies, setMostCommentedMovies] = useState<Movie[]>([]);
   const [loadingTop, setLoadingTop] = useState(true);
@@ -20,6 +28,24 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
+    async function fetchUserData() {
+      const sessionId = typeof window !== "undefined" ? localStorage.getItem("sessionId") : null;
+
+      if (sessionId) {
+        try {
+          const res = await fetch(
+            `http://localhost:8000/api/users/check-session/${sessionId}`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            setUser(data.user);
+          }
+        } catch (error) {
+          console.error("Failed to fetch user data:", error);
+        }
+      }
+    }
+
     async function fetchTopMovies() {
       try {
         const res = await fetch("http://localhost:8000/api/movies/top");
@@ -44,6 +70,7 @@ export default function Home() {
       }
     }
 
+    fetchUserData();
     fetchTopMovies();
     fetchMostCommentedMovies();
   }, []);
@@ -62,13 +89,12 @@ export default function Home() {
 
   const currentMovie = topMovies[currentIndex];
 
-  // Get next 3 movies for "Up Next" pane
-    const upNextMovies = topMovies.length
-      ? Array(3)
-          .fill(null)
-          .map((_, i) => topMovies[(currentIndex + i + 1) % topMovies.length])
-      : [];
-  
+  const upNextMovies = topMovies.length
+    ? Array(3)
+        .fill(null)
+        .map((_, i) => topMovies[(currentIndex + i + 1) % topMovies.length])
+    : [];
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans">
       {/* Header */}
@@ -101,6 +127,7 @@ export default function Home() {
             placeholder="Search movies, TV, actors..."
             className="bg-gray-800 text-gray-300 placeholder-gray-500 rounded-md px-4 py-2 focus:outline-yellow-400 focus:ring-1 focus:ring-yellow-400 w-48 sm:w-64"
           />
+          {user && <TokenBalance tokens={user.tokens || 0} />}
           <Link
             href="/user/account_page"
             className="bg-yellow-400 text-black font-semibold px-4 py-2 rounded hover:bg-yellow-500 transition"
