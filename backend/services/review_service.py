@@ -16,8 +16,8 @@ CSV_FIELDNAMES = [
     "Date of Review",
     "Email",
     "Username",
-    "Likes",
     "Dislikes",
+    "Likes",
     "User's Rating out of 10",
     "Review Title",
     "Review",
@@ -66,7 +66,12 @@ def read_reviews(movie_name: str) -> List[Dict]:
 
     with open(path, 'r', encoding='utf-8', newline='') as f:
         reader = csv.DictReader(f)
-        return list(reader)
+        reviews = []
+        for row in reader:
+            # Ensure all expected fields exist with default values
+            review = {field: row.get(field, "") for field in CSV_FIELDNAMES}
+            reviews.append(review)
+        return reviews
 
 
 def get_review_by_email(movie_name: str, email: str) -> Optional[Dict]:
@@ -137,11 +142,13 @@ def add_review(review: ReviewRequest, user: User) -> bool:
         "Date of Review": date,
         "Email": user.email,
         "Username": user.username,
-        "Likes": "0",
         "Dislikes": "0",
+        "Likes": "0",
         "User's Rating out of 10": str(review.rating),
         "Review Title": review.review_title,
-        "Review": review.comment
+        "Review": review.comment,
+        "Reported": "",
+        "Report Reason": ""
     }
 
     # Check if file exists and has content
@@ -177,12 +184,12 @@ def update_review(review: ReviewRequest, user: User) -> bool:
 
     # Find and update the review
     updated = False
-    for review in reviews:
-        if reviews.get("Email", "") == user.email:
-            review["User's Rating out of 10"] = str(review.rating)
-            review["Review"] = review.comment
-            review["Review Title"] = review.review_title
-            review["Date of Review"] = datetime.now().strftime("%Y-%m-%d")
+    for r in reviews:
+        if r.get("Email", "") == user.email:
+            r["User's Rating out of 10"] = str(review.rating)
+            r["Review"] = review.comment
+            r["Review Title"] = review.review_title
+            r["Date of Review"] = datetime.now().strftime("%Y-%m-%d")
             updated = True
             break
 
