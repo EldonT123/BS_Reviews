@@ -1,25 +1,12 @@
 # backend/routes/review_routes.py
 """Routes for review management - HTTP handling only."""
 from fastapi import APIRouter, HTTPException, status, Depends
-from pydantic import BaseModel
 from backend.services import review_service
 from backend.dependencies.auth import require_slug_tier
 from backend.models.user_model import User
+from backend.models.review_model import ReviewRequest
 
 router = APIRouter()
-
-# ==================== Request Models ====================
-
-
-# This class alows for reviews and ratings to be created.
-# In our case, a rating is just a review without any comment.
-class ReviewRequest(BaseModel):
-    """Model for creating reviews."""
-    movie_name: str
-    rating: float
-    comment: str = ""
-    review_title: str = ""
-    user: User = Depends(require_slug_tier)
 
 
 # ==================== Routes ====================
@@ -49,7 +36,10 @@ async def get_reviews(movie_name: str):
 
 
 @router.post("/{movie_name}")
-async def post_review(review: ReviewRequest):
+async def post_review(
+    review: ReviewRequest,
+    current_user: User = Depends(require_slug_tier)
+):
     """
     Add a review to a movie.
     Requires: Authentication + Slug tier or above.
@@ -67,7 +57,7 @@ async def post_review(review: ReviewRequest):
         )
 
     # Check if user already reviewed this movie
-    if review_service.user_has_reviewed(review.movie_name, review.user):
+    if review_service.user_has_reviewed(review.movie_name, current_user.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=("You have already reviewed this movie. "
@@ -75,14 +65,17 @@ async def post_review(review: ReviewRequest):
         )
 
     # Add review
-    success = review_service.add_review(review)
+    success = review_service.add_review(review, current_user)
 
-    review_message = review_service.review_message_return(success, review)
+    review_message = review_service.review_message_return(success, review, current_user)
     return review_message
 
 
 @router.put("/{movie_name}")
-async def update_review(review: ReviewRequest):
+async def update_review(
+    review: ReviewRequest,
+    current_user: User = Depends(require_slug_tier)
+):
     """
     Update an existing review.
     Requires: Authentication + Slug tier or above.
@@ -98,15 +91,14 @@ async def update_review(review: ReviewRequest):
         )
 
     # Check if review exists
-    if not review_service.user_has_reviewed(review.movie_name, review.user):
-        raise HTTPException(
+    if not review_service.user_has_reviewed(review.movie_name, current_user.email):        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=("You haven't written a review for this movie yet. "
                     "Use POST to create a new review.")
         )
 
     # Update review
-    success = review_service.update_review(review)
+    success = review_service.update_review(review, current_user)
 
     if not success:
         raise HTTPException(
@@ -114,7 +106,7 @@ async def update_review(review: ReviewRequest):
             detail="Failed to update review"
         )
 
-    review_message = review_service.review_message_return(success, review)
+    review_message = review_service.review_message_return(success, review, current_user)
     return review_message
 
 

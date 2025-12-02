@@ -6,24 +6,36 @@ from datetime import datetime
 from typing import Optional, List, Dict
 from backend.services import file_service, user_service
 from backend.models.user_model import User
-from backend.routes.review_routes import ReviewRequest
+from backend.models.review_model import ReviewRequest
 from fastapi import HTTPException, status
 
 
 RATING_LOWER_BOUND = 0
 RATING_UPPER_BOUND = 10
+CSV_FIELDNAMES = [
+    "Date of Review",
+    "Email",
+    "Username",
+    "Likes",
+    "Dislikes",
+    "User's Rating out of 10",
+    "Review Title",
+    "Review",
+    "Reported",
+    "Report Reason"
+]
 
 
-def review_message_return(success: bool, review: ReviewRequest):
+def review_message_return(success: bool, review: ReviewRequest, user: User):
     if not success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update or add review"
         )
 
-    if review.user.has_priority_reviews():
+    if user.has_priority_reviews():
         message = (f"🌟 Review added successfully! "
-                   f"As a {review.user.get_tier_display_name()}, "
+                   f"As a {user.get_tier_display_name()}, "
                    f"your review will appear first!")
     else:
         message = "Review added successfully!"
@@ -31,8 +43,8 @@ def review_message_return(success: bool, review: ReviewRequest):
     return {
         "message": message,
         "review": {
-            "email": review.user.email,
-            "username": review.user.email,
+            "email": user.email,
+            "username": user.email,
             "rating": review.rating,
             "comment": review.comment,
             "review_title": review.review_title
@@ -47,10 +59,7 @@ def read_reviews(movie_name: str) -> List[Dict]:
     Read all reviews for a movie from CSV.
     Returns empty list if no reviews exist.
     """
-    path = os.path.join(
-        file_service.get_movie_folder(movie_name),
-        "movieReviews.csv"
-                       )
+    path = get_reviews_path(movie_name)
 
     if not os.path.exists(path):
         return []
@@ -81,7 +90,34 @@ def user_has_reviewed(movie_name: str, email: str) -> bool:
 
 # ==================== Write Operations ====================
 
-def add_review(review: ReviewRequest) -> bool:
+def write_reviews(movie_name: str, reviews: List[Dict]) -> bool:
+    """
+    Write all reviews back to CSV.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        path = get_reviews_path(movie_name)
+
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES)
+            writer.writeheader()
+            writer.writerows(reviews)
+
+        return True
+    except Exception as e:
+        print(f"Error writing reviews: {e}")
+        return False
+
+
+def get_reviews_path(movie_name: str) -> str:
+    """Get the path to the reviews CSV for a movie."""
+    return os.path.join(
+        file_service.get_movie_folder(movie_name),
+        "movieReviews.csv"
+    )
+
+
+def add_review(review: ReviewRequest, user: User) -> bool:
     """
     Add a new review to the movie's CSV file.
     Returns True if successful, False otherwise.
@@ -91,16 +127,16 @@ def add_review(review: ReviewRequest) -> bool:
     if not os.path.exists(movie_folder):
         file_service.create_movie_folder(review.movie_name)
 
-    path = os.path.join(movie_folder, "movieReviews.csv")
+    path = get_reviews_path(review.movie_name)
 
-    # Use current date if not provided
-    if date is None:
-        date = datetime.now().strftime("%Y-%m-%d")
+    # Always uses current date
+    date = datetime.now().strftime("%Y-%m-%d")
 
     # Prepare new review row
     new_review = {
         "Date of Review": date,
-        "User": review.user.username,
+        "Email": user.email,
+        "Username": user.username,
         "Likes": "0",
         "Dislikes": "0",
         "User's Rating out of 10": str(review.rating),
@@ -114,12 +150,7 @@ def add_review(review: ReviewRequest) -> bool:
     # Append to file (don't overwrite!)
     try:
         with open(path, 'a', encoding='utf-8', newline='') as f:
-            fieldnames = [
-                "Date of Review", "User", "Likes",
-                "Dislike", "User's Rating out of 10",
-                "Review Title", "Review"
-            ]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES)
 
             # Only write header if file is empty
             if not file_exists:
@@ -134,7 +165,7 @@ def add_review(review: ReviewRequest) -> bool:
         return False
 
 
-def update_review(review: ReviewRequest) -> bool:
+def update_review(review: ReviewRequest, user: User) -> bool:
     """
     Update an existing review.
     Returns True if successful, False if review not found.
@@ -147,7 +178,7 @@ def update_review(review: ReviewRequest) -> bool:
     # Find and update the review
     updated = False
     for review in reviews:
-        if review.get("Email", "") == review.user.email:
+        if reviews.get("Email", "") == user.email:
             review["User's Rating out of 10"] = str(review.rating)
             review["Review"] = review.comment
             review["Review Title"] = review.review_title
@@ -159,25 +190,7 @@ def update_review(review: ReviewRequest) -> bool:
         return False
 
     # Write all reviews back to CSV
-    try:
-        movie_folder = file_service.get_movie_folder(review.movie_name)
-        path = os.path.join(movie_folder, "movieReviews.csv")
-
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            fieldnames = [
-                "Date of Review", "User", "Usefulness Vote",
-                "Total Votes", "User's Rating out of 10",
-                "Review Title", "Review"
-            ]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(reviews)
-
-        return True
-
-    except Exception as e:
-        print(f"Error updating review: {e}")
-        return False
+    return write_reviews(review.movie_name, reviews)
 
 
 def delete_review(email: str, movie_name: str) -> bool:
@@ -202,25 +215,7 @@ def delete_review(email: str, movie_name: str) -> bool:
         return False  # Review not found
 
     # Write remaining reviews back to CSV
-    try:
-        movie_folder = file_service.get_movie_folder(movie_name)
-        path = os.path.join(movie_folder, "movieReviews.csv")
-
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            fieldnames = [
-                "Date of Review", "User", "Likes",
-                "Dislikes", "User's Rating out of 10",
-                "Review Title", "Review"
-            ]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(reviews)
-
-        return True
-
-    except Exception as e:
-        print(f"Error deleting review: {e}")
-        return False
+    return write_reviews(movie_name, reviews)
 
 
 def report_review(email: str, movie_name: str, reason: str = "") -> bool:
@@ -247,27 +242,7 @@ def report_review(email: str, movie_name: str, reason: str = "") -> bool:
         return False
 
     # Write back all reviews
-    try:
-        movie_folder = file_service.get_movie_folder(movie_name)
-        path = os.path.join(movie_folder, "movieReviews.csv")
-
-        # Make sure 'Reported' and 'Report Reason' are in headers
-        fieldnames = [
-            "Date of Review", "User", "Likes",
-            "Dislikes", "User's Rating out of 10",
-            "Review Title", "Review", "Reported", "Report Reason"
-        ]
-
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(reviews)
-
-        return True
-
-    except Exception as e:
-        print(f"Error reporting review: {e}")
-        return False
+    return write_reviews(movie_name, reviews)
 
 
 def handle_reported_review(
@@ -298,24 +273,7 @@ def handle_reported_review(
     if not updated:
         return False
 
-    # Write updated reviews back to CSV (same as in report_review)
-    movie_folder = file_service.get_movie_folder(movie_name)
-    path = os.path.join(movie_folder, "movieReviews.csv")
-    fieldnames = [
-        "Date of Review", "User", "Likes",
-        "Dislikes", "User's Rating out of 10",
-        "Review Title", "Review", "Reported", "Report Reason"
-    ]
-
-    try:
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(reviews)
-        return True
-    except Exception as e:
-        print(f"Error handling reported review: {e}")
-        return False
+    return write_reviews(movie_name, reviews)
 
 
 # ==================== Calculations & Statistics ====================
@@ -377,8 +335,8 @@ def get_review_stats(movie_name: str) -> Dict:
     valid_ratings_count = 0
 
     for review in reviews:
-        username = review.get("User")
-        user = user_service.get_user_by_email(username)
+        email = review.get("Email")
+        user = user_service.get_user_by_email(email)
 
         if user:
             tier_counts[user.tier] = tier_counts.get(user.tier, 0) + 1
@@ -423,8 +381,8 @@ def sort_reviews_by_tier(reviews: List[Dict]) -> List[Dict]:
     regular_reviews = []
 
     for review in reviews:
-        username = review.get("User")
-        user = user_service.get_user_by_email(username)
+        email = review.get("Email")
+        user = user_service.get_user_by_email(email)
 
         # Add tier info to review
         if user:
