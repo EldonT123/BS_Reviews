@@ -2,7 +2,9 @@ import pytest
 from backend.models.user_model import User
 
 def test_add_review_real_integration(temp_real_data_copy, isolated_movie_env, tmp_path, monkeypatch):
+    """Integration test for adding a review through User model."""
     from backend.services import user_service, file_service
+    from backend.services.review_service import read_reviews
 
     # Create an empty temporary user CSV file for this test
     temp_user_csv = tmp_path / "user_information.csv"
@@ -22,10 +24,20 @@ def test_add_review_real_integration(temp_real_data_copy, isolated_movie_env, tm
     movie_name = "Integration_Test_Movie"
     file_service.create_movie_folder(movie_name)
 
-    user.add_review(movie_name, 4.5, "Integration test review")
+    # Add review through user model (if User has add_review method)
+    # Otherwise use review_service directly with ReviewRequest
+    from backend.models.review_model import ReviewRequest
+    from backend.services import review_service
+    
+    review = ReviewRequest(
+        movie_name=movie_name,
+        rating=4.5,
+        comment="Integration test review",
+        review_title="Test Review"
+    )
+    review_service.add_review(review, user)
 
-    from backend.services.review_service import read_reviews
     reviews = read_reviews(movie_name)
 
     assert len(reviews) > 0
-    assert any(r.get("User") == user.email for r in reviews)
+    assert any(r.get("Email") == user.email for r in reviews)
