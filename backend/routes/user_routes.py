@@ -242,10 +242,10 @@ async def update_profile(request: UpdateProfileRequest):
             detail=str(e)
         )
 
-
+"""
 @router.post("/upload-profile-image")
 async def upload_profile_image(email: str = Form(...), profile_image: UploadFile = File(...)):
-    """Upload profile image for Banana Slug tier users."""
+    #Upload profile image for Banana Slug tier users.
     if not user_service.user_exists(email):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -258,9 +258,10 @@ async def upload_profile_image(email: str = Form(...), profile_image: UploadFile
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only Banana Slug tier users can upload profile images"
         )
+        """
     
     # Commented out image upload functionality to be implemented later when storage is set up
-    """try:
+"""try:
         success = user_service.save_profile_image(email, profile_image)
         if not success:
             raise HTTPException(

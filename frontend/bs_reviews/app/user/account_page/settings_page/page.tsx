@@ -461,21 +461,28 @@ export default function SettingsPage() {
 
             {/* Action Buttons */}
             {editing && (
-              <div className="flex space-x-4 pt-8">
-                <button
-                  onClick={handleSaveChanges}
-                  disabled={saving || !currentPassword}
-                  className="flex-1 bg-green-600 text-white font-semibold py-3 rounded hover:bg-green-700 transition disabled:bg-gray-600"
-                >
-                  {saving ? "Saving..." : "Save Changes"}
-                </button>
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="flex-1 bg-gray-600 text-white font-semibold py-3 rounded hover:bg-gray-700 transition disabled:bg-gray-700"
-                >
-                  Cancel
-                </button>
+              <div className="pt-8">
+                <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 mb-4">
+                  <p className="text-yellow-200 text-sm">
+                    ⚠️ <strong>Important:</strong> Changing your user information will sign you out. You'll need to sign in again with your updated credentials.
+                  </p>
+                </div>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleSaveChanges}
+                    disabled={saving || !currentPassword}
+                    className="flex-1 bg-green-600 text-white font-semibold py-3 rounded hover:bg-green-700 transition disabled:bg-gray-600"
+                  >
+                    {saving ? "Saving..." : "Save Changes"}
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    disabled={saving}
+                    className="flex-1 bg-gray-600 text-white font-semibold py-3 rounded hover:bg-gray-700 transition disabled:bg-gray-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>
