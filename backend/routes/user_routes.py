@@ -1,4 +1,5 @@
 # backend/routes/user_routes.py
+from typing import Optional
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr
 from backend.services import user_service
@@ -32,6 +33,15 @@ class BookmarkRequest(BaseModel):
 class SignoutRequest(BaseModel):
     """Request model for signout."""
     session_id: str
+
+
+class UpdateProfileRequest(BaseModel):
+    """Request model for updating profile"""
+    current_email: EmailStr
+    current_password: str
+    new_email: Optional[EmailStr] = None
+    new_username: Optional[str] = None
+    new_password: Optional[str] = None
 
 
 # ==================== Public Routes ====================
@@ -186,6 +196,88 @@ async def get_user_profile(
         )
 
     return {"user": user.to_dict()}
+
+
+@router.put("/update-profile")
+async def update_profile(request: UpdateProfileRequest):
+    """Update user profile (email, username, password)."""
+    try:
+        # Verify current credentials
+        user = user_service.authenticate_user(
+            email=request.current_email,
+            password=request.current_password
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Current password is incorrect"
+            )
+
+        # Check if new email is already taken
+        if request.new_email and request.new_email != request.current_email:
+            if user_service.user_exists(request.new_email):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already in use"
+                )
+
+        # Update the user
+        success = user_service.update_user_profile(
+            current_email=request.current_email,
+            new_email=request.new_email or request.current_email,
+            new_username=request.new_username,
+            new_password=request.new_password
+        )
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        return {"message": "Profile updated successfully"}
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+"""
+@router.post("/upload-profile-image")
+async def upload_profile_image(email: str = Form(...),
+profile_image: UploadFile = File(...)):
+    #Upload profile image for Banana Slug tier users.
+    if not user_service.user_exists(email):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    user = user_service.get_user_by_email(email)
+    if user.tier != User.TIER_BANANA_SLUG:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Banana Slug tier users can upload profile images"
+        )
+        """
+
+# Commented out image upload functionality to be
+# implemented later when storage is set up
+"""try:
+        success = user_service.save_profile_image(email, profile_image)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to upload image"
+            )
+        return {"message": "Profile image uploaded successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )"""
 
 # ==================== Bookmark Routes ====================
 

@@ -1,0 +1,30 @@
+import pytest
+from fastapi.testclient import TestClient
+from backend.main import app
+from backend.services import user_service
+import os
+import tempfile
+import shutil
+
+client = TestClient(app)
+
+
+# ==================== Fixtures ====================
+
+@pytest.fixture
+def temp_csv_dir():
+    """Create a temporary directory for test CSV files."""
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    # Cleanup
+    shutil.rmtree(temp_dir)
+
+
+@pytest.fixture(autouse=True)
+def reset_user_sessions():
+    """Reset user sessions before each test."""
+    user_service.user_sessions.clear()
+    user_service.session_ids.clear()
+    yield
+    user_service.user_sessions.clear()
+    user_service.session_ids.clear()
