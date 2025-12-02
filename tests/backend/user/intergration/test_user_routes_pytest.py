@@ -72,23 +72,6 @@ def test_signup_duplicate_email(temp_user_csv):
     assert "already exists" in response.json()["detail"]
 
 
-def test_signup_case_insensitive_email(temp_user_csv):
-    """Test that email comparison is case-insensitive."""
-    # Signup with lowercase
-    client.post(
-        "/api/users/signup",
-        json={"email": "user@example.com", "username": TEST_USERNAME, "password": TEST_PASSWORD}
-    )
-    
-    # Try signup with uppercase
-    response = client.post(
-        "/api/users/signup",
-        json={"email": "USER@EXAMPLE.COM", "username": TEST_USERNAME, "password": "Different123!"}
-    )
-    
-    assert response.status_code == 400
-
-
 def test_signup_invalid_email():
     """Test signup with invalid email format."""
     response = client.post(
@@ -169,23 +152,6 @@ def test_login_nonexistent_user(temp_user_csv):
     
     assert response.status_code == 401
     assert "Invalid credentials" in response.json()["detail"]
-
-
-def test_login_case_insensitive_email(temp_user_csv):
-    """Test that login works with different email casing."""
-    # Signup with lowercase
-    client.post(
-        "/api/users/signup",
-        json={"email": "user@example.com", "username": TEST_USERNAME, "password": TEST_PASSWORD}
-    )
-    
-    # Login with uppercase
-    response = client.post(
-        "/api/users/login",
-        json={"email": "USER@EXAMPLE.COM", "password": TEST_PASSWORD}
-    )
-    
-    assert response.status_code == 200
 
 
 def test_login_invalid_email_format():

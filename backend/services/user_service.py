@@ -88,7 +88,7 @@ def save_user(email: str, username: str,
 def get_user_by_email(email: str) -> Optional[User]:
     """Retrieve a user by email, returns None if not found."""
     users = read_users()
-    user_data = users.get(email.lower())
+    user_data = users.get(email)
 
     if not user_data:
         return None
