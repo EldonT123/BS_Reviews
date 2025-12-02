@@ -6,6 +6,38 @@ from datetime import datetime
 from typing import Optional, List, Dict
 from backend.services import file_service, user_service
 from backend.models.user_model import User
+from backend.routes.review_routes import ReviewRequest
+from fastapi import HTTPException, status
+
+
+RATING_LOWER_BOUND = 0
+RATING_UPPER_BOUND = 10
+
+
+def review_message_return(success: bool, review: ReviewRequest):
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update or add review"
+        )
+
+    if review.user.has_priority_reviews():
+        message = (f"🌟 Review added successfully! "
+                   f"As a {review.user.get_tier_display_name()}, "
+                   f"your review will appear first!")
+    else:
+        message = "Review added successfully!"
+
+    return {
+        "message": message,
+        "review": {
+            "email": review.user.email,
+            "username": review.user.email,
+            "rating": review.rating,
+            "comment": review.comment,
+            "review_title": review.review_title
+        }
+    }
 
 # ==================== Read Operations ====================
 
@@ -28,43 +60,36 @@ def read_reviews(movie_name: str) -> List[Dict]:
         return list(reader)
 
 
-def get_review_by_user(movie_name: str, username: str) -> Optional[Dict]:
+def get_review_by_email(movie_name: str, email: str) -> Optional[Dict]:
     """
-    Get a specific user's review for a movie.
+    Get a specific user's review for a movie by email.
     Returns None if review doesn't exist.
     """
     reviews = read_reviews(movie_name)
 
     for review in reviews:
-        if review.get("User", "").lower() == username.lower():
+        if review.get("Email", "") == email:
             return review
 
     return None
 
 
-def user_has_reviewed(movie_name: str, username: str) -> bool:
+def user_has_reviewed(movie_name: str, email: str) -> bool:
     """Check if a user has already reviewed a movie."""
-    return get_review_by_user(movie_name, username) is not None
+    return get_review_by_email(movie_name, email) is not None
 
 
 # ==================== Write Operations ====================
 
-def add_review(
-        username: str,
-        movie_name: str,
-        rating: float,
-        comment: str,
-        review_title: str = "",
-        date: str = None
-              ) -> bool:
+def add_review(review: ReviewRequest) -> bool:
     """
     Add a new review to the movie's CSV file.
     Returns True if successful, False otherwise.
     """
     # Ensure movie folder exists
-    movie_folder = file_service.get_movie_folder(movie_name)
+    movie_folder = file_service.get_movie_folder(review.movie_name)
     if not os.path.exists(movie_folder):
-        file_service.create_movie_folder(movie_name)
+        file_service.create_movie_folder(review.movie_name)
 
     path = os.path.join(movie_folder, "movieReviews.csv")
 
@@ -75,12 +100,12 @@ def add_review(
     # Prepare new review row
     new_review = {
         "Date of Review": date,
-        "User": username,
-        "Usefulness Vote": "0",
-        "Total Votes": "0",
-        "User's Rating out of 10": str(rating),
-        "Review Title": review_title,
-        "Review": comment
+        "User": review.user.username,
+        "Likes": "0",
+        "Dislikes": "0",
+        "User's Rating out of 10": str(review.rating),
+        "Review Title": review.review_title,
+        "Review": review.comment
     }
 
     # Check if file exists and has content
@@ -90,8 +115,8 @@ def add_review(
     try:
         with open(path, 'a', encoding='utf-8', newline='') as f:
             fieldnames = [
-                "Date of Review", "User", "Usefulness Vote",
-                "Total Votes", "User's Rating out of 10",
+                "Date of Review", "User", "Likes",
+                "Dislike", "User's Rating out of 10",
                 "Review Title", "Review"
             ]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -109,18 +134,12 @@ def add_review(
         return False
 
 
-def update_review(
-        username: str,
-        movie_name: str,
-        rating: float,
-        comment: str,
-        review_title: str = ""
-                 ) -> bool:
+def update_review(review: ReviewRequest) -> bool:
     """
     Update an existing review.
     Returns True if successful, False if review not found.
     """
-    reviews = read_reviews(movie_name)
+    reviews = read_reviews(review.movie_name)
 
     if not reviews:
         return False
@@ -128,10 +147,10 @@ def update_review(
     # Find and update the review
     updated = False
     for review in reviews:
-        if review.get("User", "").lower() == username.lower():
-            review["User's Rating out of 10"] = str(rating)
-            review["Review"] = comment
-            review["Review Title"] = review_title
+        if review.get("Email", "") == review.user.email:
+            review["User's Rating out of 10"] = str(review.rating)
+            review["Review"] = review.comment
+            review["Review Title"] = review.review_title
             review["Date of Review"] = datetime.now().strftime("%Y-%m-%d")
             updated = True
             break
@@ -141,7 +160,7 @@ def update_review(
 
     # Write all reviews back to CSV
     try:
-        movie_folder = file_service.get_movie_folder(movie_name)
+        movie_folder = file_service.get_movie_folder(review.movie_name)
         path = os.path.join(movie_folder, "movieReviews.csv")
 
         with open(path, "w", newline="", encoding="utf-8") as f:
@@ -161,7 +180,7 @@ def update_review(
         return False
 
 
-def delete_review(username: str, movie_name: str) -> bool:
+def delete_review(email: str, movie_name: str) -> bool:
     """
     Delete a user's review.
     Returns True if successful, False if review not found.
@@ -176,7 +195,7 @@ def delete_review(username: str, movie_name: str) -> bool:
     reviews = [
         r
         for r in reviews
-        if r.get("User", "").lower() != username.lower()
+        if r.get("Email", "") != email
     ]
 
     if len(reviews) == original_count:
@@ -189,8 +208,8 @@ def delete_review(username: str, movie_name: str) -> bool:
 
         with open(path, "w", newline="", encoding="utf-8") as f:
             fieldnames = [
-                "Date of Review", "User", "Usefulness Vote",
-                "Total Votes", "User's Rating out of 10",
+                "Date of Review", "User", "Likes",
+                "Dislikes", "User's Rating out of 10",
                 "Review Title", "Review"
             ]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -204,7 +223,7 @@ def delete_review(username: str, movie_name: str) -> bool:
         return False
 
 
-def report_review(username: str, movie_name: str, reason: str = "") -> bool:
+def report_review(email: str, movie_name: str, reason: str = "") -> bool:
     """
     Mark a user's review as reported.
     Returns True if successful, False if review not found.
@@ -217,7 +236,7 @@ def report_review(username: str, movie_name: str, reason: str = "") -> bool:
     # Find the review
     reported = False
     for review in reviews:
-        if review.get("User", "").lower() == username.lower():
+        if review.get("Email", "") == email:
             # Add or update a 'Reported' column
             review["Reported"] = "Yes"
             review["Report Reason"] = reason
@@ -234,8 +253,8 @@ def report_review(username: str, movie_name: str, reason: str = "") -> bool:
 
         # Make sure 'Reported' and 'Report Reason' are in headers
         fieldnames = [
-            "Date of Review", "User", "Usefulness Vote",
-            "Total Votes", "User's Rating out of 10",
+            "Date of Review", "User", "Likes",
+            "Dislikes", "User's Rating out of 10",
             "Review Title", "Review", "Reported", "Report Reason"
         ]
 
@@ -252,7 +271,7 @@ def report_review(username: str, movie_name: str, reason: str = "") -> bool:
 
 
 def handle_reported_review(
-        username: str, movie_name: str, action: str = "keep"
+        email: str, movie_name: str, action: str = "keep"
 ) -> bool:
     """
     Admin handles a reported review.
@@ -265,11 +284,11 @@ def handle_reported_review(
     updated = False
     for review in reviews:
         if (
-            review.get("User", "").lower() == username.lower()
+            review.get("Email", "") == email
             and review.get("Reported") == "Yes"
         ):
             if action == "remove":
-                return delete_review(username, movie_name)
+                return delete_review(email, movie_name)
             else:  # keep
                 review["Reported"] = ""
                 review["Report Reason"] = ""
@@ -283,8 +302,8 @@ def handle_reported_review(
     movie_folder = file_service.get_movie_folder(movie_name)
     path = os.path.join(movie_folder, "movieReviews.csv")
     fieldnames = [
-        "Date of Review", "User", "Usefulness Vote",
-        "Total Votes", "User's Rating out of 10",
+        "Date of Review", "User", "Likes",
+        "Dislikes", "User's Rating out of 10",
         "Review Title", "Review", "Reported", "Report Reason"
     ]
 
@@ -473,7 +492,7 @@ def validate_rating(rating: float) -> tuple[bool, Optional[str]]:
     Validate rating is within acceptable range.
     Returns (is_valid, error_message)
     """
-    if not (0 <= rating <= 10):
-        return False, "Rating must be between 0 and 10"
+    if not (RATING_LOWER_BOUND <= rating <= RATING_UPPER_BOUND):
+        return False, f"Rating must be between {RATING_LOWER_BOUND} and {RATING_UPPER_BOUND}"
 
     return True, None
