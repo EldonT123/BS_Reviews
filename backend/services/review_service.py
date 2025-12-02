@@ -464,5 +464,4 @@ def validate_rating(rating: float) -> tuple[bool, Optional[str]]:
         )
         return False, msg
 
-
     return True, None
