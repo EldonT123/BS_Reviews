@@ -45,8 +45,8 @@ def create_movie_folder(movie_name):
         with open(reviews_path, "w", encoding='utf-8', newline="") as f:
             writer = csv.writer(f)
             writer.writerow([
-                "Date of Review", "User", "Usefulness Vote",
-                "Total Votes", "User's Rating out of 10",
+                "Date of Review", "Email", "Username", "Dislikes",
+                "Likes", "User's Rating out of 10",
                 "Review Title", "Review"
             ])
     return folder_path
