@@ -67,7 +67,8 @@ async def post_review(
     # Add review
     success = review_service.add_review(review, current_user)
 
-    review_message = review_service.review_message_return(success, review, current_user)
+    review_message = review_service.review_message_return(
+        success, review, current_user)
     return review_message
 
 
@@ -91,7 +92,9 @@ async def update_review(
         )
 
     # Check if review exists
-    if not review_service.user_has_reviewed(review.movie_name, current_user.email):        raise HTTPException(
+    if not review_service.user_has_reviewed(
+            review.movie_name, current_user.email):
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=("You haven't written a review for this movie yet. "
                     "Use POST to create a new review.")
@@ -106,7 +109,8 @@ async def update_review(
             detail="Failed to update review"
         )
 
-    review_message = review_service.review_message_return(success, review, current_user)
+    review_message = review_service.review_message_return(
+        success, review, current_user)
     return review_message
 
 

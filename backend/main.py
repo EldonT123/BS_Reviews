@@ -38,17 +38,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
-    
+
     openapi_schema = get_openapi(
         title="Movie Review API",
         version="1.0.0",
         description="API for movie reviews with tiered user system",
         routes=app.routes,
     )
-    
+
     openapi_schema["components"]["securitySchemes"] = {
         "bearerAuth": {
             "type": "http",
@@ -56,12 +57,13 @@ def custom_openapi():
             "bearerFormat": "Session ID"
         }
     }
-    
+
     # Apply security to ALL routes
     openapi_schema["security"] = [{"bearerAuth": []}]
-    
+
     app.openapi_schema = openapi_schema
     return app.openapi_schema
+
 
 app.openapi = custom_openapi
 

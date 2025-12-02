@@ -458,6 +458,11 @@ def validate_rating(rating: float) -> tuple[bool, Optional[str]]:
     Returns (is_valid, error_message)
     """
     if not (RATING_LOWER_BOUND <= rating <= RATING_UPPER_BOUND):
-        return False, f"Rating must be between {RATING_LOWER_BOUND} and {RATING_UPPER_BOUND}"
+        msg = (
+            f"Rating must be between {RATING_LOWER_BOUND} "
+            f"and {RATING_UPPER_BOUND}"
+        )
+        return False, msg
+
 
     return True, None
