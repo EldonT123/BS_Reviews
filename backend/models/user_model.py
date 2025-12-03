@@ -1,26 +1,26 @@
 # backend/models/user_model.py
 """User Model - Handles user data structure"""
-from typing import Optional
+
 
 class User:
     """User data model"""
-    
+
     # Tier constants
     TIER_SNAIL = "snail"
     TIER_SLUG = "slug"
     TIER_BANANA_SLUG = "banana_slug"
-    
+
     def __init__(
-        self, 
-        email: str, 
-        username: str, 
-        password_hash: str, 
+        self,
+        email: str,
+        username: str,
+        password_hash: str,
         tier: str = TIER_SNAIL,
         tokens: int = 0
     ):
         """
         Initialize a User object.
-        
+
         Args:
             email: User's email address
             username: User's username
@@ -33,7 +33,7 @@ class User:
         self.password_hash = password_hash
         self.tier = tier
         self.tokens = tokens
-    
+
     def __repr__(self):
         return (
             f"User(email={self.email}, "
@@ -41,7 +41,7 @@ class User:
             f"tier={self.tier}, "
             f"tokens={self.tokens})"
         )
-    
+
     # ==================== Tier Checks ====================
 
     def is_snail(self) -> bool:

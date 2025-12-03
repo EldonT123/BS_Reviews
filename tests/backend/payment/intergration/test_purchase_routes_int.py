@@ -163,16 +163,19 @@ def mock_user_csv():
     def mock_save_user(email, username, password_hash, tier=User.TIER_SNAIL, tokens=0):
         user_storage.add_user(email, username, password_hash, tier, tokens)
 
-    def fake_open(file, mode='r', *args, **kwargs):
-        # If opened for read, return current in-memory CSV
-        if 'r' in mode:
-            return StringIO(user_storage.to_csv())
-        # If opened for write/append, return a StringIO that drops writes (prevents disk)
-        return StringIO()
+    def mock_rewrite_user_csv(users):
+        """Mock rewrite_user_csv to update in-memory storage instead of disk."""
+        # Clear current storage
+        user_storage.clear()
+        # Add all users back
+        for email, (username, password_hash, tier, tokens) in users.items():
+            user_storage.add_user(email, username, password_hash, tier, tokens)
 
     with patch('backend.services.user_service.read_users', side_effect=mock_read_users), \
          patch('backend.services.user_service.save_user', side_effect=mock_save_user), \
-         patch('backend.services.user_service.ensure_user_csv_exists'):
+         patch('backend.services.user_service.rewrite_user_csv', side_effect=mock_rewrite_user_csv), \
+         patch('backend.services.user_service.ensure_user_csv_exists'), \
+         patch('builtins.open', mock_open()):
         yield
 
 
