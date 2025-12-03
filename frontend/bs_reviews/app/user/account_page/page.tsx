@@ -119,7 +119,7 @@ export default function AccountPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 bg-black/90 shadow-md sticky top-0 z-10">
         <div className="flex items-center space-x-4">
-          <Link href="/user/landing_page">
+          <Link href="/">
             <Image
               src="/bs_reviews_logo.png"
               alt="BS Reviews Logo"
