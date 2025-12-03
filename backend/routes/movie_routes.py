@@ -1,7 +1,10 @@
+import asyncio
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 import os
 import json
+
+from backend.services.external_api_service import get_first_valid_watchmode_id, get_movie_details
 
 router = APIRouter()
 
@@ -24,12 +27,22 @@ async def get_top_movies():
                 with open(metadata_path, "r") as f:
                     data = json.load(f)
 
+                title = data.get("title", folder)
+
+                # === Fetch external poster URL ===
+                wm_id = get_first_valid_watchmode_id(title)
+                poster_url = None
+
+                if wm_id:
+                    details = await asyncio.to_thread(get_movie_details, wm_id)
+                    poster_url = details.get("poster_url")
+
                 movies.append({
-                    "title": data.get("title", folder),
+                    "title": title,
                     "movieIMDbRating": float(data.get("movieIMDbRating", 0)),
-                    "posterPath":
-                    f"http://localhost:8000/movies/poster/{folder}"
+                    "posterPath": poster_url or f"http://localhost:8000/movies/poster/{folder}"
                 })
+
             except Exception as e:
                 print(f"Error reading metadata for {folder}: {e}")
 
@@ -50,12 +63,22 @@ async def get_most_commented_movies():
                 with open(metadata_path, "r") as f:
                     data = json.load(f)
 
+                title = data.get("title", folder)
+
+                # === Fetch external poster URL ===
+                wm_id = get_first_valid_watchmode_id(title)
+                poster_url = None
+
+                if wm_id:
+                    details = await asyncio.to_thread(get_movie_details, wm_id)
+                    poster_url = details.get("poster_url")
+
                 movies.append({
-                    "title": data.get("title", folder),
+                    "title": title,
                     "commentCount": data.get("commentCount", 0),
-                    "posterPath":
-                    f"http://localhost:8000/movies/poster/{folder}"
+                    "posterPath": poster_url or f"http://localhost:8000/movies/poster/{folder}"
                 })
+
             except Exception as e:
                 print(f"Error reading metadata for {folder}: {e}")
 
