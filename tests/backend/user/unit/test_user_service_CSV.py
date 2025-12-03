@@ -1,12 +1,9 @@
-"""Tests for user authentication routes and services."""
-import pytest
+"""Tests for user authentication routes and services.
+Mocking not added to test fastapi"""
 from fastapi.testclient import TestClient
-from pathlib import Path
-import csv
 from backend.main import app
 from backend.services import user_service
 from backend.models.user_model import User
-from backend.services.user_service import USER_CSV_PATH
 
 client = TestClient(app)
 
@@ -16,14 +13,17 @@ TEST_PASSWORD = "ValidPass123!"
 
 # ==================== UNIT TESTS - CSV Operations ====================
 
+
 def test_read_users_empty_file(temp_user_csv):
-    """Test reading from empty CSV file."""
+    """Unit test - Edge case:
+    Test reading from empty CSV file."""
     users = user_service.read_users()
     assert users == {}
 
 
 def test_read_users_with_data(temp_user_csv):
-    """Test reading users from populated CSV."""
+    """Unit test - Positive path:
+    Test reading users from populated CSV."""
     # Add test users
     user_service.save_user("user1@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SNAIL)
     user_service.save_user("user2@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
@@ -66,6 +66,7 @@ def test_get_user_by_email(temp_user_csv):
 
 
 def test_get_user_by_email_not_found(temp_user_csv):
-    """Test that get_user_by_email returns None for non-existent user."""
+    """Unit test - Edge case:
+    Test that get_user_by_email returns None for non-existent user."""
     user = user_service.get_user_by_email("doesnotexist@test.com")
     assert user is None

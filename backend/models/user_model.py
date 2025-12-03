@@ -76,7 +76,8 @@ class User:
             )
 
         from backend.services.review_service import add_review
-        add_review(self.email, movie_name, rating, comment)
+        # Added 'return' to make test pass
+        return add_review(self.email, movie_name, rating, comment)
 
     def upgrade_tier(self, new_tier: str) -> bool:
         """Upgrade user to a new tier (admin function)."""

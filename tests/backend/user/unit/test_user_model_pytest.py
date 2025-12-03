@@ -1,5 +1,6 @@
 """Tests for User model."""
 import pytest
+from unittest.mock import patch
 from backend.models.user_model import User
 
 TEST_EMAIL = "test@email.com"
@@ -7,7 +8,8 @@ TEST_USERNAME = "testuser"
 TEST_PASSWORD = "pass123!"
 
 def test_user_repr():
-    """Test User repr method."""
+    """Unit test - Positive path:
+    Test User repr method."""
     user = User(
         email=TEST_EMAIL,
         username=TEST_USERNAME,
@@ -28,16 +30,38 @@ def test_user_tier_display():
     assert "Slug" in slug.get_tier_display_name()
     assert "Banana Slug" in banana.get_tier_display_name()
 
+# ==================== UNIT TESTS - Review Operations ====================
+
+
+@patch("backend.services.review_service.add_review")
+def test_add_review_delegates(mock_add_review):
+    """Unit test - Positive path:
+    Test that add_review delegates to review_service."""
+    mock_add_review.return_value = True
+
+    # Create a user with Slug tier (can write reviews)
+    user = User(TEST_EMAIL, TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
+
+    # Act
+    result = user.add_review("Test_Movie", 4.5, "Great movie!")
+
+    # Assert delegation
+    mock_add_review.assert_called_once_with(
+        user.email, "Test_Movie", 4.5, "Great movie!")
+    assert result is True
+
 
 def test_add_review_permission_denied():
-    """Test that Snail tier cannot write reviews."""
+    """Unit test - Edge case:
+    Test that Snail tier cannot write reviews."""
     snail = User("snail@test.com", "hash", User.TIER_SNAIL)
-    
+
     with pytest.raises(ValueError, match="cannot write reviews"):
         snail.add_review("Test_Movie", 5.0, "Trying to review")
 
 
-# ==================== UNIT TESTS - Permission Assertion Check's ====================
+# ============== UNIT TESTS - Permission Assertion Check's ============
+
 
 def test_user_tier_checks():
     """Users should correctly report their tier type through helper methods."""
@@ -71,12 +95,12 @@ def test_user_permissions():
     assert snail.can_browse() is True
     assert slug.can_browse() is True
     assert banana.can_browse() is True
-    
+
     # Only Slug+ can write reviews
     assert snail.can_write_reviews() is False
     assert slug.can_write_reviews() is True
     assert banana.can_write_reviews() is True
-    
+
     # Only Banana Slugs have priority
     assert snail.has_priority_reviews() is False
     assert slug.has_priority_reviews() is False

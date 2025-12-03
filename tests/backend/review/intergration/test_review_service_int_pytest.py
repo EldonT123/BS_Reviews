@@ -86,7 +86,11 @@ def test_user_3(isolated_movie_env):
 
 
 def test_add_multiple_reviews_and_average(isolated_movie_env, test_user, test_user_2, test_user_3):
-    """Test adding multiple reviews and calculating average."""
+    """
+    Unit test - positive path / core logic
+    Test adding multiple reviews and calculating average
+    using isolated movie environment
+    """
     movie_name = "anymovie"
 
     # Create the movie folder first
@@ -127,7 +131,9 @@ def test_add_multiple_reviews_and_average(isolated_movie_env, test_user, test_us
 
 
 def test_read_reviews_with_real_data(temp_real_data_copy):
-    """Integration test: Read reviews from real data copy."""
+    """Integration test - Positive path:
+    Read reviews from real data copy.
+    """
     # Find an existing movie folder
     existing_movie = None
     for item in temp_real_data_copy.iterdir():
@@ -145,7 +151,8 @@ def test_read_reviews_with_real_data(temp_real_data_copy):
 
 
 def test_add_review_to_real_data(temp_real_data_copy, test_user):
-    """Integration test: Add review to existing movie from real data copy."""
+    """Integration test: Positive path / Real write
+    Add review to existing movie from real data copy."""
     # Find an existing movie folder
     existing_movie = None
     for item in temp_real_data_copy.iterdir():
@@ -191,7 +198,8 @@ def test_add_review_to_real_data(temp_real_data_copy, test_user):
 
 
 def test_review_with_special_characters(isolated_movie_env):
-    """Test adding reviews with special characters and unicode."""
+    """Unit test - Edge case / Unicode and special characters:
+    Test adding reviews with special characters and unicode."""
     movie_name = "test_movie"
     file_service.create_movie_folder(movie_name)
 
