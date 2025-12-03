@@ -34,18 +34,36 @@ class MovieDetails(BaseModel):
 # ==================== Routes ====================
 
 @router.get(
-    "/movie/{movie_id}",
+    "/movie/{movie_identifier}",
     response_model=MovieDetails,
     summary="Get movie details from Watchmode external API"
 )
-async def get_movie_external(movie_id: str):
+async def get_movie_external(movie_identifier: str):
     """
     Get movie details including poster, streaming services, prices,
     and trailer.
+    
+    Accepts either a database movie ID or a movie name. Converts to
+    Watchmode ID internally.
     """
+    # Step 1: Convert movie_identifier to Watchmode ID
+    # Here we assume movie_identifier could be a name if it's not a valid Watchmode ID
+    watchmode_id = movie_identifier
+
+    # Optional: try to detect if it's not a numeric Watchmode ID
+    if not movie_identifier.isdigit():
+        # Treat as a movie name
+        watchmode_id = external_api_service.get_first_valid_watchmode_id(movie_identifier)
+        if not watchmode_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Could not find Watchmode ID for '{movie_identifier}'"
+            )
+
+    # Step 2: Fetch movie details
     result = await asyncio.to_thread(
         external_api_service.get_movie_details,
-        movie_id
+        watchmode_id
     )
 
     if "error" in result:
