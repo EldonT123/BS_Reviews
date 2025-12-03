@@ -4,12 +4,12 @@ from typing import Optional
 from backend.services import admin_service
 
 
-async def verify_admin_token(x_admin_token: Optional[str] = Header(None)):
+async def verify_admin_token(authorization: Optional[str] = Header(None)):
     """
     Dependency to verify admin authentication token.
 
     Args:
-        x_admin_token: Admin token from request header
+        authorization: Authorization header with Bearer token (e.g., "Bearer <token>")
 
     Returns:
         Admin object if authenticated
@@ -17,16 +17,32 @@ async def verify_admin_token(x_admin_token: Optional[str] = Header(None)):
     Raises:
         HTTPException: If token is missing or invalid
     """
-    if not x_admin_token:
+    if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Admin authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Extract token from "Bearer <token>" format
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication scheme. Use Bearer token.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format. Use 'Bearer <token>'",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         # Verify token and get admin
-        admin = admin_service.verify_admin_token(x_admin_token)
+        admin = admin_service.verify_admin_token(token)
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
