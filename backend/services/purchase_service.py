@@ -246,8 +246,11 @@ def process_purchase_with_tokens(
     # Check if user has sufficient tokens
     user_tokens = user.tokens if user.tokens else 0
     if user_tokens < purchase_item.price_tokens:
-        return False, f"Insufficient tokens. You have {
-            user_tokens} but need {purchase_item.price_tokens}", None
+        error_msg = (
+            f"Insufficient tokens. You have {user_tokens} "
+            f"but need {purchase_item.price_tokens}"
+        )
+        return False, error_msg, None
 
     # Create purchase record
     purchase = Purchase(
