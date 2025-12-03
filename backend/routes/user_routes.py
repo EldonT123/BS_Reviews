@@ -215,7 +215,7 @@ async def update_profile(request: UpdateProfileRequest):
             )
 
         # Check if new email is already taken
-        if request.new_email and request.new_email != request.current_email:
+        if (request.new_email and request.new_email != request.current_email):
             if user_service.user_exists(request.new_email):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -361,4 +361,14 @@ async def check_bookmark(email: str, movie_title: str):
         "email": email,
         "movie_title": movie_title,
         "bookmarked": bookmarked
+    }
+# Add this to user_routes.py
+
+
+@router.get("/tokens/balance")
+async def get_token_balance(current_user: User = Depends(get_current_user)):
+    """Get current user's token balance - requires authentication"""
+    return {
+        "email": current_user.email,
+        "tokens": current_user.tokens
     }

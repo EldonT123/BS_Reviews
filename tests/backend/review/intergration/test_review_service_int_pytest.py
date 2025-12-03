@@ -1,27 +1,49 @@
 """Tests for review_service module."""
 import pytest  # noqa: F401
+import os,tempfile,shutil
 from pathlib import Path  # noqa: F401
 from backend.services import review_service, file_service, user_service
 from backend.models.review_model import ReviewRequest
 from backend.models.user_model import User
 
+@pytest.fixture
+def isolated_user_service():
+    """
+    Ensure user service operations don't affect real data.
+    Mock the CSV paths to use temporary files.
+    """
+    import tempfile
+    import os
+    from unittest.mock import patch
+    
+    # Create temporary directory for test data
+    temp_dir = tempfile.mkdtemp()
+    temp_user_csv = os.path.join(temp_dir, "test_users.csv")
+    temp_bookmark_csv = os.path.join(temp_dir, "test_bookmarks.csv")
+    
+    with patch('backend.services.user_service.USER_CSV_PATH', temp_user_csv), \
+         patch('backend.services.user_service.BOOKMARK_CSV_PATH', temp_bookmark_csv):
+        yield
+    
+    # Cleanup
+    import shutil
+    try:
+        shutil.rmtree(temp_dir)
+    except:
+        pass
 
 @pytest.fixture
-def test_user(isolated_movie_env):
+def test_user(isolated_movie_env, isolated_user_service):
     """Create a test user for reviews."""
     email = "test@example.com"
-    
-    # Clean up if user exists from previous test
-    existing_user = user_service.get_user_by_email(email)
-    if existing_user:
-        user_service.delete_user(email)
     
     # Create a user with Slug tier (can write reviews)
     user = user_service.create_user(
         email=email,
         username="test_user",
         password="password123",
-        tier=User.TIER_SLUG
+        tier=User.TIER_SLUG,
+        tokens=0
     )
     
     yield user
@@ -34,20 +56,16 @@ def test_user(isolated_movie_env):
 
 
 @pytest.fixture
-def test_user_2(isolated_movie_env):
+def test_user_2(isolated_movie_env, isolated_user_service):
     """Create a second test user."""
     email = "test2@example.com"
-    
-    # Clean up if user exists
-    existing_user = user_service.get_user_by_email(email)
-    if existing_user:
-        user_service.delete_user(email)
     
     user = user_service.create_user(
         email=email,
         username="test_user_2",
         password="password123",
-        tier=User.TIER_SLUG
+        tier=User.TIER_SLUG,
+        tokens=0
     )
     
     yield user
@@ -60,20 +78,16 @@ def test_user_2(isolated_movie_env):
 
 
 @pytest.fixture
-def test_user_3(isolated_movie_env):
+def test_user_3(isolated_movie_env, isolated_user_service):
     """Create a third test user."""
     email = "test3@example.com"
-    
-    # Clean up if user exists
-    existing_user = user_service.get_user_by_email(email)
-    if existing_user:
-        user_service.delete_user(email)
     
     user = user_service.create_user(
         email=email,
         username="test_user_3",
         password="password123",
-        tier=User.TIER_SLUG
+        tier=User.TIER_SLUG,
+        tokens=0
     )
     
     yield user
@@ -83,6 +97,15 @@ def test_user_3(isolated_movie_env):
         user_service.delete_user(email)
     except:
         pass
+
+
+@pytest.fixture(autouse=True)
+def cleanup_review_files():
+    """Ensure review files are properly closed and cleaned up."""
+    yield
+    # Force garbage collection to close any open file handles
+    import gc
+    gc.collect()
 
 
 def test_add_multiple_reviews_and_average(isolated_movie_env, test_user, test_user_2, test_user_3):

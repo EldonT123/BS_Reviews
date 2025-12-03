@@ -3,12 +3,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import TokenBalance from "@/components/TokenBalance";
 
 type User = {
   email: string;
   username: string;
   tier: string;
   tier_display_name: string;
+  tokens?: number;
 };
 
 export default function SettingsPage() {
@@ -249,6 +251,7 @@ export default function SettingsPage() {
             placeholder="Search movies, TV, actors..."
             className="bg-gray-800 text-gray-300 placeholder-gray-500 rounded-md px-4 py-2 focus:outline-yellow-400 focus:ring-1 focus:ring-yellow-400 w-48 sm:w-64"
           />
+          <TokenBalance tokens={user.tokens || 0} />
           <Link
             href="/user/account_page"
             className="bg-yellow-400 text-black font-semibold px-4 py-2 rounded hover:bg-yellow-500 transition"
