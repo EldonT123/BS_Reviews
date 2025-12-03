@@ -85,7 +85,7 @@ def test_user_3(isolated_movie_env):
         pass
 
 
-def test_add_multiple_reviews_and_average(isolated_movie_env):
+def test_add_multiple_reviews_and_average(isolated_movie_env, test_user, test_user_2, test_user_3):
     """
     Unit test - positive path / core logic
     Test adding multiple reviews and calculating average

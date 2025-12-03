@@ -11,8 +11,10 @@ TEST_MOVIE = "Test_Movie"
 def test_get_movie_folder_path():
     """ Unit test positive path:
     Tests path building logic is correct"""
+    import os
     result = file_service.get_movie_folder(TEST_MOVIE)
-    assert result == "/fake/db\\Test_Movie"
+    expected = os.path.join("/fake/db", TEST_MOVIE)
+    assert result == expected
 
 
 """Integration test - creates real files/folders in a temporary directories
