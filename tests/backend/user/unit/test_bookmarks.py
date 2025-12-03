@@ -1,10 +1,11 @@
-import os
-import csv 
+"""Test for movie bookmark functionality in user_service."""
+import csv
 import tempfile
 import pytest
 
 # important service youre testing
 from backend.services import user_service
+
 
 @pytest.fixture
 # Fixture/ Environment Setup
@@ -26,8 +27,8 @@ def temp_user_and_bookmark_files(monkeypatch):
     with open(temp_bookmarks.name, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["user_email", "movie_title"])
-    
-    #monkeypatch service constants 
+
+    # Monkeypatch service constants
     monkeypatch.setattr(user_service, "USER_CSV_PATH", temp_users.name)
     monkeypatch.setattr(user_service, "BOOKMARK_CSV_PATH", temp_bookmarks.name)
 
@@ -39,9 +40,7 @@ def temp_user_and_bookmark_files(monkeypatch):
 
 
 def create_test_user(temp_user_and_bookmark_files):
-    """
-    Creates a test user in the temp CSV.
-    """
+    """Fixture: Creates a test user in the temp CSV."""
     user_service.create_user(
         email="test@example.com",
         username="testuser",
@@ -56,7 +55,8 @@ def create_test_user(temp_user_and_bookmark_files):
 
 
 def test_add_bookmark(create_test_user):
-    """Test adding a new bookmark."""
+    """Unit test - Positive path:
+    Test adding a new bookmark."""
     result = user_service.add_bookmark("test@example.com", "Avengers Endgame")
     assert result is True
 
@@ -69,7 +69,8 @@ def test_add_bookmark(create_test_user):
 
 
 def test_add_duplicate_bookmark(create_test_user):
-    """Adding the same movie again should fail."""
+    """Unit test - Edge case:
+    Adding the same movie again should fail."""
     user_service.add_bookmark("test@example.com", "Avengers Endgame")
     result = user_service.add_bookmark("test@example.com", "Avengers Endgame")
 
@@ -81,10 +82,12 @@ def test_add_duplicate_bookmark(create_test_user):
 # Functional test and File I/O integration test
 
 def test_remove_bookmark(create_test_user):
-    """Removing a bookmark should work."""
+    """Unit test - Positive path:
+    Removing a bookmark should work."""
     user_service.add_bookmark("test@example.com", "Avengers Endgame")
 
-    result = user_service.remove_bookmark("test@example.com", "Avengers Endgame")
+    result = user_service.remove_bookmark(
+        "test@example.com", "Avengers Endgame")
     assert result is True
 
     bookmarks = user_service.get_user_bookmarks("test@example.com")
@@ -94,25 +97,31 @@ def test_remove_bookmark(create_test_user):
 # Functional test (ensure correct boolean return behaviour)
 
 def test_remove_missing_bookmark(create_test_user):
-    """Removing a non-existent bookmark should return False."""
-    result = user_service.remove_bookmark("test@example.com", "Thor Ragnarok")
+    """Unit test - Edge case:
+    Removing a non-existent bookmark should return False."""
+    result = user_service.remove_bookmark(
+        "test@example.com", "Thor Ragnarok")
     assert result is False
 
 # Unit test (logic checks boolean result),
 # Functional Test (verifies lookup behaviour)
 
 def test_is_bookmarked(create_test_user):
-    """Check if bookmark exists."""
+    """Unit test - Positive/Edge check:
+    Check if bookmark exists."""
     user_service.add_bookmark("test@example.com", "Avengers Endgame")
 
-    assert user_service.is_bookmarked("test@example.com", "Avengers Endgame") is True
-    assert user_service.is_bookmarked("test@example.com", "Thor Ragnarok") is False
+    assert user_service.is_bookmarked(
+        "test@example.com", "Avengers Endgame") is True
+    assert user_service.is_bookmarked(
+        "test@example.com", "Thor Ragnarok") is False
 
 # Functional tests (returns full lists of bookmarks)
 # File I/O integration test
 
 def test_get_bookmarks(create_test_user):
-    """Should return all bookmarked movie titles."""
+    """Unit test/ Positive path:
+    Should return all bookmarked movie titles."""
     user_service.add_bookmark("test@example.com", "Avengers Endgame")
     user_service.add_bookmark("test@example.com", "Forrest Gump")
 

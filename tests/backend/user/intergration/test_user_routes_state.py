@@ -8,14 +8,14 @@ from backend.services import user_service
 
 @pytest.fixture
 def client():
-    """Create a test client."""
+    """Fixture: Create a test client."""
     from backend.main import app
     return TestClient(app)
 
 
 @pytest.fixture(autouse=True)
 def clear_sessions():
-    """Clear session storage before each test."""
+    """Fixture: Clear session storage before each test."""
     user_service.user_sessions.clear()
     user_service.session_ids.clear()
     yield
@@ -36,11 +36,13 @@ def mock_slug_user():
 
 # ==================== Login Tests ====================
 
+
 class TestLogin:
     """Tests for /api/login endpoint with session ID."""
 
     def test_login_returns_session_id(self, client, mock_user):
-        """Test that login returns a session ID and revokes old sessions."""
+        """Positive path: Test that login returns
+        a session ID and revokes old sessions."""
         with patch(
             'backend.services.user_service.authenticate_user'
         ) as mock_auth:
@@ -63,15 +65,12 @@ class TestLogin:
             assert "token" not in data  # Should NOT return token
 
     def test_login_revokes_existing_sessions(self, client, mock_user):
-        """Test that login revokes all existing sessions for the user."""
+        """Positive path: Test that login
+        revokes all existing sessions for the user."""
         with patch(
             'backend.services.user_service.authenticate_user'
-        ) as mock_auth, \
-             patch(
-            'backend.services.user_service.revoke_all_user_sessions'
-        ) as mock_revoke:
+        )as mock_auth:
             mock_auth.return_value = (mock_user, "new_session")
-
             response = client.post(
                 "/api/users/login",
                 json={
@@ -79,11 +78,10 @@ class TestLogin:
                     "password": "password123"
                 }
             )
-
             assert response.status_code == 200
 
     def test_login_invalid_credentials(self, client):
-        """Test login with invalid credentials."""
+        """Negative path: Test login with invalid credentials."""
         with patch(
             'backend.services.user_service.authenticate_user'
         ) as mock_auth:
@@ -107,7 +105,7 @@ class TestCheckSession:
     """Tests for /api/users/check-session/{session_id} endpoint."""
 
     def test_check_valid_session(self, client, mock_user):
-        """Test checking a valid session ID."""
+        """Positive path: Test checking a valid session ID."""
         with patch(
             'backend.services.user_service.verify_session_id'
         ) as mock_verify:
@@ -122,7 +120,7 @@ class TestCheckSession:
             assert data["user"]["email"] == "test@example.com"
 
     def test_check_invalid_session(self, client):
-        """Test checking an invalid session ID."""
+        """Negative path: Test checking an invalid session ID."""
         with patch(
             'backend.services.user_service.verify_session_id'
         ) as mock_verify:
@@ -134,7 +132,7 @@ class TestCheckSession:
             assert "Invalid or expired session" in response.json()["detail"]
 
     def test_check_session_with_url_parameter(self, client, mock_user):
-        """Test that session ID is passed via URL."""
+        """Edge case: Test that session ID is passed via URL."""
         with patch(
             'backend.services.user_service.verify_session_id'
         ) as mock_verify:
@@ -149,15 +147,16 @@ class TestCheckSession:
 
 # ==================== Signout Tests ====================
 
+
 class TestSignout:
     """Tests for /api/users/signout endpoint with session ID."""
 
     def test_signout_success_with_auth(self, client, mock_user):
-        """Test successful signout with valid authentication."""
+        """Positive path: Test successful signout with valid authentication."""
         with patch(
             'backend.services.user_service.verify_session_id'
         ) as mock_verify, \
-             patch(
+            patch(
             'backend.services.user_service.signout_user'
         ) as mock_signout:
             mock_verify.return_value = mock_user
@@ -175,7 +174,7 @@ class TestSignout:
             mock_signout.assert_called_once_with("abc123XY")
 
     def test_signout_without_auth_header(self, client):
-        """Test signout fails without Authorization header."""
+        """Negative pathTest signout fails without Authorization header."""
         response = client.post(
             "/api/users/signout",
             json={"session_id": "abc123XY"}
@@ -185,7 +184,7 @@ class TestSignout:
         assert "Not authenticated" in response.json()["detail"]
 
     def test_signout_with_invalid_session(self, client):
-        """Test signout with invalid session in header."""
+        """Negative path: Test signout with invalid session in header."""
         with patch(
             'backend.services.user_service.verify_session_id'
         ) as mock_verify:
@@ -207,7 +206,8 @@ class TestUserWorkflow:
     """Tests for complete user workflow with session IDs."""
 
     def test_complete_authenticated_workflow(self, client, mock_user):
-        """Test complete user workflow: login -> check profile -> signout."""
+        """Positive path: Test complete user workflow:
+        login -> check profile -> signout."""
         session_id = "session123"
 
         # Step 1: Login
@@ -238,13 +238,14 @@ class TestUserWorkflow:
                 headers={"Authorization": f"Bearer {session_id}"}
             )
             assert profile_response.status_code == 200
-            assert profile_response.json()["user"]["email"] == "test@example.com"
+            assert profile_response.json()[
+                "user"]["email"] == "test@example.com"
 
         # Step 3: Sign out
         with patch(
             'backend.services.user_service.verify_session_id'
         ) as mock_verify, \
-             patch(
+            patch(
             'backend.services.user_service.signout_user'
         ) as mock_signout:
             mock_verify.return_value = mock_user
@@ -270,7 +271,7 @@ class TestUserWorkflow:
             assert profile_response.status_code == 401
 
     def test_multiple_logins_different_session_ids(self, client, mock_user):
-        """Test that multiple logins create different session IDs."""
+        """Edge case: Test that multiple logins create different session IDs"""
         session_ids = []
 
         for i in range(3):

@@ -426,6 +426,45 @@ def delete_user(email: str) -> bool:
 
     return True
 
+
+def update_user_profile(
+    current_email: str,
+    new_email: str,
+    new_username: Optional[str] = None,
+    new_password: Optional[str] = None
+) -> bool:
+
+    users = read_users()
+    current_email_lower = current_email.lower()
+
+    if current_email_lower not in users:
+        return False
+
+    username, password_hash, tier = users[current_email_lower]
+
+    # Update with new values or keep existing
+    updated_username = new_username if new_username else username
+    updated_password = hash_password(
+        new_password) if new_password else password_hash
+    new_email_lower = new_email.lower()
+
+    # Delete old entry
+    del users[current_email_lower]
+
+    # Add updated entry with potentially new email
+    users[new_email_lower] = (updated_username, updated_password, tier)
+
+    # Rewrite CSV
+    ensure_user_csv_exists()
+    with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["user_email", "username",
+                        "user_password", "user_tier"])
+        for user_email, (username, pwd_hash, tier) in users.items():
+            writer.writerow([user_email, username, pwd_hash, tier])
+
+    return True
+
 # ==================== Bookmark Operations ====================
 # Retrieve bookmarks
 

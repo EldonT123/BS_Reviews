@@ -1,35 +1,45 @@
 "use client";
-
 import { useState } from 'react';
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
-// A simple login page component with email and password fields
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
-        const response = await fetch("http://localhost:8000/api/users/login", {
+      const response = await fetch("http://localhost:8000/api/users/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
-        });
+      });
 
-        if (!response.ok) {
+      if (!response.ok) {
         const data = await response.json();
         alert(data.detail || "Login failed");
+        setLoading(false);
         return;
-        }
+      }
 
-        router.push("/user/landing_page"); // or your landing page
+      const data = await response.json();
+      
+      // Save session_id to localStorage
+      localStorage.setItem("sessionId", data.session_id);
+      
+      // Redirect to landing page
+      router.push("/user/landing_page");
     } catch (error) {
-        alert("Login error, please try again.");
+      alert("Login error, please try again.");
+      setLoading(false);
     }
-};
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       {/* Header Home Button */}
@@ -74,9 +84,12 @@ export default function LoginPage() {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600"
+            disabled={loading}
+            className={`w-full p-2 rounded-md text-white ${
+              loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
+            }`}
           >
-            Sign In
+            {loading ? "Signing in..." : "Sign In"}
           </button>
           <Link
             href="/login/signup"

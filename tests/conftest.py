@@ -7,7 +7,7 @@ from pathlib import Path
 import random
 from backend.services import file_service
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def clean_test_data():
     """Clear and recreate movie data folder before each test."""
     data_path = os.path.join("backend", "data", "movies")
@@ -129,14 +129,14 @@ def temp_user_csv(tmp_path, monkeypatch):
 def temp_admin_csv(tmp_path, monkeypatch):
     """Create a temporary admin CSV file for isolated testing."""
     from backend.services import admin_service
-    
+
     # Create a temporary CSV file
     temp_csv = tmp_path / "admin_information.csv"
     temp_csv.write_text("admin_email,admin_password\n")
-    
+
     # Patch the ADMIN_CSV_PATH to use our temporary file
     monkeypatch.setattr(admin_service, "ADMIN_CSV_PATH", str(temp_csv))
-    
+
     yield str(temp_csv)
 
 
@@ -147,13 +147,13 @@ def fresh_movie_folder_with_metadata(temp_real_data_copy, tmp_path):
     movie_folders = [f for f in temp_real_data_copy.iterdir() if f.is_dir() and (f / "metadata.json").exists()]
     if not movie_folders:
         pytest.skip("No movie folders with metadata.json found in real data copy")
-    
+
     original_folder = movie_folders[0]
     fresh_folder = tmp_path / original_folder.name
-    
+
     # Copy entire movie folder to a fresh temp folder
     shutil.copytree(original_folder, fresh_folder)
-    
+
     yield fresh_folder
 
 
@@ -167,13 +167,13 @@ def anymovie_temp_folder(tmp_path):
         Path('app/database/archive'),
         Path('database/archive')
     ]
-    
+
     real_data_path = None
     for path in possible_paths:
         if path.exists() and any(path.iterdir()):
             real_data_path = path
             break
-    
+
     # Check if real data exists; skip test if not
     if not real_data_path:
         pytest.skip("Real data archive not found or empty")
@@ -182,7 +182,7 @@ def anymovie_temp_folder(tmp_path):
     movie_folders = [f for f in real_data_path.iterdir() if f.is_dir()]
     if not movie_folders:
         pytest.skip("No movie folders found in archive")
-    
+
     selected_folder = random.choice(movie_folders)
 
     # Destination folder inside tmp_path (named "anymovie")

@@ -1,12 +1,9 @@
 """Tests for user authentication routes and services."""
-import pytest
 from fastapi.testclient import TestClient
 from pathlib import Path
 import csv
 from backend.main import app
-from backend.services import user_service
 from backend.models.user_model import User
-from backend.services.user_service import USER_CSV_PATH
 
 client = TestClient(app)
 
@@ -17,7 +14,9 @@ TEST_ADMIN_PASSWORD = "AdminPass123!"
 
 # ==================== HELPER FUNCTIONS ====================
 
-def create_admin_and_get_token(email="admin@example.com", password=TEST_ADMIN_PASSWORD):
+
+def create_admin_and_get_token(
+        email="admin@example.com", password=TEST_ADMIN_PASSWORD):
     """Helper function to create admin and return authentication token."""
     response = client.post(
         "/api/admin/signup",
@@ -39,13 +38,14 @@ def get_auth_headers(token):
 
 # ==================== INTEGRATION TESTS - Signup Endpoint ====================
 
+
 def test_signup_success(temp_user_csv):
-    """Test successful user signup."""
+    """Positive path: Test successful user signup."""
     response = client.post(
         "/api/users/signup",
         json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
@@ -55,35 +55,35 @@ def test_signup_success(temp_user_csv):
 
 
 def test_signup_duplicate_email(temp_user_csv):
-    """Test signup fails with duplicate email."""
+    """Negative path: Test signup fails with duplicate email."""
     # First signup
     client.post(
         "/api/users/signup",
         json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
     )
-    
+
     # Second signup with same email
     response = client.post(
         "/api/users/signup",
         json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": "DifferentPass456!"}
     )
-    
+
     assert response.status_code == 400
     assert "already exists" in response.json()["detail"]
 
 
 def test_signup_invalid_email():
-    """Test signup with invalid email format."""
+    """Edge case: Test signup with invalid email format."""
     response = client.post(
         "/api/users/signup",
         json={"email": "not-an-email", "username": TEST_USERNAME, "password": TEST_PASSWORD}
     )
-    
+
     assert response.status_code == 422
 
 
 def test_signup_missing_password():
-    """Test signup with missing password field."""
+    """Edge case: Test signup with missing password field."""
     response = client.post(
         "/api/users/signup",
         json={"email": TEST_EMAIL, "username": TEST_USERNAME}
@@ -98,26 +98,27 @@ def test_signup_missing_username():
         "/api/users/signup",
         json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
-    
+
     assert response.status_code == 422
 
 
 # ==================== INTEGRATION TESTS - Login Endpoint ====================
 
+
 def test_login_success(temp_user_csv):
-    """Test successful login with correct credentials."""
+    """Positive path: Test successful login with correct credentials."""
     # Create user first
     client.post(
         "/api/users/signup",
         json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
     )
-    
+
     # Now login
     response = client.post(
         "/api/users/login",
         json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
@@ -126,45 +127,46 @@ def test_login_success(temp_user_csv):
 
 
 def test_login_wrong_password(temp_user_csv):
-    """Test login fails with wrong password."""
+    """Negative path: Test login fails with wrong password."""
     # Create user
     client.post(
         "/api/users/signup",
         json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
     )
-    
+
     # Try login with wrong password
     response = client.post(
         "/api/users/login",
         json={"email": TEST_EMAIL, "password": "WrongPassword456!"}
     )
-    
+
     assert response.status_code == 401
     assert "Invalid credentials" in response.json()["detail"]
 
 
 def test_login_nonexistent_user(temp_user_csv):
-    """Test login fails for non-existent user."""
+    """Negative path: Test login fails for non-existent user."""
     response = client.post(
         "/api/users/login",
         json={"email": "nonexistent@example.com", "password": TEST_PASSWORD}
     )
-    
+
     assert response.status_code == 401
     assert "Invalid credentials" in response.json()["detail"]
 
 
 def test_login_invalid_email_format():
-    """Test login with invalid email format."""
+    """Edge case: Test login with invalid email format."""
     response = client.post(
         "/api/users/login",
         json={"email": "not-an-email", "password": TEST_PASSWORD}
     )
-    
+
     assert response.status_code == 422
 
 
 # ==================== INTEGRATION TESTS - Tier System ====================
+
 
 def test_get_tier_info():
     """Test getting tier information."""
@@ -177,26 +179,26 @@ def test_get_tier_info():
 
 
 def test_get_user_profile(temp_user_csv):
-    """Test getting user profile - requires authentication."""
+    """Positive path: Test getting user profile - requires authentication."""
     # Create a user and login
     client.post(
         "/api/users/signup",
         json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
     )
-    
+
     # Login to get session
     login_response = client.post(
         "/api/users/login",
         json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
     session_id = login_response.json()["session_id"]
-    
+
     # Get profile with authentication
     response = client.get(
         f"/api/users/profile/{TEST_EMAIL}",
         headers={"Authorization": f"Bearer {session_id}"}
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "user" in data
@@ -204,71 +206,74 @@ def test_get_user_profile(temp_user_csv):
 
 
 def test_get_user_profile_not_found(temp_user_csv):
-    """Test getting profile for non-existent user - requires authentication."""
+    """Negative path: Test getting profile for
+    non-existent user - requires authentication."""
     # Create a user and login to get authentication
     client.post(
         "/api/users/signup",
         json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
     )
-    
+
     login_response = client.post(
         "/api/users/login",
         json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
     session_id = login_response.json()["session_id"]
-    
+
     # Try to get profile for non-existent user (with valid authentication)
     response = client.get(
         "/api/users/profile/nonexistent@test.com",
         headers={"Authorization": f"Bearer {session_id}"}
     )
-    
+
     assert response.status_code == 404
 
 
 # ==================== INTEGRATION TESTS - Admin Routes ====================
 
+
 def test_admin_upgrade_invalid_tier(temp_user_csv, temp_admin_csv):
-    """Test admin upgrade with invalid tier."""
+    """Negative path: Test admin upgrade with invalid tier."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
-    
+
     # Create a user
     client.post(
         "/api/users/signup",
         json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
-    
+
     # Try invalid tier
     response = client.post(
         "/api/admin/users/upgrade-tier",
         headers=headers,
         json={"email": TEST_EMAIL, "new_tier": "super_slug"}
     )
-    
+
     assert response.status_code == 400
 
 
 def test_get_all_users(temp_user_csv, temp_admin_csv):
-    """Test getting all users."""
+    """Positive path: Test getting all users."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
-    
+
     # Create some users
     client.post("/api/users/signup", json={"email": "user1@test.com", "username": TEST_USERNAME, "password": TEST_PASSWORD})
     client.post("/api/users/signup", json={"email": "user2@test.com", "username": TEST_USERNAME, "password": TEST_PASSWORD})
     
     response = client.get("/api/admin/users", headers=headers)
-    
+
     assert response.status_code == 200
     data = response.json()
     assert "users" in data
     assert data["total"] >= 2
 
 
-# ==================== INTEGRATION TESTS - End-to-End Flows ====================
+# ==================== INTEGRATION TESTS - End-to-End Flows ===================
+
 
 def test_integration_signup_then_login(temp_user_csv):
     """Integration test: Complete signup and login flow."""
@@ -280,21 +285,21 @@ def test_integration_signup_then_login(temp_user_csv):
     )
     assert signup_response.status_code == 200
     assert signup_response.json()["user"]["tier"] == User.TIER_SNAIL
-    
+
     # Step 2: Login with same credentials
     login_response = client.post(
         "/api/users/login",
         json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
     assert login_response.status_code == 200
-    
+
     # Step 3: Try to signup again (should fail)
     duplicate_response = client.post(
         "/api/users/signup",
         json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": "NewPassword456!"}
     )
     assert duplicate_response.status_code == 400
-    
+
     # Step 4: Login with wrong password (should fail)
     wrong_login_response = client.post(
         "/api/users/login",
@@ -304,7 +309,7 @@ def test_integration_signup_then_login(temp_user_csv):
 
 
 def test_integration_tier_progression(temp_user_csv, temp_admin_csv):
-    """Integration test: User tier progression through admin actions."""
+    """Positive path: User tier progression through admin actions."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
@@ -315,8 +320,9 @@ def test_integration_tier_progression(temp_user_csv, temp_admin_csv):
         json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": TEST_PASSWORD}
     )
     assert signup_response.json()["user"]["tier"] == User.TIER_SNAIL
-    assert signup_response.json()["user"]["permissions"]["can_write_reviews"] is False
-    
+    assert signup_response.json()[
+        "user"]["permissions"]["can_write_reviews"] is False
+
     # Upgrade to Slug (via admin endpoint)
     upgrade_response = client.post(
         "/api/admin/users/upgrade-tier",
@@ -324,16 +330,19 @@ def test_integration_tier_progression(temp_user_csv, temp_admin_csv):
         json={"email": TEST_EMAIL, "new_tier": User.TIER_SLUG}
     )
     assert upgrade_response.status_code == 200
-    
+
     # Login and check new permissions
     login_response = client.post(
         "/api/users/login",
         json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
-    assert login_response.json()["user"]["tier"] == User.TIER_SLUG
-    assert login_response.json()["user"]["permissions"]["can_write_reviews"] is True
-    assert login_response.json()["user"]["permissions"]["has_priority_reviews"] is False
-    
+    assert login_response.json()["user"][
+        "tier"] == User.TIER_SLUG
+    assert login_response.json()[
+        "user"]["permissions"]["can_write_reviews"] is True
+    assert login_response.json()[
+        "user"]["permissions"]["has_priority_reviews"] is False
+
     # Upgrade to Banana Slug
     upgrade_response = client.post(
         "/api/admin/users/upgrade-tier",
@@ -341,28 +350,30 @@ def test_integration_tier_progression(temp_user_csv, temp_admin_csv):
         json={"email": TEST_EMAIL, "new_tier": User.TIER_BANANA_SLUG}
     )
     assert upgrade_response.status_code == 200
-    
+
     # Login and check VIP permissions
     login_response = client.post(
         "/api/users/login",
         json={"email": TEST_EMAIL, "password": TEST_PASSWORD}
     )
-    assert login_response.json()["user"]["tier"] == User.TIER_BANANA_SLUG
-    assert login_response.json()["user"]["permissions"]["has_priority_reviews"] is True
+    assert login_response.json()[
+        "user"]["tier"] == User.TIER_BANANA_SLUG
+    assert login_response.json()[
+        "user"]["permissions"]["has_priority_reviews"] is True
 
 
 def test_integration_multiple_users(temp_user_csv, temp_admin_csv):
-    """Integration test: Managing multiple users."""
+    """Positive path: Managing multiple users."""
     # Get admin token
     token = create_admin_and_get_token()
     headers = get_auth_headers(token)
-    
+
     users = [
         ("user1@example.com", "user1", "Password1!", User.TIER_SNAIL),
         ("user2@example.com", "user2", "Password2!", User.TIER_SLUG),
         ("user3@example.com", "user3", "Password3!", User.TIER_BANANA_SLUG)
     ]
-    
+
     # Signup all users
     for email, username, password, _ in users:
         response = client.post(
@@ -370,7 +381,7 @@ def test_integration_multiple_users(temp_user_csv, temp_admin_csv):
             json={"email": email, "username": username, "password": password}
         )
         assert response.status_code == 200
-    
+
     # Upgrade tiers via admin
     for email, _, _, tier in users:
         if tier != User.TIER_SNAIL:
@@ -380,30 +391,32 @@ def test_integration_multiple_users(temp_user_csv, temp_admin_csv):
                 json={"email": email, "new_tier": tier}
             )
             assert upgrade_response.status_code == 200
-    
+
     # Login with each user and verify tier
     for email, username, password, expected_tier in users:
         response = client.post(
             "/api/users/login",
             json={"email": email, "password": password}
         )
+
         assert response.status_code == 200
         assert response.json()["user"]["tier"] == expected_tier
 
+
 def test_integration_password_security(temp_user_csv):
-    """Integration test: Verify passwords are hashed in storage."""
+    """Edge case: Verify passwords are hashed in storage."""
     password = "SecurePassword123!"
-    
+
     # Create user
     client.post(
         "/api/users/signup",
         json={"email": TEST_EMAIL, "username": TEST_USERNAME, "password": password}
     )
-    
+
     # Read CSV directly and verify password is hashed
     from backend.services.user_service import USER_CSV_PATH
     csv_path = Path(USER_CSV_PATH)
-    
+
     with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.reader(f)
         next(reader)  # Skip header
