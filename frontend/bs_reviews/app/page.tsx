@@ -112,18 +112,15 @@ export default function Home() {
             />
           </Link>
           <nav className="hidden md:flex space-x-6 text-sm font-semibold uppercase tracking-wider">
-            <a href="#" className="hover:text-yellow-400 transition">
+            <Link href="/movies" className="hover:text-yellow-400 transition">
               Movies
-            </a>
-            <a href="#" className="hover:text-yellow-400 transition">
-              TV Shows
-            </a>
-            <a href="#" className="hover:text-yellow-400 transition">
-              Celebs
-            </a>
-            <a href="#" className="hover:text-yellow-400 transition">
-              Awards
-            </a>
+            </Link>
+            <Link href="/users" className="hover:text-yellow-400 transition">
+              Users
+            </Link>
+            <Link href="/reviews" className="hover:text-yellow-400 transition">
+              Reviews
+            </Link>
           </nav>
         </div>
         <div className="flex items-center space-x-4">
