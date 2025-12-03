@@ -12,10 +12,12 @@ def test_user_repr():
         email=TEST_EMAIL,
         username=TEST_USERNAME,
         password_hash=TEST_PASSWORD,
-        tier=User.TIER_SLUG
+        tier=User.TIER_SLUG,
+        tokens=0  # ADD THIS
     )
     
-    assert repr(user) == f"User(email={TEST_EMAIL}, username={TEST_USERNAME}, tier=slug)"
+    # Update expected string to include tokens
+    assert repr(user) == f"User(email={TEST_EMAIL}, username={TEST_USERNAME}, tier=slug, tokens=0)"
 
 
 def test_user_tier_display():

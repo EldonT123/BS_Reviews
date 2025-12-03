@@ -6,7 +6,6 @@ from typing import Optional
 from backend.models.purchase_model import (
     ProcessPaymentRequest,
     PurchaseResponse,
-    Purchase
 )
 from backend.services import purchase_service, user_service
 
@@ -20,40 +19,54 @@ async def process_payment(
 ):
     """
     Process a payment for a purchase
-    
+
     Supports purchases with:
     - Real money (CAD) - requires payment method
     - Tokens - requires sufficient token balance
     """
     # Extract session ID from Authorization header
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization")
-    
+        raise HTTPException(status_code=401,
+                            detail="Missing or invalid authorization")
+
     session_id = authorization.replace("Bearer ", "")
-    
+
     # Verify session and get user
     user = user_service.verify_session_id(session_id)
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired session")
-    
+        raise HTTPException(status_code=401,
+                            detail="Invalid or expired session")
+
     # Determine if this is a CAD or token purchase
-    is_cad_purchase = request.purchase_item.price_cad is not None and \
-                      request.purchase_item.price_tokens is None
-    
-    is_token_purchase = request.purchase_item.price_tokens is not None and \
-                        request.purchase_item.price_cad is None
-    
+    is_cad_purchase = (
+        request.purchase_item.price_cad is not None
+        and request.purchase_item.price_tokens is None
+    )
+
+    is_token_purchase = (
+        request.purchase_item.price_tokens is not None
+        and request.purchase_item.price_cad is None
+    )
+
     if is_cad_purchase:
+        # Validate payment method is provided for CAD purchases
+        if not request.payment_method:
+            raise HTTPException(
+                status_code=400,
+                detail="Payment method is required for CAD purchases"
+            )
+
         # Process CAD purchase
-        success, message, purchase = purchase_service.process_purchase_with_cad(
+        (success, message,
+         purchase) = purchase_service.process_purchase_with_cad(
             user_email=user.email,
             purchase_item=request.purchase_item,
             payment_method=request.payment_method
         )
-        
+
         if not success:
             raise HTTPException(status_code=400, detail=message)
-        
+
         # Build response
         response = PurchaseResponse(
             success=True,
@@ -62,24 +75,27 @@ async def process_payment(
             tokens_added=purchase.tokens_received,
             new_rank=purchase.rank_upgrade
         )
-        
+
         # Get updated token balance if tokens were added
         if purchase.tokens_received:
             updated_user = user_service.get_user_by_email(user.email)
-            response.new_token_balance = getattr(updated_user, 'tokens', 0)
-        
+            response.new_token_balance = (
+                updated_user.tokens if updated_user else 0
+            )
+
         return response
-    
+
     elif is_token_purchase:
-        # Process token purchase
-        success, message, purchase = purchase_service.process_purchase_with_tokens(
+        # Process token purchase (no payment method needed)
+        (success, message,
+         purchase) = purchase_service.process_purchase_with_tokens(
             user_email=user.email,
             purchase_item=request.purchase_item
         )
-        
+
         if not success:
             raise HTTPException(status_code=400, detail=message)
-        
+
         # Build response
         response = PurchaseResponse(
             success=True,
@@ -88,18 +104,21 @@ async def process_payment(
             tokens_added=purchase.tokens_received,
             new_rank=purchase.rank_upgrade
         )
-        
+
         # Get updated token balance
         updated_user = user_service.get_user_by_email(user.email)
-        response.new_token_balance = getattr(updated_user, 'tokens', 0)
-        
+        response.new_token_balance = (
+            updated_user.tokens if updated_user else 0
+        )
+
         return response
-    
+
     else:
         # Both or neither price is set
         raise HTTPException(
             status_code=400,
-            detail="Purchase item must have either CAD or token price (not both)"
+            detail="Purchase item must have "
+                   "either CAD or token price (not both)"
         )
 
 
@@ -112,18 +131,20 @@ async def get_purchase_history(
     """
     # Extract session ID from Authorization header
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization")
-    
+        raise HTTPException(
+            status_code=401, detail="Missing or invalid authorization")
+
     session_id = authorization.replace("Bearer ", "")
-    
+
     # Verify session and get user
     user = user_service.verify_session_id(session_id)
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired session")
-    
+        raise HTTPException(
+            status_code=401, detail="Invalid or expired session")
+
     # Get purchase history
     purchases = purchase_service.get_user_purchase_history(user.email)
-    
+
     return {
         "purchases": [
             {
@@ -146,12 +167,12 @@ async def get_purchase_history(
 async def get_available_items():
     """
     Get all available items for purchase
-    
+
     This endpoint returns the catalog of items that can be purchased
     """
     # This would typically come from a database
     # For now, return the same items as defined in the frontend
-    
+
     return {
         "token_packages": [
             {
@@ -193,7 +214,8 @@ async def get_available_items():
                 "id": "rank_banana_slug",
                 "type": "rank",
                 "name": "Upgrade to Banana Slug",
-                "description": "Premium tier with exclusive features and profile customization",
+                "description": "Premium tier with "
+                "exclusive features and profile customization",
                 "price_cad": 19.99,
                 "price_tokens": 2000,
                 "rank_upgrade": "banana_slug"

@@ -111,25 +111,33 @@ export default function PaymentPage() {
     setError("");
     setLoading(true);
 
-    if (!validatePayment()) {
-      setLoading(false);
-      return;
-    }
-
     try {
       const sessionId = localStorage.getItem("sessionId");
       
-      // Prepare payment data
-      const paymentData = {
+      // Determine if this is a token or CAD purchase
+      const isTokenPurchase = purchaseItem!.price_tokens !== undefined && purchaseItem!.price_cad === undefined;
+      
+      // Only validate payment info for CAD purchases
+      if (!isTokenPurchase && !validatePayment()) {
+        setLoading(false);
+        return;
+      }
+      
+      // Prepare payment data - conditionally include payment_method
+      const paymentData: any = {
         purchase_item: purchaseItem,
-        payment_method: {
+      };
+      
+      // Only include payment_method for CAD purchases
+      if (!isTokenPurchase) {
+        paymentData.payment_method = {
           card_number: cardNumber.replace(/\s/g, ""),
           card_name: cardName,
           expiry_date: expiryDate,
           cvv: cvv,
           billing_zip: billingZip,
-        },
-      };
+        };
+      }
 
       // Submit payment to backend
       const response = await fetch("http://localhost:8000/api/store/process-payment", {
@@ -176,9 +184,12 @@ export default function PaymentPage() {
     );
   }
 
-  const isTokenPurchase = purchaseItem.price_tokens === undefined;
-  const amount = isTokenPurchase ? purchaseItem.price_cad : purchaseItem.price_tokens;
-  const currency = isTokenPurchase ? "CAD" : "Tokens";
+  // Fix: Use correct logic for determining purchase type
+  const isCADPurchase = purchaseItem.price_cad !== undefined && purchaseItem.price_tokens === undefined;
+  const isTokenPurchase = purchaseItem.price_tokens !== undefined && purchaseItem.price_cad === undefined;
+  
+  const amount = isCADPurchase ? purchaseItem.price_cad : purchaseItem.price_tokens;
+  const currency = isCADPurchase ? "CAD" : "Tokens";
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans">
@@ -242,7 +253,7 @@ export default function PaymentPage() {
                   <div className="border-t border-gray-600 pt-4 flex justify-between items-center">
                     <span className="text-xl font-bold">Total:</span>
                     <span className="text-3xl font-bold text-yellow-400">
-                      {isTokenPurchase ? `$${amount}` : `${amount} tokens`}
+                      {isCADPurchase ? `$${amount}` : `${amount} tokens`}
                     </span>
                   </div>
                 </div>
@@ -250,7 +261,7 @@ export default function PaymentPage() {
 
               {/* Payment Form */}
               <div>
-                {isTokenPurchase ? (
+                {isCADPurchase ? (
                   <form onSubmit={handleSubmitPayment} className="space-y-6">
                     <h2 className="text-2xl font-bold mb-4">Payment Information</h2>
 

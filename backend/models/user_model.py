@@ -1,22 +1,47 @@
 # backend/models/user_model.py
+"""User Model - Handles user data structure"""
+from typing import Optional
 
 class User:
-
-    """Represents a user with tiered permissions."""
-
+    """User data model"""
+    
     # Tier constants
     TIER_SNAIL = "snail"
     TIER_SLUG = "slug"
     TIER_BANANA_SLUG = "banana_slug"
-
+    
     def __init__(
-            self, email: str, username: str,
-            password_hash: str, tier: str = TIER_SNAIL):
+        self, 
+        email: str, 
+        username: str, 
+        password_hash: str, 
+        tier: str = TIER_SNAIL,
+        tokens: int = 0
+    ):
+        """
+        Initialize a User object.
+        
+        Args:
+            email: User's email address
+            username: User's username
+            password_hash: Hashed password
+            tier: User's tier/rank (default: snail)
+            tokens: User's token balance (default: 0)
+        """
         self.email = email
         self.username = username
         self.password_hash = password_hash
         self.tier = tier
-
+        self.tokens = tokens
+    
+    def __repr__(self):
+        return (
+            f"User(email={self.email}, "
+            f"username={self.username}, "
+            f"tier={self.tier}, "
+            f"tokens={self.tokens})"
+        )
+    
     # ==================== Tier Checks ====================
 
     def is_snail(self) -> bool:
@@ -94,6 +119,7 @@ class User:
             "email": self.email,
             "username": self.username,
             "tier": self.tier,
+            "tokens": self.tokens,
             "tier_display": self.get_tier_display_name(),
             "permissions": {
                 "can_browse": self.can_browse(),
@@ -103,10 +129,3 @@ class User:
                 "has_priority_reviews": self.has_priority_reviews()
             }
         }
-
-    def __repr__(self):
-        return (
-            f"User(email={self.email}, "
-            f"username={self.username}, "
-            f"tier={self.tier})"
-        )

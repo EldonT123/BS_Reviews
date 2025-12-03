@@ -32,19 +32,20 @@ SESSION_EXPIRY_HOURS = 24
 
 
 def ensure_user_csv_exists():
-    """Ensure the directory and CSV file exist,"""
-    """and create headers if missing."""
+    """Ensure the directory and CSV file exist,
+      and create headers if missing."""
     os.makedirs(os.path.dirname(USER_CSV_PATH), exist_ok=True)
     if not os.path.exists(USER_CSV_PATH):
         with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(
-                ["user_email", "username", "user_password", "user_tier"])
+                ["user_email", "username",
+                 "user_password", "user_tier", "tokens"])
 
 
 def ensure_bookmark_csv_exists():
-    """Ensure the directory and CSV file exist,"""
-    """and create headers if missing."""
+    """Ensure the directory and CSV file exist,
+      and create headers if missing."""
     os.makedirs(os.path.dirname(BOOKMARK_CSV_PATH), exist_ok=True)
     if not os.path.exists(BOOKMARK_CSV_PATH):
         with open(BOOKMARK_CSV_PATH, "w", newline="",
@@ -53,10 +54,10 @@ def ensure_bookmark_csv_exists():
             writer.writerow(["user_email", "movie_title"])
 
 
-def read_users() -> Dict[str, tuple[str, str, str]]:
+def read_users() -> Dict[str, tuple[str, str, str, int]]:
     """
     Read all users from CSV.
-    Returns: Dict[email -> (username, password_hash, tier)]
+    Returns: Dict[email -> (username, password_hash, tier, tokens)]
     """
     users = {}
     if not os.path.exists(USER_CSV_PATH):
@@ -70,31 +71,33 @@ def read_users() -> Dict[str, tuple[str, str, str]]:
                 email = row[0].lower()
                 username = row[1]
                 password_hash = row[2]
-                tier = row[3] if len(row) >= 3 else User.TIER_SNAIL
-                users[email] = (username, password_hash, tier)
+                tier = row[3] if len(row) >= 4 else User.TIER_SNAIL
+                tokens = int(row[4]) if len(row) >= 5 else 0
+                users[email] = (username, password_hash, tier, tokens)
 
     return users
 
 
 def save_user(email: str, username: str,
-              password_hash: str, tier: str = User.TIER_SNAIL):
+              password_hash: str,
+              tier: str = User.TIER_SNAIL, tokens: int = 0):
     """Save a new user to the CSV file."""
     ensure_user_csv_exists()
     with open(USER_CSV_PATH, "a", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow([email.lower(), username, password_hash, tier])
+        writer.writerow([email.lower(), username, password_hash, tier, tokens])
 
 
 def get_user_by_email(email: str) -> Optional[User]:
     """Retrieve a user by email, returns None if not found."""
     users = read_users()
-    user_data = users.get(email)
+    user_data = users.get(email.lower())
 
     if not user_data:
         return None
 
-    username, password_hash, tier = user_data
-    return User(email.lower(), username, password_hash, tier)
+    username, password_hash, tier, tokens = user_data
+    return User(email.lower(), username, password_hash, tier, tokens)
 
 
 def update_user_tier(email: str, new_tier: str) -> bool:
@@ -109,19 +112,63 @@ def update_user_tier(email: str, new_tier: str) -> bool:
         return False
 
     # Update tier
-    username, password_hash, _ = users[email_lower]
-    users[email_lower] = (username, password_hash, new_tier)
+    username, password_hash, _, tokens = users[email_lower]
+    users[email_lower] = (username, password_hash, new_tier, tokens)
 
     # Rewrite CSV
     ensure_user_csv_exists()
     with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(
-            ["user_email", "username", "user_password", "user_tier"])
-        for user_email, (username, pwd_hash, tier) in users.items():
-            writer.writerow([user_email, username, pwd_hash, tier])
+            ["user_email", "username", "user_password", "user_tier", "tokens"])
+        for user_email, (username, pwd_hash, tier, tkns) in users.items():
+            writer.writerow([user_email, username, pwd_hash, tier, tkns])
 
     return True
+
+
+def update_user_tokens(email: str, new_token_balance: int) -> bool:
+    """
+    Update a user's token balance.
+    Returns True if successful, False if user not found.
+    """
+    users = read_users()
+    email_lower = email.lower()
+
+    if email_lower not in users:
+        return False
+
+    # Update tokens
+    username, password_hash, tier, _ = users[email_lower]
+    users[email_lower] = (username, password_hash, tier, new_token_balance)
+
+    # Rewrite CSV
+    ensure_user_csv_exists()
+    with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(
+            ["user_email", "username", "user_password", "user_tier", "tokens"])
+        for user_email, (username, pwd_hash, tier, tkns) in users.items():
+            writer.writerow([user_email, username, pwd_hash, tier, tkns])
+
+    return True
+
+
+def add_tokens_to_user(email: str, tokens_to_add: int) -> bool:
+    """
+    Add tokens to a user's balance.
+    Returns True if successful, False if user not found.
+    """
+    users = read_users()
+    email_lower = email.lower()
+
+    if email_lower not in users:
+        return False
+
+    username, password_hash, tier, current_tokens = users[email_lower]
+    new_balance = current_tokens + tokens_to_add
+
+    return update_user_tokens(email_lower, new_balance)
 
 
 # ==================== Password Operations ====================
@@ -321,7 +368,8 @@ def create_user(
         email: str,
         username: str,
         password: str,
-        tier: str = User.TIER_SNAIL
+        tier: str = User.TIER_SNAIL,
+        tokens: int = 0
 ) -> User:
     """
     Create a new user account.
@@ -332,9 +380,9 @@ def create_user(
         raise ValueError("User already exists")
 
     password_hash = hash_password(password)
-    save_user(email, username, password_hash, tier)
+    save_user(email, username, password_hash, tier, tokens)
 
-    return User(email.lower(), username, password_hash, tier)
+    return User(email.lower(), username, password_hash, tier, tokens)
 
 
 def authenticate_user(email: str, password: str) -> tuple[User, str]:
@@ -389,8 +437,9 @@ def get_all_users() -> list[User]:
     """Get all users."""
     users_data = read_users()
     return [
-        User(email, username, password_hash, tier)
-        for email, (username, password_hash, tier) in users_data.items()
+        User(email, username, password_hash, tier, tokens)
+        for email, (
+            username, password_hash, tier, tokens) in users_data.items()
     ]
 
 
@@ -417,12 +466,16 @@ def delete_user(email: str) -> bool:
     del users[email_lower]
 
     ensure_user_csv_exists()
-    with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
+    with open(
+            USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(
-            ["user_email", "username", "user_password", "user_tier"])
-        for user_email, (username, password_hash, tier) in users.items():
-            writer.writerow([user_email, username, password_hash, tier])
+            ["user_email", "username",
+                "user_password", "user_tier", "tokens"])
+        for user_email, (
+                username, password_hash, tier, tokens) in users.items():
+            writer.writerow([user_email,
+                            username, password_hash, tier, tokens])
 
     return True
 
@@ -440,7 +493,7 @@ def update_user_profile(
     if current_email_lower not in users:
         return False
 
-    username, password_hash, tier = users[current_email_lower]
+    username, password_hash, tier, tokens = users[current_email_lower]
 
     # Update with new values or keep existing
     updated_username = new_username if new_username else username
@@ -452,16 +505,16 @@ def update_user_profile(
     del users[current_email_lower]
 
     # Add updated entry with potentially new email
-    users[new_email_lower] = (updated_username, updated_password, tier)
+    users[new_email_lower] = (updated_username, updated_password, tier, tokens)
 
     # Rewrite CSV
     ensure_user_csv_exists()
     with open(USER_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["user_email", "username",
-                        "user_password", "user_tier"])
-        for user_email, (username, pwd_hash, tier) in users.items():
-            writer.writerow([user_email, username, pwd_hash, tier])
+                        "user_password", "user_tier", "tokens"])
+        for user_email, (username, pwd_hash, tier, tkns) in users.items():
+            writer.writerow([user_email, username, pwd_hash, tier, tkns])
 
     return True
 
@@ -524,8 +577,9 @@ def remove_bookmark(email: str, movie_title: str) -> bool:
     # Read all rows, skip the one being removed
     with open(BOOKMARK_CSV_PATH, newline="", encoding="utf-8") as csvfile:
         reader = csv.reader(csvfile)
-        next(reader, None)  # skip header
-
+        """
+        header = next(reader, None)  # save header
+        """
         for row in reader:
             if row[0].lower() == email.lower() and row[1] == movie_title:
                 removed = True  # Found bookmark to remove
@@ -536,7 +590,7 @@ def remove_bookmark(email: str, movie_title: str) -> bool:
     with open(BOOKMARK_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["user_email", "movie_title"])
-        writer.writerow(updated_rows)
+        writer.writerows(updated_rows)
 
     return removed
 
@@ -544,3 +598,27 @@ def remove_bookmark(email: str, movie_title: str) -> bool:
 def is_bookmarked(email: str, movie_title: str) -> bool:
     """ Return True if the movie_id is already bookmarked by the user"""
     return movie_title in get_user_bookmarks(email)
+
+# ==================== Token Logic ====================
+
+
+def deduct_tokens_from_user(email: str, tokens_to_deduct: int) -> bool:
+    """
+    Deduct tokens from a user's balance.
+    Returns True if successful, False if user not found or insufficient tokens.
+    """
+    users = read_users()
+    email_lower = email.lower()
+
+    if email_lower not in users:
+        return False
+
+    username, password_hash, tier, current_tokens = users[email_lower]
+
+    # Check if user has enough tokens
+    if current_tokens < tokens_to_deduct:
+        return False
+
+    new_balance = current_tokens - tokens_to_deduct
+
+    return update_user_tokens(email_lower, new_balance)

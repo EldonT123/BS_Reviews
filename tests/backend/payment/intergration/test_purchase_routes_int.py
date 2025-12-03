@@ -77,10 +77,10 @@ STATUS_VALIDATION_ERROR = 422
 class InMemoryUserStorage:
     """In-memory storage for user data during tests."""
     def __init__(self):
-        self.users = {}  # email -> (username, password_hash, tier)
+        self.users = {}  # email -> (username, password_hash, tier, tokens)
     
-    def add_user(self, email, username, password_hash, tier):
-        self.users[email.lower()] = (username, password_hash, tier)
+    def add_user(self, email, username, password_hash, tier, tokens=0):
+        self.users[email.lower()] = (username, password_hash, tier, tokens)
     
     def get_user(self, email):
         return self.users.get(email.lower())
@@ -90,9 +90,9 @@ class InMemoryUserStorage:
     
     def to_csv(self):
         """Convert to CSV format for mocking file reads."""
-        lines = ["user_email,username,user_password,user_tier\n"]
-        for email, (username, pwd_hash, tier) in self.users.items():
-            lines.append(f"{email},{username},{pwd_hash},{tier}\n")
+        lines = ["user_email,username,user_password,user_tier,tokens\n"]
+        for email, (username, pwd_hash, tier, tokens) in self.users.items():
+            lines.append(f"{email},{username},{pwd_hash},{tier},{tokens}\n")
         return "".join(lines)
     
     def clear(self):
@@ -142,14 +142,13 @@ def reset_all_storage():
     purchase_storage.clear()
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_user_csv():
-    """Mock user service CSV operations with in-memory storage."""
+    """Mock user service CSV operations with in-memory storage for all tests."""
     def mock_read_users():
-        """Mock read_users to return in-memory data."""
         users = {}
         csv_content = user_storage.to_csv()
-        lines = csv_content.strip().split('\n')[1:]  # Skip header
+        lines = csv_content.strip().split('\n')[1:]
         for line in lines:
             if line:
                 parts = line.split(',')
@@ -157,13 +156,20 @@ def mock_user_csv():
                 username = parts[1]
                 password_hash = parts[2]
                 tier = parts[3] if len(parts) > 3 else User.TIER_SNAIL
-                users[email] = (username, password_hash, tier)
+                tokens = int(parts[4]) if len(parts) > 4 else 0
+                users[email] = (username, password_hash, tier, tokens)
         return users
-    
-    def mock_save_user(email, username, password_hash, tier=User.TIER_SNAIL):
-        """Mock save_user to store in memory."""
-        user_storage.add_user(email, username, password_hash, tier)
-    
+
+    def mock_save_user(email, username, password_hash, tier=User.TIER_SNAIL, tokens=0):
+        user_storage.add_user(email, username, password_hash, tier, tokens)
+
+    def fake_open(file, mode='r', *args, **kwargs):
+        # If opened for read, return current in-memory CSV
+        if 'r' in mode:
+            return StringIO(user_storage.to_csv())
+        # If opened for write/append, return a StringIO that drops writes (prevents disk)
+        return StringIO()
+
     with patch('backend.services.user_service.read_users', side_effect=mock_read_users), \
          patch('backend.services.user_service.save_user', side_effect=mock_save_user), \
          patch('backend.services.user_service.ensure_user_csv_exists'):

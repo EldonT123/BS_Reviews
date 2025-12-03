@@ -30,7 +30,7 @@ class PaymentMethod(BaseModel):
 class ProcessPaymentRequest(BaseModel):
     """Request model for processing payments"""
     purchase_item: PurchaseItem
-    payment_method: PaymentMethod
+    payment_method: Optional[PaymentMethod] = None  # Changed: Optional for token purchases
 
 
 class Purchase(BaseModel):
