@@ -245,7 +245,7 @@ def test_report_review_integration(isolated_movie_env, test_user):
     )
     review_service.add_review(review, test_user)
 
-    # Report the review using email
+    # Report the review once
     result = review_service.report_review(
         email=test_user.email,
         movie_name=movie_name,
@@ -253,11 +253,42 @@ def test_report_review_integration(isolated_movie_env, test_user):
     )
     assert result is True
 
-    # Read back reviews and check fields
     reviews = review_service.read_reviews(movie_name)
     reported_review = next(r for r in reviews if r["Email"] == test_user.email)
     assert reported_review["Reported"] == "Yes"
     assert reported_review["Report Reason"] == "Offensive language"
+    assert reported_review["Report Count"] == "1"
+    assert reported_review.get("Hidden", "No") == "No"
+
+    # Report the same review again with another reason
+    result2 = review_service.report_review(
+        email=test_user.email,
+        movie_name=movie_name,
+        reason="Spam"
+    )
+    assert result2 is True
+
+    reviews = review_service.read_reviews(movie_name)
+    reported_review = next(r for r in reviews if r["Email"] == test_user.email)
+    # Verify multiple reasons are appended
+    assert reported_review["Report Reason"] == "Offensive language;Spam"
+    # Report count incremented
+    assert reported_review["Report Count"] == "2"
+    # Hidden still No (assuming threshold >2)
+    assert reported_review.get("Hidden", "No") == "No"
+
+    # Test threshold logic
+    # Report until it reaches REPORT_THRESHOLD
+    for _ in range(review_service.REPORT_THRESHOLD - 2):
+        review_service.report_review(
+            email=test_user.email,
+            movie_name=movie_name,
+            reason="Another reason"
+        )
+    reviews = review_service.read_reviews(movie_name)
+    reported_review = next(r for r in reviews if r["Email"] == test_user.email)
+    assert reported_review["Report Count"] == str(review_service.REPORT_THRESHOLD)
+    assert reported_review["Hidden"] == "Yes"
 
 
 def test_handle_reported_review_integration(isolated_movie_env, test_user_2):
@@ -281,17 +312,81 @@ def test_handle_reported_review_integration(isolated_movie_env, test_user_2):
         reason="Spam"
     )
 
-    # Handle the report: remove the review
+    # Case 1: Try removing when penalized = No → should fail
+    reviews = review_service.read_reviews(movie_name)
+    r = next(r for r in reviews if r["Email"] == test_user_2.email)
+    r["Penalized"] = "No"
+    review_service.write_reviews(movie_name, reviews)
+
     result = review_service.handle_reported_review(
         email=test_user_2.email,
         movie_name=movie_name,
-        action="remove"
+        remove=True
     )
-    assert result is True
+    assert result["success"] is False
+    assert "penalized" in result["message"].lower()
 
-    # Check that the review was actually removed
+    # Case 2: Set penalized = Yes → removal should succeed
     reviews = review_service.read_reviews(movie_name)
+    r = next(r for r in reviews if r["Email"] == test_user_2.email)
+    r["Penalized"] = "Yes"
+    review_service.write_reviews(movie_name, reviews)
+
+    result = review_service.handle_reported_review(
+        email=test_user_2.email,
+        movie_name=movie_name,
+        remove=True
+    )
+    assert result["success"] is True
+    assert "deleted" in result["message"].lower()
+
+    reviews = review_service.read_reviews(movie_name)
+    # Review should be removed
     assert all(r["Email"] != test_user_2.email for r in reviews)
+
+    # Case 3: Keep a reported review when penalized = Yes → should fail
+    # Add review again
+    review_service.add_review(review, test_user_2)
+    reviews = review_service.read_reviews(movie_name)
+    r = next(r for r in reviews if r["Email"] == test_user_2.email)
+    r.update({"Reported": "Yes", "Report Reason": "Spam", "Penalized": "Yes"})
+    review_service.write_reviews(movie_name, reviews)
+
+    result = review_service.handle_reported_review(
+        email=test_user_2.email,
+        movie_name=movie_name,
+        remove=False
+    )
+    assert result["success"] is False
+    assert "penalized" in result["message"].lower()
+
+    # Case 4: Keep a reported review when penalized = No → should reset
+    reviews = review_service.read_reviews(movie_name)
+    r = next(r for r in reviews if r["Email"] == test_user_2.email)
+    r.update({"Reported": "Yes", "Report Reason": "Spam", "Penalized": "No"})
+    review_service.write_reviews(movie_name, reviews)
+
+    result = review_service.handle_reported_review(
+        email=test_user_2.email,
+        movie_name=movie_name,
+        remove=False
+    )
+    assert result["success"] is True
+    reviews = review_service.read_reviews(movie_name)
+    r = next(r for r in reviews if r["Email"] == test_user_2.email)
+    assert r["Reported"] == "No"
+    assert r["Report Reason"] == ""
+    assert r["Report Count"] == "0"
+    assert r["Hidden"] == "No"
+
+    # Case 5: Attempt to handle a review that isn't reported → should fail
+    result = review_service.handle_reported_review(
+        email=test_user_2.email,
+        movie_name=movie_name,
+        remove=False
+    )
+    assert result["success"] is False
+    assert "reported" in result["message"].lower()
 
 
 def test_user_has_reviewed(isolated_movie_env, test_user):
@@ -336,3 +431,43 @@ def test_get_review_by_email(isolated_movie_env, test_user):
     assert user_review["Email"] == test_user.email
     assert float(user_review["User's Rating out of 10"]) == 9.0
     assert user_review["Review"] == "Excellent!"
+
+
+def test_like_review_integration(isolated_movie_env, test_user):
+    movie_name = "integration_like"
+    file_service.create_movie_folder(movie_name)
+
+    # Add review
+    review_service.add_review(ReviewRequest(
+        movie_name=movie_name,
+        rating=9.0,
+        comment="Awesome!",
+        review_title="Loved it"
+    ), test_user)
+
+    # Like review
+    assert review_service.like_review(test_user.email, movie_name) is True
+
+    reviews = review_service.read_reviews(movie_name)
+    r = next(rev for rev in reviews if rev["Email"] == test_user.email)
+    assert r["Likes"] == "1"
+
+
+def test_dislike_review_integration(isolated_movie_env, test_user):
+    movie_name = "integration_dislike"
+    file_service.create_movie_folder(movie_name)
+
+    # Add review
+    review_service.add_review(ReviewRequest(
+        movie_name=movie_name,
+        rating=7.0,
+        comment="Not bad",
+        review_title="Okay"
+    ), test_user)
+
+    # Dislike review
+    assert review_service.dislike_review(test_user.email, movie_name) is True
+
+    reviews = review_service.read_reviews(movie_name)
+    r = next(rev for rev in reviews if rev["Email"] == test_user.email)
+    assert r["Dislikes"] == "1"

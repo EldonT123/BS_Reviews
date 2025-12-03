@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 
 RATING_LOWER_BOUND = 0
 RATING_UPPER_BOUND = 10
+REPORT_THRESHOLD = 3
 CSV_FIELDNAMES = [
     "Date of Review",
     "Email",
@@ -22,7 +23,10 @@ CSV_FIELDNAMES = [
     "Review Title",
     "Review",
     "Reported",
-    "Report Reason"
+    "Report Reason",
+    "Report Count",
+    "Penalized",   
+    "Hidden"      
 ]
 
 
@@ -54,9 +58,10 @@ def review_message_return(success: bool, review: ReviewRequest, user: User):
 # ==================== Read Operations ====================
 
 
-def read_reviews(movie_name: str) -> List[Dict]:
+def read_reviews(movie_name: str) -> list[dict]:
     """
     Read all reviews for a movie from CSV.
+    Ensures reporting-related fields always have default values.
     Returns empty list if no reviews exist.
     """
     path = get_reviews_path(movie_name)
@@ -68,10 +73,18 @@ def read_reviews(movie_name: str) -> List[Dict]:
         reader = csv.DictReader(f)
         reviews = []
         for row in reader:
-            # Ensure all expected fields exist with default values
             review = {field: row.get(field, "") for field in CSV_FIELDNAMES}
+
+            # Normalize reporting-related fields
+            review["Reported"] = review.get("Reported") or "No"
+            review["Report Reason"] = review.get("Report Reason") or ""
+            review["Report Count"] = review.get("Report Count") or "0"
+            review["Hidden"] = review.get("Hidden") or "No"
+            review["Penalized"] = review.get("Penalized") or "No"
+
             reviews.append(review)
-        return reviews
+
+    return reviews
 
 
 def get_review_by_email(movie_name: str, email: str) -> Optional[Dict]:
@@ -147,8 +160,11 @@ def add_review(review: ReviewRequest, user: User) -> bool:
         "User's Rating out of 10": str(review.rating),
         "Review Title": review.review_title,
         "Review": review.comment,
-        "Reported": "",
-        "Report Reason": ""
+        "Reported": "No",
+        "Report Reason": "",
+        "Report Count": "0",
+        "Penalized": "No",
+        "Hidden": "No"
     }
 
     # Check if file exists and has content
@@ -227,60 +243,107 @@ def delete_review(email: str, movie_name: str) -> bool:
 
 def report_review(email: str, movie_name: str, reason: str = "") -> bool:
     """
-    Mark a user's review as reported.
-    Returns True if successful, False if review not found.
+    Report a user's review for a movie.
+    Increments report count, appends reason, and hides review if 
+    threshold reached. Returns False if the review does not exist.
     """
+    # Check if the user has a review for this movie
+    if not user_has_reviewed(movie_name, email):
+        return False  # No review exists to report
+
+    # Read all reviews for the movie
     reviews = read_reviews(movie_name)
 
-    if not reviews:
-        return False
+    # Find the review in the list and update it
+    for r in reviews:
+        if r.get("Email") == email:
+            # Mark as reported
+            r["Reported"] = "Yes"
 
-    # Find the review
-    reported = False
-    for review in reviews:
-        if review.get("Email", "") == email:
-            # Add or update a 'Reported' column
-            review["Reported"] = "Yes"
-            review["Report Reason"] = reason
-            reported = True
-            break
+            # Increment Report Count
+            current_count = int(r.get("Report Count") or 0)
+            current_count += 1
+            r["Report Count"] = str(current_count)
 
-    if not reported:
-        return False
+            # Append the new reason (semi-colon separated)
+            existing_reasons = r.get("Report Reason", "")
+            if existing_reasons:
+                r["Report Reason"] = existing_reasons + ";" + reason
+            else:
+                r["Report Reason"] = reason
 
-    # Write back all reviews
-    return write_reviews(movie_name, reviews)
+            # Set Hidden if threshold reached
+            if current_count >= REPORT_THRESHOLD:
+                r["Hidden"] = "Yes"
+
+            # Write all reviews back to the movie CSV
+            return write_reviews(movie_name, reviews)
+
+    # Safety fallback (shouldn’t reach here due to user_has_reviewed)
+    return False
 
 
-def handle_reported_review(
-        email: str, movie_name: str, action: str = "keep"
-) -> bool:
+def handle_reported_review(email: str, movie_name: str, remove: bool = False) -> dict:
     """
     Admin handles a reported review.
-    action: "remove" to delete it, "keep" to clear the report flag.
+
+    remove: True -> attempt to delete the review
+            False -> attempt to keep the review (reset report info)
+    
+    Returns a dictionary with:
+        {
+            "success": bool,
+            "message": str
+        }
     """
     reviews = read_reviews(movie_name)
     if not reviews:
-        return False
+        return {"success": False, "message": "No reviews exist for this movie."}
 
-    updated = False
     for review in reviews:
-        if (
-            review.get("Email", "") == email
-            and review.get("Reported") == "Yes"
-        ):
-            if action == "remove":
-                return delete_review(email, movie_name)
-            else:  # keep
-                review["Reported"] = ""
-                review["Report Reason"] = ""
-            updated = True
-            break
+        if review["Email"] == email and review["Reported"] == "Yes":
+            if remove:
+                if review["Penalized"] == "Yes":
+                    success = delete_review(email, movie_name)
+                    msg = "Review deleted successfully (user was penalized)." if success else "Review could not be deleted."
+                    return {"success": success, "message": msg}
+                else:
+                    return {"success": False, "message": "Cannot delete review: user must be penalized first."}
+            else:
+                if review["Penalized"] == "Yes":
+                    return {"success": False, "message": "Cannot keep review: a penalized review cannot be reset."}
+                else:
+                    review["Reported"] = "No"
+                    review["Report Reason"] = ""
+                    review["Report Count"] = "0"
+                    review["Hidden"] = "No"
+                    success = write_reviews(movie_name, reviews)
+                    msg = "Review kept and report info reset successfully." if success else "Failed to reset review report info."
+                    return {"success": success, "message": msg}
 
-    if not updated:
-        return False
+    return {
+        "success": False, "message": "No reported review found for this user."
+    }
 
-    return write_reviews(movie_name, reviews)
+
+def like_review(email: str, movie_name: str) -> bool:
+    """Increment Likes for a given user's review."""
+    reviews = read_reviews(movie_name)
+    for r in reviews:
+        if r["Email"] == email:
+            r["Likes"] = str(int(r.get("Likes", "0")) + 1)
+            return write_reviews(movie_name, reviews)
+    return False
+
+
+def dislike_review(email: str, movie_name: str) -> bool:
+    """Increment Dislikes for a given user's review."""
+    reviews = read_reviews(movie_name)
+    for r in reviews:
+        if r["Email"] == email:
+            r["Dislikes"] = str(int(r.get("Dislikes", "0")) + 1)
+            return write_reviews(movie_name, reviews)
+    return False
 
 
 # ==================== Calculations & Statistics ====================
