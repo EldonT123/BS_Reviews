@@ -9,7 +9,8 @@ async def verify_admin_token(authorization: Optional[str] = Header(None)):
     Dependency to verify admin authentication token.
 
     Args:
-        authorization: Authorization header with Bearer token (e.g., "Bearer <token>")
+        authorization: Authorization header with
+          Bearer token (e.g., "Bearer <token>")
 
     Returns:
         Admin object if authenticated
