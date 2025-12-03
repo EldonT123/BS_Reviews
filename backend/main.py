@@ -8,7 +8,8 @@ from backend.routes import (
                     user_routes,
                     admin_routes,
                     search_routes,
-                    purchase_routes
+                    purchase_routes,
+                    external_api_routes
                     )
 from backend.services import admin_service
 
@@ -77,6 +78,9 @@ app.include_router(user_routes.router, prefix="/api/users", tags=["Users"])
 app.include_router(admin_routes.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(search_routes.router, prefix="/api/search", tags=["Search"])
 app.include_router(purchase_routes.router, prefix="/api/store", tags=["Store"])
+app.include_router(
+    external_api_routes.router, prefix="/api/external", tags=["External API"]
+)
 
 
 @app.get("/")
