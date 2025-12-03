@@ -1,23 +1,18 @@
 # models/movie_model.py
 
 # Reformatted to allow for mocking - importing metadata and review service
-# when needed instead of overall 
-# old imports 
-# from backend.services.metadata_service import read_metadata
-#from backend.services.review_service import read_reviews, recalc_average_rating
+# when needed instead of overall
 
 from backend.services import metadata_service, review_service
 
 
 class Movie:
 
-
     def __init__(self, name: str):
         self.name = name
         self.metadata = metadata_service.read_metadata(name) or {}
         self.reviews = review_service.read_reviews(name)
         self.average_rating = review_service.recalc_average_rating(name)
-
 
     def to_dict(self):
         """Return a dictionary representation for API responses."""
