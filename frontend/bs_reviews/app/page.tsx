@@ -206,10 +206,10 @@ export default function Home() {
             <p className="text-zinc-400">No movies to display.</p>
           )}
           {upNextMovies.map((movie) => (
-            <div
+            <Link
+              href={`/movies/${encodeURIComponent(movie.title)}`}
               key={movie.title}
               className="flex items-center gap-4 cursor-pointer hover:bg-gray-700 rounded-md p-2"
-              onClick={() => setCurrentIndex(topMovies.indexOf(movie))}
             >
               <Image
                 src={movie.posterPath}
@@ -224,7 +224,7 @@ export default function Home() {
                   ⭐ {movie.movieIMDbRating.toFixed(1)}
                 </p>
               </div>
-            </div>
+            </Link>
           ))}
         </aside>
       </section>
@@ -238,7 +238,8 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             {mostCommentedMovies.map((movie) => (
-              <div
+              <Link
+                href={`/movies/${encodeURIComponent(movie.title)}`}
                 key={movie.title}
                 className="bg-gray-800 rounded-md overflow-hidden shadow-lg hover:shadow-yellow-400 transition-shadow cursor-pointer"
               >
@@ -255,7 +256,7 @@ export default function Home() {
                     💬 {movie.commentCount ?? 0} comments
                   </p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
