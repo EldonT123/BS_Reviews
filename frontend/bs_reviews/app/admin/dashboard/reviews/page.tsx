@@ -29,7 +29,7 @@ export default function ReviewsModerationPage() {
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Coming Soon</h2>
           <p className="text-gray-400 max-w-md mx-auto">
-            Review moderation tools are currently under development. You'll soon be able to view,
+            Review moderation tools are currently under development. You&apos;ll soon be able to view,
             approve, and remove user reviews from this interface.
           </p>
         </div>

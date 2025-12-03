@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 interface DashboardStats {
@@ -20,11 +20,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchDashboardStats();
-  }, []);
-
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     const token = localStorage.getItem("adminToken");
 
     if (!token) {
@@ -61,11 +57,16 @@ export default function AdminDashboardPage() {
       });
 
       setLoading(false);
-    } catch (err) {
+    } catch (error) {
+      console.error("Failed to load dashboard statistics:", error);
       setError("Failed to load dashboard statistics");
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [fetchDashboardStats]);
 
   const statCards = [
     {

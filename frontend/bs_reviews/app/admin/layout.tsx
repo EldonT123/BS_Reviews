@@ -14,24 +14,28 @@ export default function AdminLayout({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Don't check auth on login page
-    if (pathname === "/admin/login") {
+    const checkAuth = () => {
+      // Don't check auth on login page
+      if (pathname === "/admin/login") {
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if admin is authenticated
+      const token = localStorage.getItem("adminToken");
+      const email = localStorage.getItem("adminEmail");
+
+      if (!token || !email) {
+        // Not authenticated, redirect to login
+        router.push("/admin/login");
+        return;
+      }
+
+      setAdminEmail(email);
       setIsLoading(false);
-      return;
-    }
+    };
 
-    // Check if admin is authenticated
-    const token = localStorage.getItem("adminToken");
-    const email = localStorage.getItem("adminEmail");
-
-    if (!token || !email) {
-      // Not authenticated, redirect to login
-      router.push("/admin/login");
-      return;
-    }
-
-    setAdminEmail(email);
-    setIsLoading(false);
+    checkAuth();
   }, [router, pathname]);
 
   const handleLogout = () => {

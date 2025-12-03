@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 
 type MovieDetails = {
   title: string;
@@ -22,7 +21,6 @@ type MovieDetails = {
 
 export default function MovieDetailsPage() {
   const params = useParams();
-  const router = useRouter();
   const [movie, setMovie] = useState<MovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
