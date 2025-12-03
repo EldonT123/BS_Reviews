@@ -25,8 +25,8 @@ CSV_FIELDNAMES = [
     "Reported",
     "Report Reason",
     "Report Count",
-    "Penalized",   
-    "Hidden"      
+    "Penalized",
+    "Hidden"
 ]
 
 
@@ -244,7 +244,7 @@ def delete_review(email: str, movie_name: str) -> bool:
 def report_review(email: str, movie_name: str, reason: str = "") -> bool:
     """
     Report a user's review for a movie.
-    Increments report count, appends reason, and hides review if 
+    Increments report count, appends reason, and hides review if
     threshold reached. Returns False if the review does not exist.
     """
     # Check if the user has a review for this movie
@@ -283,13 +283,15 @@ def report_review(email: str, movie_name: str, reason: str = "") -> bool:
     return False
 
 
-def handle_reported_review(email: str, movie_name: str, remove: bool = False) -> dict:
+def handle_reported_review(
+        email: str, movie_name: str, remove: bool = False
+) -> dict:
     """
     Admin handles a reported review.
 
     remove: True -> attempt to delete the review
             False -> attempt to keep the review (reset report info)
-    
+
     Returns a dictionary with:
         {
             "success": bool,
@@ -298,27 +300,43 @@ def handle_reported_review(email: str, movie_name: str, remove: bool = False) ->
     """
     reviews = read_reviews(movie_name)
     if not reviews:
-        return {"success": False, "message": "No reviews exist for this movie."}
+        return {
+            "success": False, "message": "No reviews exist for this movie."
+        }
 
     for review in reviews:
         if review["Email"] == email and review["Reported"] == "Yes":
             if remove:
                 if review["Penalized"] == "Yes":
                     success = delete_review(email, movie_name)
-                    msg = "Review deleted successfully (user was penalized)." if success else "Review could not be deleted."
+                    msg = (
+                        "Review deleted successfully (user was penalized)."
+                        if success
+                        else "Review could not be deleted."
+                    )
                     return {"success": success, "message": msg}
                 else:
-                    return {"success": False, "message": "Cannot delete review: user must be penalized first."}
+                    return {
+                        "success": False, "message": "Cannot delete review: "
+                        "user must be penalized first."
+                    }
             else:
                 if review["Penalized"] == "Yes":
-                    return {"success": False, "message": "Cannot keep review: a penalized review cannot be reset."}
+                    return {
+                        "success": False, "message": "Cannot keep review: "
+                        "a penalized review cannot be reset."
+                    }
                 else:
                     review["Reported"] = "No"
                     review["Report Reason"] = ""
                     review["Report Count"] = "0"
                     review["Hidden"] = "No"
                     success = write_reviews(movie_name, reviews)
-                    msg = "Review kept and report info reset successfully." if success else "Failed to reset review report info."
+                    msg = (
+                        "Review kept and report info reset successfully."
+                        if success
+                        else "Failed to reset review report info."
+                    )
                     return {"success": success, "message": msg}
 
     return {

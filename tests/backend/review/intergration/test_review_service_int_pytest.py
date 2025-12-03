@@ -10,12 +10,12 @@ from backend.models.user_model import User
 def test_user(isolated_movie_env):
     """Create a test user for reviews."""
     email = "test@example.com"
-    
+
     # Clean up if user exists from previous test
     existing_user = user_service.get_user_by_email(email)
     if existing_user:
         user_service.delete_user(email)
-    
+
     # Create a user with Slug tier (can write reviews)
     user = user_service.create_user(
         email=email,
@@ -23,13 +23,13 @@ def test_user(isolated_movie_env):
         password="password123",
         tier=User.TIER_SLUG
     )
-    
+
     yield user
-    
+
     # Cleanup after test
     try:
         user_service.delete_user(email)
-    except:
+    except Exception:
         pass
 
 
@@ -37,25 +37,25 @@ def test_user(isolated_movie_env):
 def test_user_2(isolated_movie_env):
     """Create a second test user."""
     email = "test2@example.com"
-    
+
     # Clean up if user exists
     existing_user = user_service.get_user_by_email(email)
     if existing_user:
         user_service.delete_user(email)
-    
+
     user = user_service.create_user(
         email=email,
         username="test_user_2",
         password="password123",
         tier=User.TIER_SLUG
     )
-    
+
     yield user
-    
+
     # Cleanup after test
     try:
         user_service.delete_user(email)
-    except:
+    except Exception:
         pass
 
 
@@ -63,29 +63,31 @@ def test_user_2(isolated_movie_env):
 def test_user_3(isolated_movie_env):
     """Create a third test user."""
     email = "test3@example.com"
-    
+
     # Clean up if user exists
     existing_user = user_service.get_user_by_email(email)
     if existing_user:
         user_service.delete_user(email)
-    
+
     user = user_service.create_user(
         email=email,
         username="test_user_3",
         password="password123",
         tier=User.TIER_SLUG
     )
-    
+
     yield user
-    
+
     # Cleanup after test
     try:
         user_service.delete_user(email)
-    except:
+    except Exception:
         pass
 
 
-def test_add_multiple_reviews_and_average(isolated_movie_env, test_user, test_user_2, test_user_3):
+def test_add_multiple_reviews_and_average(
+        isolated_movie_env, test_user, test_user_2, test_user_3
+):
     """
     Unit test - positive path / core logic
     Test adding multiple reviews and calculating average
@@ -204,7 +206,7 @@ def test_review_with_special_characters(isolated_movie_env):
     file_service.create_movie_folder(movie_name)
 
     email = "user_français@example.com"
-    
+
     # Clean up if user exists
     existing_user = user_service.get_user_by_email(email)
     if existing_user:
@@ -231,11 +233,11 @@ def test_review_with_special_characters(isolated_movie_env):
     assert len(reviews) == 1
     assert "français" in reviews[0]["Email"]
     assert "Très bon" in reviews[0]["Review"]
-    
+
     # Cleanup
     try:
         user_service.delete_user(email)
-    except:
+    except Exception:
         pass
 
 
@@ -295,7 +297,9 @@ def test_report_review_integration(isolated_movie_env, test_user):
         )
     reviews = review_service.read_reviews(movie_name)
     reported_review = next(r for r in reviews if r["Email"] == test_user.email)
-    assert reported_review["Report Count"] == str(review_service.REPORT_THRESHOLD)
+    assert reported_review["Report Count"] == (
+        str(review_service.REPORT_THRESHOLD)
+    )
     assert reported_review["Hidden"] == "Yes"
 
 
@@ -433,8 +437,10 @@ def test_get_review_by_email(isolated_movie_env, test_user):
     review_service.add_review(review, test_user)
 
     # Get the review by email
-    user_review = review_service.get_review_by_email(movie_name, test_user.email)
-    
+    user_review = review_service.get_review_by_email(
+        movie_name, test_user.email
+    )
+
     assert user_review is not None
     assert user_review["Email"] == test_user.email
     assert float(user_review["User's Rating out of 10"]) == 9.0
