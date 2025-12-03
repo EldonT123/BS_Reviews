@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 
 type Movie = {
@@ -94,11 +95,19 @@ export default function Home() {
             </a>
           </nav>
         </div>
-        <input
-          type="search"
-          placeholder="Search movies, TV, actors..."
-          className="bg-gray-800 text-gray-300 placeholder-gray-500 rounded-md px-4 py-2 focus:outline-yellow-400 focus:ring-1 focus:ring-yellow-400 w-48 sm:w-64"
-        />
+        <div className="flex items-center space-x-4">
+          <input
+            type="search"
+            placeholder="Search movies, TV, actors..."
+            className="bg-gray-800 text-gray-300 placeholder-gray-500 rounded-md px-4 py-2 focus:outline-yellow-400 focus:ring-1 focus:ring-yellow-400 w-48 sm:w-64"
+          />
+          <Link
+            href="/user/account_page"
+            className="bg-yellow-400 text-black font-semibold px-4 py-2 rounded hover:bg-yellow-500 transition"
+          >
+            Account
+          </Link>
+        </div>
       </header>
 
       {/* Banner + Up Next Side Pane */}

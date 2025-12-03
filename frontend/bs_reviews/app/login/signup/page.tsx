@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,18 +26,19 @@ export default function SignupPage() {
   const checks = validatePassword(password);
   const isPasswordValid = Object.values(checks).every(Boolean);
   const passwordsMatch = confirm === "" || password === confirm;
+  const isUsernameValid = username.length >= 3;
 
   // Handle signup submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isPasswordValid || !passwordsMatch) return;
+    if (!isPasswordValid || !passwordsMatch || !isUsernameValid) return;
 
     setLoading(true);
     try {
       const response = await fetch("http://localhost:8000/api/users/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, username, password }),
       });
 
       const data = await response.json();
@@ -84,6 +86,28 @@ export default function SignupPage() {
               className="w-full p-2 border rounded-md"
               required
             />
+          </div>
+
+          {/* Username input */}
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium mb-2">
+              Username
+            </label>
+            <input
+              type="text"
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full p-2 border rounded-md"
+              required
+              minLength={3}
+            />
+            {username && !isUsernameValid && (
+              <p className="text-red-500 text-sm mt-1">Username must be at least 3 characters</p>
+            )}
+            {username && isUsernameValid && (
+              <p className="text-green-600 text-sm mt-1">✓ Username valid</p>
+            )}
           </div>
 
           {/* Password input */}
@@ -142,9 +166,9 @@ export default function SignupPage() {
           {/* Submit button */}
           <button
             type="submit"
-            disabled={!isPasswordValid || !passwordsMatch || loading}
+            disabled={!isPasswordValid || !passwordsMatch || !isUsernameValid || loading}
             className={`w-full p-2 rounded-md text-white ${
-              isPasswordValid && passwordsMatch && !loading
+              isPasswordValid && passwordsMatch && isUsernameValid && !loading
                 ? "bg-green-600 hover:bg-green-700"
                 : "bg-gray-400 cursor-not-allowed"
             }`}
