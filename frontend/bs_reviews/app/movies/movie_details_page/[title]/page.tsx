@@ -106,7 +106,9 @@ export default function MovieDetailsPage() {
           <Image 
             src={data.poster_url}
             alt={data.movie_name}
-            className="w-48 sm:w-56 md:w-64 rounded-lg shadow-2xl mx-auto"
+            width={256}
+            height={384}
+            className="rounded-lg shadow-2xl mx-auto"
           />
         </div>
 
