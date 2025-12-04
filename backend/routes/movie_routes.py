@@ -1,4 +1,3 @@
-import asyncio
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 import os
@@ -8,8 +7,15 @@ import re
 
 router = APIRouter()
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATABASE_DIR = os.getenv("DATABASE_DIR", os.path.join(BASE_DIR, "database", "archive"))
+BASE_DIR = (
+    os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+)
+DATABASE_DIR = (
+    os.getenv("DATABASE_DIR", os.path.join(BASE_DIR, "database", "archive"))
+)
+
 
 # -----------------------------
 # Helper: Read poster URL from streamingData.csv
@@ -31,12 +37,16 @@ def get_csv_poster_url(movie_folder: str) -> str | None:
 
     return None
 
+
 # -----------------------------
 # Helper: Normalize titles/folder names
 # -----------------------------
 def normalize(name: str) -> str:
-    """Remove punctuation, dashes, colons, apostrophes, etc. Keep capitalization."""
+    """
+    Remove punctuation, dashes, colons, apostrophes, etc. Keep capitalization.
+    """
     return re.sub(r"[^\w\s]", "", name).strip()
+
 
 # ================================
 # GET TOP MOVIES
@@ -60,7 +70,10 @@ async def get_top_movies():
                 movies.append({
                     "title": title,
                     "movieIMDbRating": float(data.get("movieIMDbRating", 0)),
-                    "posterPath": poster_url or f"http://localhost:8000/api/movies/poster/{folder}"
+                    "posterPath": (
+                        poster_url or
+                        f"http://localhost:8000/api/movies/poster/{folder}"
+                    )
                 })
 
             except Exception as e:
@@ -68,6 +81,7 @@ async def get_top_movies():
 
     movies.sort(key=lambda m: m["movieIMDbRating"], reverse=True)
     return JSONResponse(content=movies[:5])
+
 
 # ================================
 # MOST COMMENTED MOVIES
@@ -91,7 +105,10 @@ async def get_most_commented_movies():
                 movies.append({
                     "title": title,
                     "commentCount": data.get("commentCount", 0),
-                    "posterPath": poster_url or f"http://localhost:8000/api/movies/poster/{folder}"
+                    "posterPath": (
+                        poster_url or
+                        f"http://localhost:8000/api/movies/poster/{folder}"
+                    )
                 })
 
             except Exception as e:
@@ -99,6 +116,7 @@ async def get_most_commented_movies():
 
     movies.sort(key=lambda m: m["commentCount"], reverse=True)
     return JSONResponse(content=movies[:10])
+
 
 # ================================
 # GET STREAMING DATA
@@ -153,9 +171,13 @@ def get_streaming_data(title: str):
 
     return {
         "movie_name": movie_name,
-        "poster_url": poster_url or f"http://localhost:8000/api/movies/poster/{folder_name}",
+        "poster_url": (
+            poster_url or
+            f"http://localhost:8000/api/movies/poster/{folder_name}"
+        ),
         "streaming_services": streaming_services
     }
+
 
 # ================================
 # SERVE LOCAL POSTER AS FALLBACK

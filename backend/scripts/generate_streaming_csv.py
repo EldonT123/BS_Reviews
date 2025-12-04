@@ -9,7 +9,7 @@ from backend.services.metadata_service import read_metadata
 # =============================
 # Configuration
 # =============================
-DATABASE_PATH = "database/archive"  # Parent folder containing all movie folders
+DATABASE_PATH = "database/archive"
 FORCE_UPDATE = False  # Set True to always fetch fresh data from Watchmode
 
 
@@ -46,7 +46,12 @@ def write_csv(movie_name: str, movie_data: dict):
         # =============================
         # Deduplicate each category by name
         # =============================
-        subscription = list({s["name"]: s for s in streaming.get("subscription", [])}.values())
+        subscription = list(
+            {
+                s["name"]: s
+                for s in streaming.get("subscription", [])
+            }.values()
+        )
         rent = list({s["name"]: s for s in streaming.get("rent", [])}.values())
         buy = list({s["name"]: s for s in streaming.get("buy", [])}.values())
 
@@ -83,14 +88,22 @@ def main():
             title = metadata.get("title", movie_name)
             print(f"[UPDATE] Fetching data for '{title}'...")
 
-            watchmode_id = external_api_service.get_first_valid_watchmode_id(title)
+            watchmode_id = (
+                external_api_service.get_first_valid_watchmode_id(title)
+            )
             if not watchmode_id:
-                print(f"[WARN] Could not find Watchmode ID for '{title}'. Skipping.")
+                print(
+                    "[WARN] Could not find Watchmode ID "
+                    f"for '{title}'. Skipping."
+                )
                 continue
 
             movie_data = external_api_service.get_movie_details(watchmode_id)
             if "error" in movie_data:
-                print(f"[WARN] Failed to fetch details for '{title}': {movie_data['error']}")
+                print(
+                    "[WARN] Failed to fetch details for "
+                    f"'{title}': {movie_data['error']}"
+                )
                 continue
 
             write_csv(movie_name, movie_data)
