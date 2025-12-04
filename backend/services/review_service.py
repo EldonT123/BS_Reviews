@@ -376,7 +376,6 @@ def mark_all_reviews_penalized(email: str) -> dict:
             "reviews_marked": int
         }
     """
-    from backend.services import file_service
 
     movies_affected = []
     reviews_marked = 0
@@ -398,7 +397,7 @@ def mark_all_reviews_penalized(email: str) -> dict:
         movie_path = os.path.join(data_folder, movie_name)
         if not os.path.isdir(movie_path):
             continue
-    
+
         reviews_path = os.path.join(movie_path, "movieReviews.csv")
         if not os.path.exists(reviews_path):
             continue
@@ -409,7 +408,10 @@ def mark_all_reviews_penalized(email: str) -> dict:
 
         # Mark user's reviews as penalized
         for review in reviews:
-            if review.get("Email") == email and review.get("Penalized") != "Yes":
+            if (
+                review.get("Email") == email
+                and review.get("Penalized") != "Yes"
+            ):
                 review["Penalized"] = "Yes"
                 review["Hidden"] = "Yes"  # Also hide penalized reviews
                 modified = True

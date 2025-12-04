@@ -190,7 +190,11 @@ def ensure_banned_emails_csv_exists():
             encoding="utf-8"
         ) as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(["banned_email", "banned_date", "banned_by", "reason"])
+            writer.writerow(["banned_email",
+                             "banned_date",
+                             "banned_by",
+                             "reason"
+                             ])
 
 
 def read_banned_emails() -> Dict[str, tuple[str, str, str]]:
@@ -219,11 +223,12 @@ def read_banned_emails() -> Dict[str, tuple[str, str, str]]:
 def add_banned_email(email: str, banned_by: str, reason: str = ""):
     """Add an email to the banned list."""
     ensure_banned_emails_csv_exists()
-    
+
     from datetime import datetime
     banned_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    with open(BANNED_EMAILS_CSV_PATH, "a", newline="", encoding="utf-8") as csvfile:
+
+    with open(BANNED_EMAILS_CSV_PATH,
+              "a", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow([email.lower(), banned_date, banned_by, reason])
 
@@ -238,10 +243,10 @@ def get_banned_email_info(email: str) -> Optional[Dict]:
     """Get information about a banned email."""
     banned_emails = read_banned_emails()
     info = banned_emails.get(email.lower())
-    
+
     if not info:
         return None
-    
+
     banned_date, banned_by, reason = info
     return {
         "email": email.lower(),
@@ -258,21 +263,23 @@ def remove_banned_email(email: str) -> bool:
     """
     banned_emails = read_banned_emails()
     email_lower = email.lower()
-    
+
     if email_lower not in banned_emails:
         return False
-    
+
     # Remove from dict
     del banned_emails[email_lower]
-    
+
     # Rewrite CSV without the unbanned email
     ensure_banned_emails_csv_exists()
-    with open(BANNED_EMAILS_CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
+    with open(BANNED_EMAILS_CSV_PATH,
+              "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["banned_email", "banned_date", "banned_by", "reason"])
-        for banned_email, (banned_date, banned_by, reason) in banned_emails.items():
+        for banned_email, (banned_date,
+                           banned_by, reason) in banned_emails.items():
             writer.writerow([banned_email, banned_date, banned_by, reason])
-    
+
     return True
 
 

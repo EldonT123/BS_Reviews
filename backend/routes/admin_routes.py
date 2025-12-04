@@ -272,7 +272,8 @@ async def ban_user_from_reviews(
     # If banning, mark all existing reviews as penalized
     review_result = {"reviews_marked": 0, "movies_affected": []}
     if ban_request.ban:
-        review_result = review_service.mark_all_reviews_penalized(ban_request.email)
+        review_result = review_service.mark_all_reviews_penalized(
+            ban_request.email)
 
     # Get updated user
     updated_user = user_service.get_user_by_email(ban_request.email)
@@ -281,7 +282,11 @@ async def ban_user_from_reviews(
     message = f"User {ban_request.email} has been {action} writing reviews"
 
     if ban_request.ban and review_result["reviews_marked"] > 0:
-        message += f". {review_result['reviews_marked']} existing reviews marked as penalized across {len(review_result['movies_affected'])} movies"
+        message += (
+            f". {review_result['reviews_marked']} "
+            f"existing reviews marked as penalized "
+            f"across {len(review_result['movies_affected'])} movies"
+        )
 
     return {
         "message": message,
@@ -352,7 +357,10 @@ async def unban_user(
         )
 
     return {
-        "message": f"Email {unban_request.email} has been unbanned and can now create a new account",
+        "message": (
+            f"Email {unban_request.email} has been unbanned "
+            f"and can now create a new account"
+        ),
         "previous_ban_info": ban_info
     }
 
