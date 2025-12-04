@@ -425,8 +425,17 @@ def create_user(
 ) -> User:
     """
     Create a new user account.
-    Raises ValueError if user already exists.
+    Raises ValueError if user already exists or email is banned.
     """
+    # Check if email is banned
+    from backend.services import admin_service
+    if admin_service.is_email_banned(email):
+        ban_info = admin_service.get_banned_email_info(email)
+        raise ValueError(
+            f"This email has been permanently banned. "
+            f"Reason: {ban_info.get('reason', 'Policy violation')}"
+        )
+
     existing_user = get_user_by_email(email)
     if existing_user:
         raise ValueError("User already exists")

@@ -40,6 +40,17 @@ class ReviewBan(BaseModel):
     ban: bool = True  # True = ban, False = unban
 
 
+class UserBan(BaseModel):
+    """Request model for banning users permanently."""
+    email: EmailStr
+    reason: str = ""
+
+
+class UserUnban(BaseModel):
+    """Request model for unbanning users."""
+    email: EmailStr
+
+
 # ==================== Admin Authentication ====================
 
 @router.post("/signup")
@@ -272,6 +283,111 @@ async def ban_user_from_reviews(
         "message": message,
         "user": updated_user.to_dict(),
         "reviews_affected": review_result if ban_request.ban else None
+    }
+
+
+@router.post("/users/ban")
+async def ban_user(
+    ban_request: UserBan,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """
+    Permanently ban a user (admin only).
+    This will:
+    - Add email to permanent blacklist
+    - Delete user account completely
+    - Revoke all active sessions
+    - Mark all reviews as penalized and hidden
+    - Prevent future signups with this email
+    """
+    result = admin_service.ban_user(
+        email=ban_request.email,
+        admin_email=admin.email,
+        reason=ban_request.reason
+    )
+
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["message"]
+        )
+
+    return {
+        "message": result["message"],
+        "details": result["details"]
+    }
+
+
+@router.post("/users/unban")
+async def unban_user(
+    unban_request: UserUnban,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """
+    Remove an email from the ban list (admin only).
+    This allows the email to create a new account.
+    Note: This does NOT restore the deleted account.
+    """
+    # Check if email is actually banned
+    if not admin_service.is_email_banned(unban_request.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is not currently banned"
+        )
+
+    # Get ban info before removing
+    ban_info = admin_service.get_banned_email_info(unban_request.email)
+
+    # Remove from blacklist
+    success = admin_service.remove_banned_email(unban_request.email)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unban email"
+        )
+
+    return {
+        "message": f"Email {unban_request.email} has been unbanned and can now create a new account",
+        "previous_ban_info": ban_info
+    }
+
+
+@router.get("/users/banned")
+async def get_banned_users(admin: Admin = Depends(verify_admin_token)):
+    """
+    Get list of all banned emails (admin only).
+    """
+    banned_emails = admin_service.get_all_banned_emails()
+
+    return {
+        "banned_emails": banned_emails,
+        "total": len(banned_emails)
+    }
+
+
+@router.get("/users/banned/{email}")
+async def check_banned_status(
+    email: str,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """
+    Check if a specific email is banned (admin only).
+    """
+    is_banned = admin_service.is_email_banned(email)
+
+    if not is_banned:
+        return {
+            "email": email,
+            "is_banned": False
+        }
+
+    ban_info = admin_service.get_banned_email_info(email)
+
+    return {
+        "email": email,
+        "is_banned": True,
+        "ban_info": ban_info
     }
 
 
