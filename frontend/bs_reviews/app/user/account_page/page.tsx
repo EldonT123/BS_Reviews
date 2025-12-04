@@ -13,6 +13,17 @@ type User = {
   tokens?: number;
 };
 
+type UserReview = {
+  "Date of Review": string;
+  Email: string;
+  Username: string;
+  Dislikes: string;
+  Likes: string;
+  "User's Rating out of 10": string;
+  "Review Title": string;
+  Review: string;
+  movie_name: string;
+};
 
 type TierInfo = {
   name: string;
@@ -59,8 +70,13 @@ const TIER_DESCRIPTIONS: Record<string, TierInfo> = {
 export default function AccountPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [userReviews, setUserReviews] = useState<UserReview[]>([]);
+  const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [bookmarksLoading, setBookmarksLoading] = useState(true);
   const [selectedTier, setSelectedTier] = useState<TierInfo | null>(null);
+  const [activeTab, setActiveTab] = useState<"reviews" | "bookmarks">("reviews");
 
   useEffect(() => {
     async function checkSession() {
@@ -82,6 +98,10 @@ export default function AccountPage() {
 
         const data = await res.json();
         setUser(data.user);
+        
+        // Fetch user's reviews and bookmarks
+        fetchUserReviews(sessionId);
+        fetchBookmarks(data.user.email);
       } catch (error) {
         console.error("Failed to fetch user info:", error);
         router.push("/login");
@@ -92,6 +112,71 @@ export default function AccountPage() {
 
     checkSession();
   }, [router]);
+
+  async function fetchUserReviews(sessionId: string) {
+    try {
+      const res = await fetch(
+        `http://localhost:8000/api/reviews/user/reviews`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionId}`,
+          },
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        setUserReviews(data.reviews || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user reviews:", error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }
+
+  async function fetchBookmarks(email: string) {
+    try {
+      const res = await fetch(
+        `http://localhost:8000/api/users/bookmarks/${encodeURIComponent(email)}`
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        setBookmarks(data.bookmarks || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch bookmarks:", error);
+    } finally {
+      setBookmarksLoading(false);
+    }
+  }
+
+  const handleRemoveBookmark = async (movieTitle: string) => {
+    if (!user) return;
+
+    try {
+      const res = await fetch(
+        `http://localhost:8000/api/users/bookmarks/remove`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: user.email,
+            movie_title: movieTitle
+          })
+        }
+      );
+
+      if (res.ok) {
+        setBookmarks(prev => prev.filter(b => b !== movieTitle));
+      }
+    } catch (error) {
+      console.error("Failed to remove bookmark:", error);
+    }
+  };
 
   const handleTierClick = (tier: string) => {
     const tierKey = tier.toLowerCase();
@@ -156,12 +241,11 @@ export default function AccountPage() {
           >
             Account
           </Link>
-          
         </div>
       </header>
 
       {/* Main Content */}
-      <section className="max-w-4xl mx-auto my-12 px-4">
+      <section className="max-w-6xl mx-auto my-12 px-4">
         <div className="bg-gray-800 rounded-lg shadow-lg p-8">
           {/* Header with upgrade button */}
           <div className="flex items-center justify-between mb-8">
@@ -261,25 +345,154 @@ export default function AccountPage() {
             </div>
           )}
 
-          {/* Placeholder Sections */}
-          <div className="space-y-8 mt-12">
-            <div className="border-t border-gray-600 pt-8">
-              <h2 className="text-2xl font-bold text-gray-300 mb-4">
-                Reviews (Coming Soon)
-              </h2>
-              <p className="text-gray-400">
-                Your movie reviews will appear here.
-              </p>
+          {/* Tabs */}
+          <div className="border-t border-gray-600 pt-8 mt-8">
+            <div className="flex gap-4 mb-6">
+              <button
+                onClick={() => setActiveTab("reviews")}
+                className={`px-6 py-3 rounded-lg font-semibold transition ${
+                  activeTab === "reviews"
+                    ? "bg-yellow-400 text-black"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                Your Reviews ({userReviews.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("bookmarks")}
+                className={`px-6 py-3 rounded-lg font-semibold transition ${
+                  activeTab === "bookmarks"
+                    ? "bg-yellow-400 text-black"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                Bookmarks ({bookmarks.length})
+              </button>
             </div>
 
-            <div className="border-t border-gray-600 pt-8">
-              <h2 className="text-2xl font-bold text-gray-300 mb-4">
-                Bookmarks (Coming Soon)
-              </h2>
-              <p className="text-gray-400">
-                Your bookmarked movies will appear here.
-              </p>
-            </div>
+            {/* Reviews Tab */}
+            {activeTab === "reviews" && (
+              <div>
+                {reviewsLoading ? (
+                  <div className="text-center py-8 text-gray-400">
+                    Loading your reviews...
+                  </div>
+                ) : userReviews.length === 0 ? (
+                  <div className="bg-gray-700 p-8 rounded-lg text-center">
+                    <p className="text-gray-400 mb-4">
+                      You haven't written any reviews yet.
+                    </p>
+                    <Link
+                      href="/"
+                      className="inline-block bg-yellow-400 text-black font-semibold px-6 py-3 rounded hover:bg-yellow-500 transition"
+                    >
+                      Browse Movies
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {userReviews.map((review, index) => (
+                      <Link
+                        key={`${review.movie_name}-${index}`}
+                        href={`/movies/${encodeURIComponent(review.movie_name)}`}
+                        className="bg-gray-700 p-6 rounded-lg hover:bg-gray-650 transition-colors border border-gray-600 hover:border-yellow-400"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h3 className="text-xl font-semibold text-yellow-400 mb-1">
+                              {review.movie_name}
+                            </h3>
+                            <h4 className="text-lg font-medium text-white mb-2">
+                              {review["Review Title"] || "Untitled Review"}
+                            </h4>
+                            <div className="flex items-center gap-3 text-sm text-gray-400 mb-3">
+                              <span>{review["Date of Review"]}</span>
+                              <span>•</span>
+                              <span className="text-yellow-400 font-semibold">
+                                ⭐ {review["User's Rating out of 10"]}/10
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="text-gray-300 leading-relaxed mb-4 line-clamp-3">
+                          {review.Review}
+                        </p>
+
+                        <div className="flex items-center gap-4 pt-3 border-t border-gray-600">
+                          <div className="flex items-center gap-2 text-sm text-gray-400">
+                            <span>👍</span>
+                            <span>{review.Likes || "0"} likes</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-400">
+                            <span>👎</span>
+                            <span>{review.Dislikes || "0"} dislikes</span>
+                          </div>
+                          <div className="ml-auto text-sm text-yellow-400 font-medium">
+                            View & Edit →
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bookmarks Tab */}
+            {activeTab === "bookmarks" && (
+              <div>
+                {bookmarksLoading ? (
+                  <div className="text-center py-8 text-gray-400">
+                    Loading your bookmarks...
+                  </div>
+                ) : bookmarks.length === 0 ? (
+                  <div className="bg-gray-700 p-8 rounded-lg text-center">
+                    <p className="text-gray-400 mb-4">
+                      You haven't bookmarked any movies yet.
+                    </p>
+                    <Link
+                      href="/"
+                      className="inline-block bg-yellow-400 text-black font-semibold px-6 py-3 rounded hover:bg-yellow-500 transition"
+                    >
+                      Browse Movies
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {bookmarks.map((movieTitle, index) => (
+                      <div
+                        key={`${movieTitle}-${index}`}
+                        className="bg-gray-700 p-6 rounded-lg border border-gray-600 hover:border-yellow-400 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <Link
+                            href={`/movies/${encodeURIComponent(movieTitle)}`}
+                            className="flex-1 hover:text-yellow-400 transition"
+                          >
+                            <h3 className="text-xl font-semibold text-white mb-2">
+                              {movieTitle}
+                            </h3>
+                            <p className="text-sm text-gray-400">
+                              Click to view movie details
+                            </p>
+                          </Link>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleRemoveBookmark(movieTitle);
+                            }}
+                            className="ml-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>

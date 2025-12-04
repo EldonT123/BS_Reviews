@@ -471,7 +471,6 @@ def test_get_review_by_email(isolated_movie_env, test_user):
 def test_like_review_integration(isolated_movie_env, test_user):
     movie_name = "integration_like"
     file_service.create_movie_folder(movie_name)
-
     # Add review
     review_service.add_review(ReviewRequest(
         movie_name=movie_name,
@@ -479,19 +478,16 @@ def test_like_review_integration(isolated_movie_env, test_user):
         comment="Awesome!",
         review_title="Loved it"
     ), test_user)
-
-    # Like review
-    assert review_service.like_review(test_user.email, movie_name) is True
-
+    # Like review - voter_email can be different from review author
+    voter = test_user.email  # Or create a different user for voting
+    assert review_service.like_review(test_user.email, movie_name, voter) is True
     reviews = review_service.read_reviews(movie_name)
     r = next(rev for rev in reviews if rev["Email"] == test_user.email)
     assert r["Likes"] == "1"
 
-
 def test_dislike_review_integration(isolated_movie_env, test_user):
     movie_name = "integration_dislike"
     file_service.create_movie_folder(movie_name)
-
     # Add review
     review_service.add_review(ReviewRequest(
         movie_name=movie_name,
@@ -499,10 +495,9 @@ def test_dislike_review_integration(isolated_movie_env, test_user):
         comment="Not bad",
         review_title="Okay"
     ), test_user)
-
     # Dislike review
-    assert review_service.dislike_review(test_user.email, movie_name) is True
-
+    voter = test_user.email
+    assert review_service.dislike_review(test_user.email, movie_name, voter) is True
     reviews = review_service.read_reviews(movie_name)
     r = next(rev for rev in reviews if rev["Email"] == test_user.email)
     assert r["Dislikes"] == "1"

@@ -162,6 +162,21 @@ async def get_review_stats(movie_name: str):
         **stats
     }
 
+@router.get("/user/reviews")
+async def get_user_reviews_route(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all reviews written by the current user across all movies.
+    Requires authentication.
+    """
+    reviews = review_service.get_user_reviews(current_user.email)
+    
+    return {
+        "user_email": current_user.email,
+        "total_reviews": len(reviews),
+        "reviews": reviews
+    }
 
 @router.get("/{movie_name}/average")
 async def get_average_rating(movie_name: str):

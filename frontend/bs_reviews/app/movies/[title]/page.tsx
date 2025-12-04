@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import StarRating from "@/components/StarRating";
 
 type MovieDetails = {
   title: string;
@@ -41,6 +42,7 @@ type Review = {
 
 export default function MovieDetailsPage() {
   const params = useParams();
+  const router = useRouter();
   const [movie, setMovie] = useState<MovieDetails | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [displayedReviews, setDisplayedReviews] = useState<Review[]>([]);
@@ -49,6 +51,7 @@ export default function MovieDetailsPage() {
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userTier, setUserTier] = useState<string | null>(null);
   const [voteMessage, setVoteMessage] = useState<string | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewForm, setReviewForm] = useState({
@@ -58,8 +61,10 @@ export default function MovieDetailsPage() {
   });
   const [submitLoading, setSubmitLoading] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userHasReview, setUserHasReview] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
-  // Check authentication status with backend verification
+  // Check authentication status and user tier
   useEffect(() => {
     const checkAuth = async () => {
       const sessionId = localStorage.getItem("session_id");
@@ -68,6 +73,7 @@ export default function MovieDetailsPage() {
       if (!sessionId || !email) {
         setIsAuthenticated(false);
         setUserEmail(null);
+        setUserTier(null);
         return;
       }
 
@@ -77,23 +83,32 @@ export default function MovieDetailsPage() {
         );
         
         if (response.ok) {
+          const data = await response.json();
           setIsAuthenticated(true);
           setUserEmail(email);
+          setUserTier(data.user.tier);
         } else {
           localStorage.removeItem("session_id");
           localStorage.removeItem("user_email");
           setIsAuthenticated(false);
           setUserEmail(null);
+          setUserTier(null);
         }
       } catch (error) {
         console.error("Error checking session:", error);
         setIsAuthenticated(false);
         setUserEmail(null);
+        setUserTier(null);
       }
     };
     
     checkAuth();
   }, []);
+
+  // Helper function to check if user can write reviews
+  const canWriteReviews = () => {
+    return userTier === "slug" || userTier === "banana_slug";
+  };
 
   // Fetch movie details
   useEffect(() => {
@@ -128,7 +143,7 @@ export default function MovieDetailsPage() {
     }
   }, [params.title]);
 
-  // Fetch reviews (without vote status initially)
+  // Fetch reviews and check if user has reviewed
   useEffect(() => {
     async function fetchReviews() {
       if (!movie?.title) return;
@@ -143,6 +158,7 @@ export default function MovieDetailsPage() {
         if (!res.ok) {
           if (res.status === 404) {
             setReviews([]);
+            setUserHasReview(false);
             return;
           }
           throw new Error("Failed to fetch reviews");
@@ -150,6 +166,21 @@ export default function MovieDetailsPage() {
 
         const data = await res.json();
         const visibleReviews = data.reviews.filter((r: Review) => r.Hidden !== "Yes");
+        
+        // Check if current user has already reviewed
+        if (userEmail) {
+          const userReview = visibleReviews.find((r: Review) => r.Email === userEmail);
+          setUserHasReview(!!userReview);
+          
+          // Pre-populate form if user has a review (for editing)
+          if (userReview) {
+            setReviewForm({
+              rating: parseFloat(userReview["User's Rating out of 10"]),
+              reviewTitle: userReview["Review Title"],
+              comment: userReview.Review
+            });
+          }
+        }
         
         setReviews(visibleReviews);
       } catch (err) {
@@ -161,51 +192,83 @@ export default function MovieDetailsPage() {
     }
 
     fetchReviews();
-  }, [movie?.title]);
+  }, [movie?.title, userEmail]);
 
-  // Fetch vote status ONLY for displayed reviews
+  // Sort and display reviews with custom ordering
   useEffect(() => {
     async function fetchVoteStatus() {
-      if (!isAuthenticated || reviews.length === 0) {
-        setDisplayedReviews(reviews.slice(0, reviewsToShow));
+      if (reviews.length === 0) {
+        setDisplayedReviews([]);
         return;
       }
 
       const sessionId = localStorage.getItem("session_id");
-      const reviewsToDisplay = reviews.slice(0, reviewsToShow);
+      
+      // Sort reviews: User's review first, then Banana Slugs by likes, then others
+      const sortedReviews = [...reviews].sort((a, b) => {
+        // Current user's review always first
+        if (userEmail) {
+          if (a.Email === userEmail) return -1;
+          if (b.Email === userEmail) return 1;
+        }
+        
+        // Then Banana Slugs
+        const aIsBanana = a.user_tier === "banana_slug";
+        const bIsBanana = b.user_tier === "banana_slug";
+        
+        if (aIsBanana && !bIsBanana) return -1;
+        if (!aIsBanana && bIsBanana) return 1;
+        
+        // Within Banana Slugs, sort by likes
+        if (aIsBanana && bIsBanana) {
+          const aLikes = parseInt(a.Likes) || 0;
+          const bLikes = parseInt(b.Likes) || 0;
+          return bLikes - aLikes;
+        }
+        
+        // Everyone else stays in original order
+        return 0;
+      });
 
-      const reviewsWithStatus = await Promise.all(
-        reviewsToDisplay.map(async (review: Review) => {
-          try {
-            const statusRes = await fetch(
-              `http://localhost:8000/api/reviews/${encodeURIComponent(movie!.title)}/vote-status/${encodeURIComponent(review.Email)}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${sessionId}`,
-                },
+      const reviewsToDisplay = sortedReviews.slice(0, reviewsToShow);
+
+      // Fetch vote status only for authenticated users who can vote
+      if (isAuthenticated && sessionId && canWriteReviews()) {
+        const reviewsWithStatus = await Promise.all(
+          reviewsToDisplay.map(async (review: Review) => {
+            try {
+              const statusRes = await fetch(
+                `http://localhost:8000/api/reviews/${encodeURIComponent(movie!.title)}/vote-status/${encodeURIComponent(review.Email)}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${sessionId}`,
+                  },
+                }
+              );
+              
+              if (statusRes.ok) {
+                const status = await statusRes.json();
+                return { 
+                  ...review, 
+                  hasLiked: status.has_liked, 
+                  hasDisliked: status.has_disliked 
+                };
               }
-            );
-            
-            if (statusRes.ok) {
-              const status = await statusRes.json();
-              return { 
-                ...review, 
-                hasLiked: status.has_liked, 
-                hasDisliked: status.has_disliked 
-              };
+            } catch (err) {
+              console.error("Error fetching vote status:", err);
             }
-          } catch (err) {
-            console.error("Error fetching vote status:", err);
-          }
-          return review;
-        })
-      );
+            return review;
+          })
+        );
 
-      setDisplayedReviews(reviewsWithStatus);
+        setDisplayedReviews(reviewsWithStatus);
+      } else {
+        setDisplayedReviews(reviewsToDisplay);
+      }
     }
 
     fetchVoteStatus();
-  }, [reviews, reviewsToShow, isAuthenticated, movie]);
+  }, [reviews, reviewsToShow, isAuthenticated, userEmail, userTier, movie]);
 
   const showVoteMessage = (message: string) => {
     setVoteMessage(message);
@@ -214,6 +277,11 @@ export default function MovieDetailsPage() {
 
   const handleLike = async (reviewAuthorEmail: string) => {
     if (!movie?.title) return;
+    
+    if (!canWriteReviews()) {
+      showVoteMessage("Upgrade to Slug tier to vote on reviews!");
+      return;
+    }
     
     const sessionId = localStorage.getItem("session_id");
     
@@ -258,6 +326,8 @@ export default function MovieDetailsPage() {
           setIsAuthenticated(false);
           setUserEmail(null);
           showVoteMessage("Session expired. Please log in again.");
+        } else if (res.status === 403) {
+          showVoteMessage("Upgrade to Slug tier to vote on reviews!");
         } else {
           showVoteMessage(result.detail || "Failed to like review");
         }
@@ -270,6 +340,11 @@ export default function MovieDetailsPage() {
 
   const handleDislike = async (reviewAuthorEmail: string) => {
     if (!movie?.title) return;
+    
+    if (!canWriteReviews()) {
+      showVoteMessage("Upgrade to Slug tier to vote on reviews!");
+      return;
+    }
     
     const sessionId = localStorage.getItem("session_id");
     
@@ -314,6 +389,8 @@ export default function MovieDetailsPage() {
           setIsAuthenticated(false);
           setUserEmail(null);
           showVoteMessage("Session expired. Please log in again.");
+        } else if (res.status === 403) {
+          showVoteMessage("Upgrade to Slug tier to vote on reviews!");
         } else {
           showVoteMessage(result.detail || "Failed to dislike review");
         }
@@ -332,6 +409,11 @@ export default function MovieDetailsPage() {
     e.preventDefault();
     
     if (!movie?.title) return;
+    
+    if (!canWriteReviews()) {
+      showVoteMessage("Upgrade to Slug tier to write reviews!");
+      return;
+    }
     
     const sessionId = localStorage.getItem("session_id");
     
@@ -353,10 +435,13 @@ export default function MovieDetailsPage() {
     try {
       setSubmitLoading(true);
       
+      // Use PUT if editing, POST if creating new
+      const method = isEditMode ? "PUT" : "POST";
+      
       const res = await fetch(
         `http://localhost:8000/api/reviews/${encodeURIComponent(movie.title)}`,
         {
-          method: "POST",
+          method: method,
           headers: {
             "Authorization": `Bearer ${sessionId}`,
             "Content-Type": "application/json",
@@ -373,15 +458,13 @@ export default function MovieDetailsPage() {
       const result = await res.json();
 
       if (res.ok) {
-        showVoteMessage(result.message || "Review submitted successfully!");
+        showVoteMessage(result.message || (isEditMode ? "Review updated successfully!" : "Review submitted successfully!"));
         
-        setReviewForm({
-          rating: 5,
-          reviewTitle: "",
-          comment: ""
-        });
         setShowReviewForm(false);
+        setIsEditMode(false);
+        setUserHasReview(true);
         
+        // Refresh reviews
         const reviewsRes = await fetch(
           `http://localhost:8000/api/reviews/${encodeURIComponent(movie.title)}`
         );
@@ -391,13 +474,46 @@ export default function MovieDetailsPage() {
           setReviews(visibleReviews);
         }
       } else {
-        showVoteMessage(result.detail || "Failed to submit review");
+        if (res.status === 403) {
+          showVoteMessage("Upgrade to Slug tier to write reviews!");
+        } else {
+          showVoteMessage(result.detail || "Failed to submit review");
+        }
       }
     } catch (err) {
       console.error("Error submitting review:", err);
       showVoteMessage("Error submitting review");
     } finally {
       setSubmitLoading(false);
+    }
+  };
+
+  const handleEditReview = () => {
+    if (!canWriteReviews()) {
+      showVoteMessage("Upgrade to Slug tier to edit reviews!");
+      return;
+    }
+    setIsEditMode(true);
+    setShowReviewForm(true);
+  };
+
+  const handleWriteReviewClick = () => {
+    if (!isAuthenticated) {
+      showVoteMessage("Please log in to write a review");
+      router.push("/login");
+      return;
+    }
+    
+    if (!canWriteReviews()) {
+      showVoteMessage("🐌 Upgrade to Slug tier to write reviews!");
+      router.push("/store");
+      return;
+    }
+    
+    if (userHasReview) {
+      handleEditReview();
+    } else {
+      setShowReviewForm(true);
     }
   };
 
@@ -558,46 +674,51 @@ export default function MovieDetailsPage() {
               )}
             </h2>
             
-            {isAuthenticated && !showReviewForm && (
+            {!showReviewForm && (
               <button
-                onClick={() => setShowReviewForm(true)}
+                onClick={handleWriteReviewClick}
                 className="bg-yellow-400 text-black font-semibold px-6 py-2 rounded hover:bg-yellow-500 transition"
               >
-                Write a Review
+                {isAuthenticated && userHasReview ? "Edit Your Review" : "Write a Review"}
               </button>
             )}
           </div>
 
-          {showReviewForm && (
+          {showReviewForm && canWriteReviews() && (
             <div className="bg-gray-700 p-6 rounded-lg mb-6 border-2 border-yellow-400">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold text-white">Write Your Review</h3>
+                <h3 className="text-xl font-semibold text-white">
+                  {isEditMode ? "Edit Your Review" : "Write Your Review"}
+                </h3>
                 <button
-                  onClick={() => setShowReviewForm(false)}
+                  onClick={() => {
+                    setShowReviewForm(false);
+                    setIsEditMode(false);
+                    if (!userHasReview) {
+                      setReviewForm({
+                        rating: 5,
+                        reviewTitle: "",
+                        comment: ""
+                      });
+                    }
+                  }}
                   className="text-gray-400 hover:text-white text-2xl"
                 >
                   ×
                 </button>
               </div>
               
-              <div className="space-y-4">
+              <form onSubmit={handleSubmitReview} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Rating: {reviewForm.rating}/10
+                  <label className="block text-sm font-medium text-gray-300 mb-3">
+                    Rating
                   </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="10"
-                    step="0.5"
-                    value={reviewForm.rating}
-                    onChange={(e) => setReviewForm({ ...reviewForm, rating: parseFloat(e.target.value) })}
-                    className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                  <StarRating
+                    rating={reviewForm.rating}
+                    onChange={(rating) => setReviewForm({ ...reviewForm, rating })}
+                    maxStars={10}
+                    size="md"
                   />
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
-                    <span>0</span>
-                    <span>10</span>
-                  </div>
                 </div>
 
                 <div>
@@ -629,29 +750,41 @@ export default function MovieDetailsPage() {
 
                 <div className="flex gap-3">
                   <button
-                    onClick={handleSubmitReview}
+                    type="submit"
                     disabled={submitLoading}
                     className={`flex-1 bg-yellow-400 text-black font-semibold px-6 py-3 rounded hover:bg-yellow-500 transition ${
                       submitLoading ? "opacity-50 cursor-not-allowed" : ""
                     }`}
                   >
-                    {submitLoading ? "Submitting..." : "Submit Review"}
+                    {submitLoading ? "Submitting..." : (isEditMode ? "Update Review" : "Submit Review")}
                   </button>
                   <button
-                    onClick={() => setShowReviewForm(false)}
+                    type="button"
+                    onClick={() => {
+                      setShowReviewForm(false);
+                      setIsEditMode(false);
+                    }}
                     className="px-6 py-3 bg-gray-600 text-white rounded hover:bg-gray-500 transition"
                   >
                     Cancel
                   </button>
                 </div>
-              </div>
+              </form>
             </div>
           )}
 
           {!isAuthenticated && (
             <div className="bg-yellow-400/10 border border-yellow-400 text-yellow-400 px-4 py-3 rounded-lg mb-6">
               <p className="text-sm">
-                Please log in to write reviews and vote on reviews
+                Please <Link href="/login" className="underline font-semibold">log in</Link> to write reviews and vote on reviews
+              </p>
+            </div>
+          )}
+
+          {isAuthenticated && userTier === "snail" && (
+            <div className="bg-blue-400/10 border border-blue-400 text-blue-400 px-4 py-3 rounded-lg mb-6">
+              <p className="text-sm">
+                🐌 <Link href="/store" className="underline font-semibold">Upgrade to Slug tier</Link> to write reviews and vote on reviews
               </p>
             </div>
           )}
@@ -665,67 +798,89 @@ export default function MovieDetailsPage() {
           ) : (
             <>
               <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
-                {displayedReviews.map((review) => (
-                  <div
-                    key={review.Email}
-                    className="bg-gray-700 p-6 rounded-lg border border-gray-600"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-xl font-semibold text-white">
-                            {review["Review Title"] || "Untitled Review"}
-                          </h3>
-                          {review.user_tier_display && (
-                            <span className="text-xs bg-yellow-500 text-black px-2 py-1 rounded font-semibold">
-                              {review.user_tier_display}
+                {displayedReviews.map((review) => {
+                  const isOwnReview = userEmail === review.Email;
+                  const canVote = canWriteReviews() && !isOwnReview;
+                  
+                  return (
+                    <div
+                      key={review.Email}
+                      className={`bg-gray-700 p-6 rounded-lg border ${
+                        isOwnReview ? "border-yellow-400 border-2" : "border-gray-600"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-xl font-semibold text-white">
+                              {review["Review Title"] || "Untitled Review"}
+                            </h3>
+                            {isOwnReview && (
+                              <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded font-semibold">
+                                Your Review
+                              </span>
+                            )}
+                            {review.user_tier_display && review.user_tier === "banana_slug" && (
+                              <span className="text-xs bg-yellow-500 text-black px-2 py-1 rounded font-semibold">
+                                🍌 {review.user_tier_display}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-gray-400">
+                            <span>{review.Username}</span>
+                            <span>•</span>
+                            <span>{review["Date of Review"]}</span>
+                            <span>•</span>
+                            <span className="text-yellow-400 font-semibold">
+                              ⭐ {review["User's Rating out of 10"]}/10
                             </span>
-                          )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-gray-400">
-                          <span>{review.Username}</span>
-                          <span>•</span>
-                          <span>{review["Date of Review"]}</span>
-                          <span>•</span>
-                          <span className="text-yellow-400 font-semibold">
-                            ⭐ {review["User's Rating out of 10"]}/10
-                          </span>
-                        </div>
+                        {isOwnReview && (
+                          <button
+                            onClick={handleEditReview}
+                            className="ml-4 text-yellow-400 hover:text-yellow-300 text-sm font-medium"
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </div>
+
+                      <p className="text-gray-200 leading-relaxed mb-4">
+                        {review.Review}
+                      </p>
+
+                      <div className="flex items-center gap-4 pt-3 border-t border-gray-600">
+                        <button
+                          onClick={() => handleLike(review.Email)}
+                          disabled={!isAuthenticated || isOwnReview}
+                          className={`flex items-center gap-2 px-3 py-2 rounded transition text-sm ${
+                            review.hasLiked
+                              ? "bg-green-600 text-white"
+                              : "bg-gray-600 hover:bg-green-600"
+                          } ${(!isAuthenticated || isOwnReview) ? "opacity-50 cursor-not-allowed" : ""}`}
+                          title={isOwnReview ? "You can't vote on your own review" : ""}
+                        >
+                          <span>👍</span>
+                          <span>{review.Likes || "0"}</span>
+                        </button>
+                        <button
+                          onClick={() => handleDislike(review.Email)}
+                          disabled={!isAuthenticated || isOwnReview}
+                          className={`flex items-center gap-2 px-3 py-2 rounded transition text-sm ${
+                            review.hasDisliked
+                              ? "bg-red-600 text-white"
+                              : "bg-gray-600 hover:bg-red-600"
+                          } ${(!isAuthenticated || isOwnReview) ? "opacity-50 cursor-not-allowed" : ""}`}
+                          title={isOwnReview ? "You can't vote on your own review" : ""}
+                        >
+                          <span>👎</span>
+                          <span>{review.Dislikes || "0"}</span>
+                        </button>
                       </div>
                     </div>
-
-                    <p className="text-gray-200 leading-relaxed mb-4">
-                      {review.Review}
-                    </p>
-
-                    <div className="flex items-center gap-4 pt-3 border-t border-gray-600">
-                      <button
-                        onClick={() => handleLike(review.Email)}
-                        disabled={!isAuthenticated}
-                        className={`flex items-center gap-2 px-3 py-2 rounded transition text-sm ${
-                          review.hasLiked
-                            ? "bg-green-600 text-white"
-                            : "bg-gray-600 hover:bg-green-600"
-                        } ${!isAuthenticated ? "opacity-50 cursor-not-allowed" : ""}`}
-                      >
-                        <span>👍</span>
-                        <span>{review.Likes || "0"}</span>
-                      </button>
-                      <button
-                        onClick={() => handleDislike(review.Email)}
-                        disabled={!isAuthenticated}
-                        className={`flex items-center gap-2 px-3 py-2 rounded transition text-sm ${
-                          review.hasDisliked
-                            ? "bg-red-600 text-white"
-                            : "bg-gray-600 hover:bg-red-600"
-                        } ${!isAuthenticated ? "opacity-50 cursor-not-allowed" : ""}`}
-                      >
-                        <span>👎</span>
-                        <span>{review.Dislikes || "0"}</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {displayedReviews.length < reviews.length && (

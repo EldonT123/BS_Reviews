@@ -617,8 +617,7 @@ class TestLikeDislikeReview:
             "Email": "a@b.com", "Likes": "0", "Dislikes": "0"
         }]
         mock_write.return_value = True
-
-        result = review_service.like_review("a@b.com", "Test Movie")
+        result = review_service.like_review("a@b.com", "Test Movie", "voter@x.com")
         assert result is True
         assert mock_read.return_value[0]["Likes"] == "1"
         mock_write.assert_called_once()
@@ -630,8 +629,7 @@ class TestLikeDislikeReview:
             "Email": "a@b.com", "Likes": "0", "Dislikes": "0"
         }]
         mock_write.return_value = True
-
-        result = review_service.dislike_review("a@b.com", "Test Movie")
+        result = review_service.dislike_review("a@b.com", "Test Movie", "voter@x.com")
         assert result is True
         assert mock_read.return_value[0]["Dislikes"] == "1"
         mock_write.assert_called_once()
@@ -639,9 +637,8 @@ class TestLikeDislikeReview:
     @patch('backend.services.review_service.read_reviews')
     def test_review_not_found(self, mock_read):
         mock_read.return_value = []
-
-        assert review_service.like_review("x@y.com", "Test Movie") is False
-        assert review_service.dislike_review("x@y.com", "Test Movie") is False
+        assert review_service.like_review("x@y.com", "Test Movie", "voter@z.com") is False
+        assert review_service.dislike_review("x@y.com", "Test Movie", "voter@z.com") is False
 
 
 # ==================== Calculations & Statistics Tests ====================

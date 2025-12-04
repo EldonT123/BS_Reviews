@@ -140,6 +140,57 @@ def get_reviews_path(movie_name: str) -> str:
         "movieReviews.csv"
     )
 
+def get_user_reviews(user_email: str) -> List[Dict]:
+    """
+    Get all reviews written by a specific user across all movies.
+    Returns a list of reviews with movie names attached.
+    """
+    from backend.services import file_service
+    
+    user_reviews = []
+    
+    # Get all movie folders
+    movies_dir = file_service.MOVIES_FOLDER
+    if not os.path.exists(movies_dir):
+        return []
+    
+    # Iterate through all movie folders
+    for movie_folder in os.listdir(movies_dir):
+        movie_path = os.path.join(movies_dir, movie_folder)
+        
+        if not os.path.isdir(movie_path):
+            continue
+            
+        # Check if this movie has reviews
+        reviews_file = os.path.join(movie_path, "movieReviews.csv")
+        if not os.path.exists(reviews_file):
+            continue
+        
+        # Read reviews for this movie
+        try:
+            with open(reviews_file, 'r', encoding='utf-8', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get("Email", "").lower() == user_email.lower():
+                        # Found a review by this user
+                        review_data = {field: row.get(field, "") for field in CSV_FIELDNAMES}
+                        review_data["movie_name"] = movie_folder  # Add movie name
+                        review_data["Hidden"] = review_data.get("Hidden") or "No"
+                        
+                        # Only include non-hidden reviews
+                        if review_data["Hidden"] != "Yes":
+                            user_reviews.append(review_data)
+        except Exception as e:
+            print(f"Error reading reviews from {movie_folder}: {e}")
+            continue
+    
+    # Sort by date (most recent first)
+    user_reviews.sort(
+        key=lambda x: x.get("Date of Review", ""),
+        reverse=True
+    )
+    
+    return user_reviews
 
 def add_review(review: ReviewRequest, user: User) -> bool:
     """
