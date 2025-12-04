@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 interface User {
@@ -7,6 +7,10 @@ interface User {
   username: string;
   tier: string;
   tier_display_name: string;
+}
+
+interface ErrorResponse {
+  detail?: string;
 }
 
 export default function UsersManagementPage() {
@@ -21,11 +25,7 @@ export default function UsersManagementPage() {
   const [newTier, setNewTier] = useState("");
   const [processingAction, setProcessingAction] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     const token = localStorage.getItem("adminToken");
 
     if (!token) {
@@ -45,11 +45,16 @@ export default function UsersManagementPage() {
       const data = await response.json();
       setUsers(data.users);
       setLoading(false);
-    } catch (err) {
+    } catch (error) {
+      console.error("Failed to load users:", error);
       setError("Failed to load users");
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleUpgradeTier = async () => {
     if (!selectedUser || !newTier) return;
@@ -72,7 +77,7 @@ export default function UsersManagementPage() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
+        const data: ErrorResponse = await response.json();
         throw new Error(data.detail || "Failed to upgrade user");
       }
 
@@ -81,8 +86,9 @@ export default function UsersManagementPage() {
       setSelectedUser(null);
       setNewTier("");
       fetchUsers(); // Refresh the list
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      setError(errorMessage);
     } finally {
       setProcessingAction(false);
     }
@@ -108,7 +114,7 @@ export default function UsersManagementPage() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
+        const data: ErrorResponse = await response.json();
         throw new Error(data.detail || "Failed to delete user");
       }
 
@@ -116,8 +122,9 @@ export default function UsersManagementPage() {
       setShowDeleteModal(false);
       setSelectedUser(null);
       fetchUsers(); // Refresh the list
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      setError(errorMessage);
     } finally {
       setProcessingAction(false);
     }

@@ -13,6 +13,14 @@ type User = {
   tokens?: number;
 };
 
+interface UpdateData {
+  current_email: string;
+  current_password: string;
+  new_email?: string;
+  new_username?: string;
+  new_password?: string;
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -88,7 +96,7 @@ export default function SettingsPage() {
 
     try {
       // Prepare update data
-      const updateData: any = {
+      const updateData: UpdateData = {
         current_email: currentEmail,
         current_password: currentPassword,
       };
@@ -221,7 +229,7 @@ export default function SettingsPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 bg-black/90 shadow-md sticky top-0 z-10">
         <div className="flex items-center space-x-4">
-          <Link href="/user/landing_page">
+          <Link href="/">
             <Image
               src="/bs_reviews_logo.png"
               alt="BS Reviews Logo"
@@ -437,10 +445,12 @@ export default function SettingsPage() {
                   <div className="flex items-center space-x-4">
                     <div className="flex-shrink-0">
                       {profileImagePreview ? (
-                        <img
+                        <Image
                           src={profileImagePreview}
                           alt="Preview"
-                          className="w-24 h-24 rounded-lg object-cover"
+                          width={96}
+                          height={96}
+                          className="rounded-lg object-cover"
                         />
                       ) : (
                         <div className="w-24 h-24 bg-gray-700 rounded-lg flex items-center justify-center">
@@ -467,7 +477,7 @@ export default function SettingsPage() {
               <div className="pt-8">
                 <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 mb-4">
                   <p className="text-yellow-200 text-sm">
-                    ⚠️ <strong>Important:</strong> Changing your user information will sign you out. You'll need to sign in again with your updated credentials.
+                    ⚠️ <strong>Important:</strong> Changing your user information will sign you out. You&apos;ll need to sign in again with your updated credentials.
                   </p>
                 </div>
                 <div className="flex space-x-4">

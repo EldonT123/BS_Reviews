@@ -32,8 +32,8 @@ export default function LoginPage() {
       // Save session_id to localStorage
       localStorage.setItem("sessionId", data.session_id);
       
-      // Redirect to landing page
-      router.push("/user/landing_page");
+      // Redirect to home page (which now has full functionality)
+      router.push("/");
     } catch (error) {
       alert("Login error, please try again.");
       setLoading(false);

@@ -15,6 +15,17 @@ type PurchaseItem = {
   rank_upgrade?: string;
 };
 
+interface PaymentData {
+  purchase_item: PurchaseItem;
+  payment_method?: {
+    card_number: string;
+    card_name: string;
+    expiry_date: string;
+    cvv: string;
+    billing_zip: string;
+  };
+}
+
 export default function PaymentPage() {
   const router = useRouter();
   const [purchaseItem, setPurchaseItem] = useState<PurchaseItem | null>(null);
@@ -30,27 +41,31 @@ export default function PaymentPage() {
   const [billingZip, setBillingZip] = useState("");
 
   useEffect(() => {
-    // Check if user is logged in
-    const sessionId = localStorage.getItem("sessionId");
-    if (!sessionId) {
-      router.push("/login");
-      return;
-    }
+    const initPayment = () => {
+      // Check if user is logged in
+      const sessionId = localStorage.getItem("sessionId");
+      if (!sessionId) {
+        router.push("/login");
+        return;
+      }
 
-    // Get pending purchase from localStorage
-    const pendingPurchase = localStorage.getItem("pendingPurchase");
-    if (!pendingPurchase) {
-      router.push("/store");
-      return;
-    }
+      // Get pending purchase from localStorage
+      const pendingPurchase = localStorage.getItem("pendingPurchase");
+      if (!pendingPurchase) {
+        router.push("/store");
+        return;
+      }
 
-    try {
-      const item = JSON.parse(pendingPurchase);
-      setPurchaseItem(item);
-    } catch (error) {
-      console.error("Failed to parse purchase item:", error);
-      router.push("/store");
-    }
+      try {
+        const item = JSON.parse(pendingPurchase);
+        setPurchaseItem(item);
+      } catch (error) {
+        console.error("Failed to parse purchase item:", error);
+        router.push("/store");
+      }
+    };
+
+    initPayment();
   }, [router]);
 
   const formatCardNumber = (value: string) => {
@@ -124,8 +139,8 @@ export default function PaymentPage() {
       }
       
       // Prepare payment data - conditionally include payment_method
-      const paymentData: any = {
-        purchase_item: purchaseItem,
+      const paymentData: PaymentData = {
+        purchase_item: purchaseItem!,
       };
       
       // Only include payment_method for CAD purchases
@@ -186,17 +201,15 @@ export default function PaymentPage() {
 
   // Fix: Use correct logic for determining purchase type
   const isCADPurchase = purchaseItem.price_cad !== undefined && purchaseItem.price_tokens === undefined;
-  const isTokenPurchase = purchaseItem.price_tokens !== undefined && purchaseItem.price_cad === undefined;
   
   const amount = isCADPurchase ? purchaseItem.price_cad : purchaseItem.price_tokens;
-  const currency = isCADPurchase ? "CAD" : "Tokens";
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans">
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 bg-black/90 shadow-md sticky top-0 z-10">
         <div className="flex items-center space-x-4">
-          <Link href="/user/landing_page">
+          <Link href="/">
             <Image
               src="/bs_reviews_logo.png"
               alt="BS Reviews Logo"

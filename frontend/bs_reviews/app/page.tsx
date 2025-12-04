@@ -1,17 +1,26 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { redirect } from "next/navigation";
+import Link from "next/link";
+import TokenBalance from "@/components/TokenBalance";
+
+type User = {
+  email: string;
+  username: string;
+  tier: string;
+  tier_display_name: string;
+  tokens?: number;
+};
 
 type Movie = {
   title: string;
   movieIMDbRating: number;
   posterPath: string;
-  commentCount?: number; // for most commented movies
+  commentCount?: number;
 };
 
 export default function Home() {
-  
+  const [user, setUser] = useState<User | null>(null);
   const [topMovies, setTopMovies] = useState<Movie[]>([]);
   const [mostCommentedMovies, setMostCommentedMovies] = useState<Movie[]>([]);
   const [loadingTop, setLoadingTop] = useState(true);
@@ -19,6 +28,27 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
+    async function fetchUserData() {
+      const sessionId = typeof window !== "undefined" ? localStorage.getItem("sessionId") : null;
+
+      if (sessionId) {
+        try {
+          const res = await fetch(
+            `http://localhost:8000/api/users/check-session/${sessionId}`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            setUser(data.user);
+          } else {
+            // Invalid session, clear it
+            localStorage.removeItem("sessionId");
+          }
+        } catch (error) {
+          console.error("Failed to fetch user data:", error);
+        }
+      }
+    }
+
     async function fetchTopMovies() {
       try {
         const res = await fetch("http://localhost:8000/api/movies/top");
@@ -43,6 +73,7 @@ export default function Home() {
       }
     }
 
+    fetchUserData();
     fetchTopMovies();
     fetchMostCommentedMovies();
   }, []);
@@ -61,44 +92,70 @@ export default function Home() {
 
   const currentMovie = topMovies[currentIndex];
 
-  // Get next 3 movies for "Up Next" pane
-    const upNextMovies = topMovies.length
-      ? Array(3)
-          .fill(null)
-          .map((_, i) => topMovies[(currentIndex + i + 1) % topMovies.length])
-      : [];
-  redirect("/login");
+  const upNextMovies = topMovies.length
+    ? Array(3)
+        .fill(null)
+        .map((_, i) => topMovies[(currentIndex + i + 1) % topMovies.length])
+    : [];
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans">
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 bg-black/90 shadow-md sticky top-0 z-10">
         <div className="flex items-center space-x-4">
-          <Image
-            src="/bs_reviews_logo.png"
-            alt="BS Reviews Logo"
-            width={50}
-            height={20}
-          />
+          <Link href="/">
+            <Image
+              src="/bs_reviews_logo.png"
+              alt="BS Reviews Logo"
+              width={50}
+              height={20}
+            />
+          </Link>
           <nav className="hidden md:flex space-x-6 text-sm font-semibold uppercase tracking-wider">
-            <a href="#" className="hover:text-yellow-400 transition">
+            <Link href="/movies" className="hover:text-yellow-400 transition">
               Movies
-            </a>
-            <a href="#" className="hover:text-yellow-400 transition">
-              TV Shows
-            </a>
-            <a href="#" className="hover:text-yellow-400 transition">
-              Celebs
-            </a>
-            <a href="#" className="hover:text-yellow-400 transition">
-              Awards
-            </a>
+            </Link>
+            <Link href="/users" className="hover:text-yellow-400 transition">
+              Users
+            </Link>
+            <Link href="/reviews" className="hover:text-yellow-400 transition">
+              Reviews
+            </Link>
           </nav>
         </div>
-        <input
-          type="search"
-          placeholder="Search movies, TV, actors..."
-          className="bg-gray-800 text-gray-300 placeholder-gray-500 rounded-md px-4 py-2 focus:outline-yellow-400 focus:ring-1 focus:ring-yellow-400 w-48 sm:w-64"
-        />
+        <div className="flex items-center space-x-4">
+          <input
+            type="search"
+            placeholder="Search movies, TV, actors..."
+            className="bg-gray-800 text-gray-300 placeholder-gray-500 rounded-md px-4 py-2 focus:outline-yellow-400 focus:ring-1 focus:ring-yellow-400 w-48 sm:w-64"
+          />
+          {user ? (
+            <>
+              <TokenBalance tokens={user.tokens || 0} />
+              <Link
+                href="/user/account_page"
+                className="bg-yellow-400 text-black font-semibold px-4 py-2 rounded hover:bg-yellow-500 transition"
+              >
+                Account
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="bg-gray-700 text-white font-semibold px-4 py-2 rounded hover:bg-gray-600 transition"
+              >
+                Login
+              </Link>
+              <Link
+                href="/login/signup"
+                className="bg-yellow-400 text-black font-semibold px-4 py-2 rounded hover:bg-yellow-500 transition"
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
+        </div>
       </header>
 
       {/* Banner + Up Next Side Pane */}
@@ -149,10 +206,10 @@ export default function Home() {
             <p className="text-zinc-400">No movies to display.</p>
           )}
           {upNextMovies.map((movie) => (
-            <div
+            <Link
+              href={`/movies/${encodeURIComponent(movie.title)}`}
               key={movie.title}
               className="flex items-center gap-4 cursor-pointer hover:bg-gray-700 rounded-md p-2"
-              onClick={() => setCurrentIndex(topMovies.indexOf(movie))}
             >
               <Image
                 src={movie.posterPath}
@@ -167,7 +224,7 @@ export default function Home() {
                   ⭐ {movie.movieIMDbRating.toFixed(1)}
                 </p>
               </div>
-            </div>
+            </Link>
           ))}
         </aside>
       </section>
@@ -181,7 +238,8 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             {mostCommentedMovies.map((movie) => (
-              <div
+              <Link
+                href={`/movies/${encodeURIComponent(movie.title)}`}
                 key={movie.title}
                 className="bg-gray-800 rounded-md overflow-hidden shadow-lg hover:shadow-yellow-400 transition-shadow cursor-pointer"
               >
@@ -198,7 +256,7 @@ export default function Home() {
                     💬 {movie.commentCount ?? 0} comments
                   </p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

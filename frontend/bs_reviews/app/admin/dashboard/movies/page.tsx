@@ -29,7 +29,7 @@ export default function MoviesManagementPage() {
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Coming Soon</h2>
           <p className="text-gray-400 max-w-md mx-auto">
-            Movie management features are currently under development. You'll soon be able to add,
+            Movie management features are currently under development. You&apos;ll soon be able to add,
             edit, and delete movies from this interface.
           </p>
         </div>
