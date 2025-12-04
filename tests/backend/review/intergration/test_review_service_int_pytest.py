@@ -478,12 +478,24 @@ def test_like_review_integration(isolated_movie_env, test_user):
         comment="Awesome!",
         review_title="Loved it"
     ), test_user)
-    # Like review - voter_email can be different from review author
-    voter = test_user.email  # Or create a different user for voting
-    assert review_service.like_review(test_user.email, movie_name, voter) is True
+    
+    # Like review - voter can be same as author or different user
+    result = review_service.like_review(
+        review_author_email=test_user.email,
+        movie_name=movie_name,
+        voter_email=test_user.email  # or use a different voter email
+    )
+    
+    # Check the result dictionary
+    assert result["success"] is True
+    assert result["likes"] == 1
+    assert result["dislikes"] == 0
+    
+    # Verify in CSV
     reviews = review_service.read_reviews(movie_name)
     r = next(rev for rev in reviews if rev["Email"] == test_user.email)
     assert r["Likes"] == "1"
+
 
 def test_dislike_review_integration(isolated_movie_env, test_user):
     movie_name = "integration_dislike"
@@ -495,9 +507,20 @@ def test_dislike_review_integration(isolated_movie_env, test_user):
         comment="Not bad",
         review_title="Okay"
     ), test_user)
+    
     # Dislike review
-    voter = test_user.email
-    assert review_service.dislike_review(test_user.email, movie_name, voter) is True
+    result = review_service.dislike_review(
+        review_author_email=test_user.email,
+        movie_name=movie_name,
+        voter_email=test_user.email  # or use a different voter email
+    )
+    
+    # Check the result dictionary
+    assert result["success"] is True
+    assert result["likes"] == 0
+    assert result["dislikes"] == 1
+    
+    # Verify in CSV
     reviews = review_service.read_reviews(movie_name)
     r = next(rev for rev in reviews if rev["Email"] == test_user.email)
     assert r["Dislikes"] == "1"
