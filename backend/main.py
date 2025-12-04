@@ -8,29 +8,43 @@ from backend.routes import (
                     user_routes,
                     admin_routes,
                     search_routes,
-                    purchase_routes
+                    purchase_routes,
+                    external_api_routes
                     )
 from backend.services import admin_service
+import asyncio
+from backend.scripts import generate_streaming_csv
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: runs before the application starts
+
+    # --------------------
+    # STARTUP
+    # --------------------
     admin_service.ensure_admin_csv_exists()
     admin_service.ensure_banned_emails_csv_exists()
     print("✅ Admin CSV initialized")
+
+    # Run the streaming data updater (non-blocking)
+    asyncio.create_task(asyncio.to_thread(generate_streaming_csv.main))
+    print("🔄 Streaming CSV update started (background task)")
+
     print("✅ Banned emails CSV initialized")
     print("🚀 Server started successfully")
 
     yield
 
-    # Shutdown: runs after the application stops
+    # --------------------
+    # SHUTDOWN
+    # --------------------
     admin_service.cleanup_expired_tokens()
     print("🧹 Cleaned up expired tokens")
     print("👋 Server shutting down")
 
 
 app = FastAPI(lifespan=lifespan)
+
 
 # Enable CORS (adjust origins in production!)
 app.add_middleware(
@@ -74,11 +88,14 @@ app.openapi = custom_openapi
 app.include_router(movie_routes.router, prefix="/api/movies", tags=["Movies"])
 app.include_router(
     review_routes.router, prefix="/api/reviews", tags=["Reviews"]
-    )
+)
 app.include_router(user_routes.router, prefix="/api/users", tags=["Users"])
 app.include_router(admin_routes.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(search_routes.router, prefix="/api/search", tags=["Search"])
 app.include_router(purchase_routes.router, prefix="/api/store", tags=["Store"])
+app.include_router(
+    external_api_routes.router, prefix="/api/external", tags=["External API"]
+)
 
 
 @app.get("/")

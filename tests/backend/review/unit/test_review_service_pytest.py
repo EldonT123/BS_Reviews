@@ -121,7 +121,9 @@ class TestReadReviews:
         self, mock_file, mock_get_folder, mock_exists
     ):
         """Should successfully read reviews from CSV."""
-        mock_get_folder.return_value = "/fake/path/movie"
+        mock_get_folder.return_value = (
+            "/fake/path/movie"
+        )
         mock_exists.return_value = True
 
         result = review_service.read_reviews("Test Movie")
