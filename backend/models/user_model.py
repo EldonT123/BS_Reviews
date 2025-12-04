@@ -16,7 +16,8 @@ class User:
         username: str,
         password_hash: str,
         tier: str = TIER_SNAIL,
-        tokens: int = 0
+        tokens: int = 0,
+        review_banned: bool = False
     ):
         """
         Initialize a User object.
@@ -33,13 +34,15 @@ class User:
         self.password_hash = password_hash
         self.tier = tier
         self.tokens = tokens
+        self.review_banned = review_banned
 
     def __repr__(self):
         return (
             f"User(email={self.email}, "
             f"username={self.username}, "
             f"tier={self.tier}, "
-            f"tokens={self.tokens})"
+            f"tokens={self.tokens}, "
+            f"review_banned={self.review_banned})"
         )
 
     # ==================== Tier Checks ====================
@@ -63,15 +66,21 @@ class User:
         return True
 
     def can_write_reviews(self) -> bool:
-        """Only Slug tier and above can write reviews."""
+        """Only Slug tier and above can write reviews, and they must not be banned."""
+        if self.review_banned:
+            return False
         return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG]
 
     def can_rate_movies(self) -> bool:
-        """Only Slug tier and above can rate movies."""
+        """Only Slug tier and above can rate movies, and they must not be banned."""
+        if self.review_banned:
+            return False
         return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG]
 
     def can_edit_own_reviews(self) -> bool:
-        """Only Slug tier and above can edit their own reviews."""
+        """Only Slug tier and above can edit their own reviews, and they must not be banned."""
+        if self.review_banned:
+            return False
         return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG]
 
     def has_priority_reviews(self) -> bool:
@@ -121,6 +130,7 @@ class User:
             "username": self.username,
             "tier": self.tier,
             "tokens": self.tokens,
+            "review_banned": self.review_banned,  # NEW FIELD
             "tier_display": self.get_tier_display_name(),
             "permissions": {
                 "can_browse": self.can_browse(),
