@@ -2,7 +2,7 @@ import requests
 from typing import Dict
 
 WATCHMODE_BASE_URL = "https://api.watchmode.com/v1"
-API_KEY = "S006Nf0GbCUGOwF5zzB601Q6tK29tXXpkanhXEVv"
+API_KEY = "YHZfmq2jheOLnxFV9PXXtJiR3Ek9H0EkI1LP8DIj"
 
 _movie_cache: Dict[str, dict] = {}
 
