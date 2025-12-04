@@ -48,3 +48,5 @@ npm-debug.log*
 coverage/
 .coverage
 
+# Backup files
+*.bak
