@@ -188,27 +188,12 @@ export default function Home() {
         ) : (
           // Main Poster Section (70% width)
           <div
-          className="relative flex-shrink-0 w-[70%] h-[520px] bg-cover bg-center rounded-lg shadow-lg"
-          style={{
-            backgroundImage: currentMovie
-              ? `url(${currentMovie.posterPath})`
-              : "url('/banners/default_banner.jpg')",
-          }}
-        >
-          {/* Left arrow */}
-          <button
-            onClick={prevMovie}
-            className="absolute top-1/2 left-4 z-20 -translate-y-1/2 bg-black/50 rounded-full p-3 hover:bg-black/70 text-3xl select-none"
-            aria-label="Previous Movie"
-          >
-            ◀
-          </button>
-
-          {/* Right arrow */}
-          <button
-            onClick={nextMovie}
-            className="absolute top-1/2 right-4 z-20 -translate-y-1/2 bg-black/50 rounded-full p-3 hover:bg-black/70 text-3xl select-none"
-            aria-label="Next Movie"
+            className="relative flex-shrink-0 w-[70%] h-[520px] bg-cover bg-center rounded-lg shadow-lg"
+            style={{
+              backgroundImage: currentMovie
+                ? `url(${currentMovie.posterPath})`
+                : "url('/banners/default_banner.jpg')",
+            }}
           >
             {/* Left arrow */}
             <button
@@ -219,21 +204,13 @@ export default function Home() {
               ◀
             </button>
 
-          {/* Info overlay */}
-          <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-8 text-white rounded-b-lg">
-            <h1 className="text-5xl font-bold">{currentMovie?.title || "Loading..."}</h1>
-            <p className="mt-2 text-xl">
-              {currentMovie ? `Rated ${currentMovie.movieIMDbRating.toFixed(1)} ⭐ on IMDb` : ""}
-            </p>
+            {/* Right arrow */}
             <button
-              onClick={() =>
-                router.push(
-                  `/movies/movie_details_page/${encodeURIComponent(currentMovie?.title || "")}`
-                )
-              }
-              className="mt-6 bg-yellow-400 text-black font-semibold px-8 py-3 rounded hover:bg-yellow-500 transition text-lg"
+              onClick={nextMovie}
+              className="absolute top-1/2 right-4 z-20 -translate-y-1/2 bg-black/50 rounded-full p-3 hover:bg-black/70 text-3xl select-none"
+              aria-label="Next Movie"
             >
-              Watch Now
+              ▶
             </button>
 
             {/* Info overlay */}
@@ -242,12 +219,18 @@ export default function Home() {
               <p className="mt-2 text-xl">
                 {currentMovie ? `Rated ${currentMovie.movieIMDbRating.toFixed(1)} ⭐ on IMDb` : ""}
               </p>
-              <button className="mt-6 bg-yellow-400 text-black font-semibold px-8 py-3 rounded hover:bg-yellow-500 transition text-lg">
+              <button
+                onClick={() =>
+                  router.push(
+                    `/movies/${encodeURIComponent(currentMovie?.title || "")}`
+                  )
+                }
+                className="mt-6 bg-yellow-400 text-black font-semibold px-8 py-3 rounded hover:bg-yellow-500 transition text-lg"
+              >
                 Watch Now
               </button>
             </div>
           </div>
-        </div>
         )}
 
         {/* Up Next Pane (30% width) */}
