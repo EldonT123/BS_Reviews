@@ -8,6 +8,13 @@ import shutil
 
 DATABASE_PATH = "/app/database/archive"
 
+REVIEWS_HEADERS = [
+    "Date of Review", "Email", "Username", "Dislikes",
+    "Likes", "User's Rating out of 10",
+    "Review Title", "Review", "Reported", "Report Reason",
+    "Report Count", "Penalized", "Hidden"
+                   ]
+
 
 def get_movie_folder(movie_name):
     """Returns the folder path for the given movie."""
@@ -44,12 +51,7 @@ def create_movie_folder(movie_name):
         reviews_path = os.path.join(folder_path, "movieReviews.csv")
         with open(reviews_path, "w", encoding='utf-8', newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "Date of Review", "Email", "Username", "Dislikes",
-                "Likes", "User's Rating out of 10",
-                "Review Title", "Review", "Reported", "Report Reason",
-                "Report Count", "Penalized", "Hidden"
-            ])
+            writer.writerow([REVIEWS_HEADERS])
     return folder_path
 
 
@@ -141,12 +143,7 @@ def create_movie_with_metadata(
     reviews_path = os.path.join(folder_path, "movieReviews.csv")
     with open(reviews_path, "w", encoding='utf-8', newline="") as f:
         writer = csv.writer(f)
-        writer.writerow([
-            "Date of Review", "Email", "Username", "Dislikes",
-            "Likes", "User's Rating out of 10",
-            "Review Title", "Review", "Reported", "Report Reason",
-            "Report Count", "Penalized", "Hidden"
-        ])
+        writer.writerow([REVIEWS_HEADERS])
 
     return True
 
