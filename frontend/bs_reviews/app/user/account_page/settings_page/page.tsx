@@ -3,13 +3,23 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import TokenBalance from "@/components/TokenBalance";
 
 type User = {
   email: string;
   username: string;
   tier: string;
   tier_display_name: string;
+  tokens?: number;
 };
+
+interface UpdateData {
+  current_email: string;
+  current_password: string;
+  new_email?: string;
+  new_username?: string;
+  new_password?: string;
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -86,7 +96,7 @@ export default function SettingsPage() {
 
     try {
       // Prepare update data
-      const updateData: any = {
+      const updateData: UpdateData = {
         current_email: currentEmail,
         current_password: currentPassword,
       };
@@ -219,7 +229,7 @@ export default function SettingsPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 bg-black/90 shadow-md sticky top-0 z-10">
         <div className="flex items-center space-x-4">
-          <Link href="/user/landing_page">
+          <Link href="/">
             <Image
               src="/bs_reviews_logo.png"
               alt="BS Reviews Logo"
@@ -249,6 +259,7 @@ export default function SettingsPage() {
             placeholder="Search movies, TV, actors..."
             className="bg-gray-800 text-gray-300 placeholder-gray-500 rounded-md px-4 py-2 focus:outline-yellow-400 focus:ring-1 focus:ring-yellow-400 w-48 sm:w-64"
           />
+          <TokenBalance tokens={user.tokens || 0} />
           <Link
             href="/user/account_page"
             className="bg-yellow-400 text-black font-semibold px-4 py-2 rounded hover:bg-yellow-500 transition"
@@ -434,10 +445,12 @@ export default function SettingsPage() {
                   <div className="flex items-center space-x-4">
                     <div className="flex-shrink-0">
                       {profileImagePreview ? (
-                        <img
+                        <Image
                           src={profileImagePreview}
                           alt="Preview"
-                          className="w-24 h-24 rounded-lg object-cover"
+                          width={96}
+                          height={96}
+                          className="rounded-lg object-cover"
                         />
                       ) : (
                         <div className="w-24 h-24 bg-gray-700 rounded-lg flex items-center justify-center">
@@ -464,7 +477,7 @@ export default function SettingsPage() {
               <div className="pt-8">
                 <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4 mb-4">
                   <p className="text-yellow-200 text-sm">
-                    ⚠️ <strong>Important:</strong> Changing your user information will sign you out. You'll need to sign in again with your updated credentials.
+                    ⚠️ <strong>Important:</strong> Changing your user information will sign you out. You&apos;ll need to sign in again with your updated credentials.
                   </p>
                 </div>
                 <div className="flex space-x-4">

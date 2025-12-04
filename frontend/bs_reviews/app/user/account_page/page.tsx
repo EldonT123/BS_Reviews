@@ -3,13 +3,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import TokenBalance from "@/components/TokenBalance";
 
 type User = {
   email: string;
   username: string;
   tier: string;
   tier_display_name: string;
+  tokens?: number;
 };
+
 
 type TierInfo = {
   name: string;
@@ -96,7 +99,7 @@ export default function AccountPage() {
   };
 
   const handleUpgrade = () => {
-    router.push("/payment");
+    router.push("/store");
   };
 
   if (loading) {
@@ -116,7 +119,7 @@ export default function AccountPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 bg-black/90 shadow-md sticky top-0 z-10">
         <div className="flex items-center space-x-4">
-          <Link href="/user/landing_page">
+          <Link href="/">
             <Image
               src="/bs_reviews_logo.png"
               alt="BS Reviews Logo"
@@ -146,12 +149,14 @@ export default function AccountPage() {
             placeholder="Search movies, TV, actors..."
             className="bg-gray-800 text-gray-300 placeholder-gray-500 rounded-md px-4 py-2 focus:outline-yellow-400 focus:ring-1 focus:ring-yellow-400 w-48 sm:w-64"
           />
+          <TokenBalance tokens={user.tokens || 0} />
           <Link
             href="/user/account_page"
             className="bg-yellow-400 text-black font-semibold px-4 py-2 rounded hover:bg-yellow-500 transition"
           >
             Account
           </Link>
+          
         </div>
       </header>
 

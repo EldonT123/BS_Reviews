@@ -37,7 +37,7 @@ def create_admin_and_get_token(
 def get_auth_headers(token):
     """Helper function: Integration Utility:
     Helper function to create authentication headers."""
-    return {"X-Admin-Token": token}
+    return {"Authorization": f"Bearer {token}"}
 
 
 # ==================== INTEGRATION TESTS - Admin Signup ====================

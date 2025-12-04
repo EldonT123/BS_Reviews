@@ -18,18 +18,12 @@ def clear_sessions():
 
 @pytest.fixture
 def mock_user_data():
-    """Fixture with mock user data."""
+    """Mock users dictionary with tokens."""
     return {
         "test@example.com": (
-            "testuser",
-            "$2b$12$abcdefghijklmnopqrstuv",
-            User.TIER_SNAIL
-        ),
-        "alice@example.com": (
-            "alice123",
-            "$2b$12$zyxwvutsrqponmlkjihgfe",
-            User.TIER_SLUG
-        )
+            "testuser", "hashed_password_123", "snail", 0),
+        "session@example.com": (
+            "sessionuser", "hashed_password_456", "slug", 100)
     }
 
 
