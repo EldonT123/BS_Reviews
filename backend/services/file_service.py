@@ -6,7 +6,7 @@ import json
 import csv
 import shutil
 
-DATABASE_PATH = "/app/database/archive"
+DATABASE_PATH = "database/archive"
 
 
 def get_movie_folder(movie_name):

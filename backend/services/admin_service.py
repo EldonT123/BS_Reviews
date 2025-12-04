@@ -7,12 +7,20 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 from backend.models.admin_model import Admin
+from backend.services import user_service, review_service
 
 # Path configuration
 ADMIN_CSV_PATH = os.path.abspath(
     os.path.join(
         os.path.dirname(__file__),
         "../../database/admins/admin_information.csv"
+    )
+)
+
+BANNED_EMAILS_CSV_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "../../database/admins/banned_emails.csv"
     )
 )
 
@@ -167,6 +175,179 @@ def cleanup_expired_tokens():
     ]
     for token in expired_tokens:
         del admin_tokens[token]
+
+
+# ==================== Banned Emails CSV Operations ====================
+
+def ensure_banned_emails_csv_exists():
+    """Ensure the directory and banned emails CSV file exist."""
+    os.makedirs(os.path.dirname(BANNED_EMAILS_CSV_PATH), exist_ok=True)
+    if not os.path.exists(BANNED_EMAILS_CSV_PATH):
+        with open(
+            BANNED_EMAILS_CSV_PATH,
+            "w",
+            newline="",
+            encoding="utf-8"
+        ) as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["banned_email",
+                             "banned_date",
+                             "banned_by",
+                             "reason"
+                             ])
+
+
+def read_banned_emails() -> Dict[str, tuple[str, str, str]]:
+    """
+    Read all banned emails from CSV.
+    Returns: Dict[email -> (banned_date, banned_by, reason)]
+    """
+    banned_emails = {}
+    if not os.path.exists(BANNED_EMAILS_CSV_PATH):
+        return banned_emails
+
+    with open(BANNED_EMAILS_CSV_PATH, newline="", encoding="utf-8") as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader, None)  # Skip header row
+        for row in reader:
+            if len(row) >= 4:
+                email = row[0].lower()
+                banned_date = row[1]
+                banned_by = row[2]
+                reason = row[3]
+                banned_emails[email] = (banned_date, banned_by, reason)
+
+    return banned_emails
+
+
+def add_banned_email(email: str, banned_by: str, reason: str = ""):
+    """Add an email to the banned list."""
+    ensure_banned_emails_csv_exists()
+
+    from datetime import datetime
+    banned_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(BANNED_EMAILS_CSV_PATH,
+              "a", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([email.lower(), banned_date, banned_by, reason])
+
+
+def is_email_banned(email: str) -> bool:
+    """Check if an email is in the banned list."""
+    banned_emails = read_banned_emails()
+    return email.lower() in banned_emails
+
+
+def get_banned_email_info(email: str) -> Optional[Dict]:
+    """Get information about a banned email."""
+    banned_emails = read_banned_emails()
+    info = banned_emails.get(email.lower())
+
+    if not info:
+        return None
+
+    banned_date, banned_by, reason = info
+    return {
+        "email": email.lower(),
+        "banned_date": banned_date,
+        "banned_by": banned_by,
+        "reason": reason
+    }
+
+
+def remove_banned_email(email: str) -> bool:
+    """
+    Remove an email from the banned list (unban).
+    Returns True if successful, False if email wasn't banned.
+    """
+    banned_emails = read_banned_emails()
+    email_lower = email.lower()
+
+    if email_lower not in banned_emails:
+        return False
+
+    # Remove from dict
+    del banned_emails[email_lower]
+
+    # Rewrite CSV without the unbanned email
+    ensure_banned_emails_csv_exists()
+    with open(BANNED_EMAILS_CSV_PATH,
+              "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["banned_email", "banned_date", "banned_by", "reason"])
+        for banned_email, (banned_date,
+                           banned_by, reason) in banned_emails.items():
+            writer.writerow([banned_email, banned_date, banned_by, reason])
+
+    return True
+
+
+def get_all_banned_emails() -> list[Dict]:
+    """Get all banned emails with their information."""
+    banned_emails = read_banned_emails()
+    return [
+        {
+            "email": email,
+            "banned_date": banned_date,
+            "banned_by": banned_by,
+            "reason": reason
+        }
+        for email, (banned_date, banned_by, reason) in banned_emails.items()
+    ]
+
+
+# ==================== Ban User (Complete Ban) ====================
+
+def ban_user(email: str, admin_email: str, reason: str = "") -> Dict:
+    """
+    Permanently ban a user:
+    1. Add email to blacklist
+    2. Delete user account
+    3. Revoke all sessions
+    4. Mark all reviews as penalized
+
+    Returns: Dict with success status and details
+    """
+
+    # Check if user exists
+    user = user_service.get_user_by_email(email)
+    if not user:
+        return {
+            "success": False,
+            "message": "User not found"
+        }
+
+    # Check if already banned
+    if is_email_banned(email):
+        return {
+            "success": False,
+            "message": "Email is already banned"
+        }
+
+    # Step 1: Add to blacklist
+    add_banned_email(email, admin_email, reason)
+
+    # Step 2: Mark all reviews as penalized and hidden
+    review_result = review_service.mark_all_reviews_penalized(email)
+
+    # Step 3: Revoke all user sessions
+    user_service.revoke_all_user_sessions(email)
+
+    # Step 4: Delete user account
+    user_service.delete_user(email)
+
+    return {
+        "success": True,
+        "message": f"User {email} has been permanently banned",
+        "details": {
+            "email_blacklisted": True,
+            "account_deleted": True,
+            "sessions_revoked": True,
+            "reviews_penalized": review_result["reviews_marked"],
+            "movies_affected": review_result["movies_affected"]
+        }
+    }
 
 
 # ==================== Business Logic ====================

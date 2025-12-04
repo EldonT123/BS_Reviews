@@ -49,7 +49,7 @@ def test_get_poster_not_found(client):
     """Test poster endpoint with non-existent movie."""
     response = client.get("/api/movies/poster/nonexistentmovie")
     assert response.status_code == 404
-    assert response.json() == {"detail": "Poster not found"}
+    assert response.json() == {"detail": "Movie folder not found"}
 
 
 def test_get_most_commented_movies(temp_database_dir, setup_test_database, client):
