@@ -380,7 +380,7 @@ export default function AccountPage() {
                 ) : userReviews.length === 0 ? (
                   <div className="bg-gray-700 p-8 rounded-lg text-center">
                     <p className="text-gray-400 mb-4">
-                      You haven't written any reviews yet.
+                      You haven&apost written any reviews yet.
                     </p>
                     <Link
                       href="/"
@@ -449,7 +449,7 @@ export default function AccountPage() {
                 ) : bookmarks.length === 0 ? (
                   <div className="bg-gray-700 p-8 rounded-lg text-center">
                     <p className="text-gray-400 mb-4">
-                      You haven't bookmarked any movies yet.
+                      You haven&apost bookmarked any movies yet.
                     </p>
                     <Link
                       href="/"

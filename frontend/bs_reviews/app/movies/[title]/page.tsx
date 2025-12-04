@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import StarRating from "@/components/StarRating";
@@ -106,9 +106,9 @@ export default function MovieDetailsPage() {
   }, []);
 
   // Helper function to check if user can write reviews
-  const canWriteReviews = () => {
+  const canWriteReviews = useCallback(() => {
     return userTier === "slug" || userTier === "banana_slug";
-  };
+  }, [userTier]);
 
   // Fetch movie details
   useEffect(() => {
@@ -268,7 +268,7 @@ export default function MovieDetailsPage() {
     }
 
     fetchVoteStatus();
-  }, [reviews, reviewsToShow, isAuthenticated, userEmail, userTier, movie]);
+  }, [reviews, reviewsToShow, isAuthenticated, userEmail, userTier, movie, canWriteReviews]);
 
   const showVoteMessage = (message: string) => {
     setVoteMessage(message);
@@ -800,7 +800,7 @@ export default function MovieDetailsPage() {
               <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
                 {displayedReviews.map((review) => {
                   const isOwnReview = userEmail === review.Email;
-                  const canVote = canWriteReviews() && !isOwnReview;
+                  //const canVote = canWriteReviews() && !isOwnReview;
                   
                   return (
                     <div

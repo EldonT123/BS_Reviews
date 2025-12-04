@@ -162,6 +162,7 @@ async def get_review_stats(movie_name: str):
         **stats
     }
 
+
 @router.get("/user/reviews")
 async def get_user_reviews_route(
     current_user: User = Depends(get_current_user)
@@ -171,12 +172,13 @@ async def get_user_reviews_route(
     Requires authentication.
     """
     reviews = review_service.get_user_reviews(current_user.email)
-    
+
     return {
         "user_email": current_user.email,
         "total_reviews": len(reviews),
         "reviews": reviews
     }
+
 
 @router.get("/{movie_name}/average")
 async def get_average_rating(movie_name: str):
@@ -209,13 +211,13 @@ async def report_review_route(
 
     # Call the service method
     success = review_service.report_review(email, movie_name, reason)
-    
+
     if not success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to report review"
         )
-    
+
     return {
         "success": True,
         "message": "Review reported successfully"
@@ -246,7 +248,7 @@ async def handle_reported_review_route(
 
 @router.post("/{movie_name}/like")
 async def route_like_review(
-    movie_name: str, 
+    movie_name: str,
     review_author_email: str,
     current_user: User = Depends(get_current_user)
 ):
@@ -260,19 +262,19 @@ async def route_like_review(
         movie_name=movie_name,
         voter_email=current_user.email
     )
-    
+
     if not result["success"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=result["message"]
         )
-    
+
     return result
 
 
 @router.post("/{movie_name}/dislike")
 async def route_dislike_review(
-    movie_name: str, 
+    movie_name: str,
     review_author_email: str,
     current_user: User = Depends(get_current_user)
 ):
@@ -286,13 +288,13 @@ async def route_dislike_review(
         movie_name=movie_name,
         voter_email=current_user.email
     )
-    
+
     if not result["success"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=result["message"]
         )
-    
+
     return result
 
 
@@ -311,5 +313,5 @@ async def get_vote_status(
         review_author_email=review_author_email,
         voter_email=current_user.email
     )
-    
+
     return status_info

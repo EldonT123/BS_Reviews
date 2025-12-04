@@ -35,7 +35,7 @@ export default function LoginPage() {
       
       // Redirect to home page (which now has full functionality)
       router.push("/");
-    } catch (error) {
+    } catch {
       alert("Login error, please try again.");
       setLoading(false);
     }
