@@ -2,7 +2,7 @@
 """Routes for review management - HTTP handling only."""
 from fastapi import APIRouter, HTTPException, status, Depends
 from backend.services import review_service
-from backend.dependencies.auth import require_slug_tier
+from backend.dependencies.auth import require_slug_tier, get_current_user
 from backend.models.user_model import User
 from backend.models.review_model import ReviewRequest
 from backend.models.admin_model import Admin
@@ -126,17 +126,13 @@ async def delete_review(
     Requires: Authentication + Slug tier or above.
     Users can only delete their own reviews.
     """
-    # Example run
-    # curl -X DELETE http://localhost:8000/api/reviews/Inception
-    # -H "Authorization: Bearer <session_id>"
-
     # Use authenticated user's email
     email = current_user.email
 
     # Delete review
     success = review_service.delete_review(
-        username=email, movie_name=movie_name
-        )
+        email=email, movie_name=movie_name
+    )
 
     if not success:
         raise HTTPException(
@@ -197,8 +193,18 @@ async def report_review_route(
         )
 
     # Call the service method
-    result = review_service.report_review(email, movie_name, reason)
-    return result  # Already a dict {success: bool, message: str}
+    success = review_service.report_review(email, movie_name, reason)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to report review"
+        )
+    
+    return {
+        "success": True,
+        "message": "Review reported successfully"
+    }
 
 
 @router.put("/{movie_name}/reported")
@@ -223,17 +229,72 @@ async def handle_reported_review_route(
     return result
 
 
-@router.post("/reviews/{movie_name}/like")
-def route_like_review(movie_name: str, email: str):
-    success = review_service.like_review(email, movie_name)
-    if not success:
-        raise HTTPException(status_code=404, detail="Review not found.")
-    return {"success": True, "message": "Review liked."}
+@router.post("/{movie_name}/like")
+async def route_like_review(
+    movie_name: str, 
+    review_author_email: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Like a review. Requires authentication.
+    Users can only like once per review.
+    Liking automatically removes any existing dislike.
+    """
+    result = review_service.like_review(
+        review_author_email=review_author_email,
+        movie_name=movie_name,
+        voter_email=current_user.email
+    )
+    
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["message"]
+        )
+    
+    return result
 
 
-@router.post("/reviews/{movie_name}/dislike")
-def route_dislike_review(movie_name: str, email: str):
-    success = review_service.dislike_review(email, movie_name)
-    if not success:
-        raise HTTPException(status_code=404, detail="Review not found.")
-    return {"success": True, "message": "Review disliked."}
+@router.post("/{movie_name}/dislike")
+async def route_dislike_review(
+    movie_name: str, 
+    review_author_email: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Dislike a review. Requires authentication.
+    Users can only dislike once per review.
+    Disliking automatically removes any existing like.
+    """
+    result = review_service.dislike_review(
+        review_author_email=review_author_email,
+        movie_name=movie_name,
+        voter_email=current_user.email
+    )
+    
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["message"]
+        )
+    
+    return result
+
+
+@router.get("/{movie_name}/vote-status/{review_author_email}")
+async def get_vote_status(
+    movie_name: str,
+    review_author_email: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get the current user's vote status for a specific review.
+    Returns whether they have liked or disliked the review.
+    """
+    status_info = review_service.get_user_vote_status(
+        movie_name=movie_name,
+        review_author_email=review_author_email,
+        voter_email=current_user.email
+    )
+    
+    return status_info

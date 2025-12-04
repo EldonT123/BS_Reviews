@@ -26,7 +26,9 @@ CSV_FIELDNAMES = [
     "Report Reason",
     "Report Count",
     "Penalized",
-    "Hidden"
+    "Hidden",
+    "Liked By",  # New: semicolon-separated list of user emails who liked
+    "Disliked By"  # New: semicolon-separated list of user emails who disliked
 ]
 
 
@@ -81,6 +83,10 @@ def read_reviews(movie_name: str) -> list[dict]:
             review["Report Count"] = review.get("Report Count") or "0"
             review["Hidden"] = review.get("Hidden") or "No"
             review["Penalized"] = review.get("Penalized") or "No"
+            
+            # Normalize vote tracking fields
+            review["Liked By"] = review.get("Liked By") or ""
+            review["Disliked By"] = review.get("Disliked By") or ""
 
             reviews.append(review)
 
@@ -164,7 +170,9 @@ def add_review(review: ReviewRequest, user: User) -> bool:
         "Report Reason": "",
         "Report Count": "0",
         "Penalized": "No",
-        "Hidden": "No"
+        "Hidden": "No",
+        "Liked By": "",
+        "Disliked By": ""
     }
 
     # Check if file exists and has content
@@ -279,7 +287,7 @@ def report_review(email: str, movie_name: str, reason: str = "") -> bool:
             # Write all reviews back to the movie CSV
             return write_reviews(movie_name, reviews)
 
-    # Safety fallback (shouldn’t reach here due to user_has_reviewed)
+    # Safety fallback (shouldn't reach here due to user_has_reviewed)
     return False
 
 
@@ -344,24 +352,165 @@ def handle_reported_review(
     }
 
 
-def like_review(email: str, movie_name: str) -> bool:
-    """Increment Likes for a given user's review."""
-    reviews = read_reviews(movie_name)
-    for r in reviews:
-        if r["Email"] == email:
-            r["Likes"] = str(int(r.get("Likes", "0")) + 1)
-            return write_reviews(movie_name, reviews)
-    return False
+def user_has_voted(review: Dict, voter_email: str, vote_type: str) -> bool:
+    """
+    Check if a user has already voted on a review.
+    
+    Args:
+        review: The review dictionary
+        voter_email: Email of the user voting
+        vote_type: Either "like" or "dislike"
+    
+    Returns:
+        True if user has already voted this way, False otherwise
+    """
+    field = "Liked By" if vote_type == "like" else "Disliked By"
+    voters = review.get(field, "").split(";")
+    return voter_email.lower() in [v.strip().lower() for v in voters if v.strip()]
 
 
-def dislike_review(email: str, movie_name: str) -> bool:
-    """Increment Dislikes for a given user's review."""
+def add_vote(review: Dict, voter_email: str, vote_type: str) -> None:
+    """
+    Add a user's vote to a review.
+    
+    Args:
+        review: The review dictionary to modify
+        voter_email: Email of the user voting
+        vote_type: Either "like" or "dislike"
+    """
+    field = "Liked By" if vote_type == "like" else "Disliked By"
+    count_field = "Likes" if vote_type == "like" else "Dislikes"
+    
+    # Add voter email
+    current_voters = review.get(field, "")
+    if current_voters:
+        review[field] = current_voters + ";" + voter_email
+    else:
+        review[field] = voter_email
+    
+    # Increment count
+    current_count = int(review.get(count_field, "0"))
+    review[count_field] = str(current_count + 1)
+
+
+def remove_vote(review: Dict, voter_email: str, vote_type: str) -> None:
+    """
+    Remove a user's vote from a review (for switching votes).
+    
+    Args:
+        review: The review dictionary to modify
+        voter_email: Email of the user whose vote to remove
+        vote_type: Either "like" or "dislike"
+    """
+    field = "Liked By" if vote_type == "like" else "Disliked By"
+    count_field = "Likes" if vote_type == "like" else "Dislikes"
+    
+    # Remove voter email
+    voters = [v.strip() for v in review.get(field, "").split(";") if v.strip()]
+    voters = [v for v in voters if v.lower() != voter_email.lower()]
+    review[field] = ";".join(voters)
+    
+    # Decrement count
+    current_count = int(review.get(count_field, "0"))
+    review[count_field] = str(max(0, current_count - 1))
+
+
+def like_review(review_author_email: str, movie_name: str, voter_email: str) -> dict:
+    """
+    Like a review. Users can only like once, and liking removes any existing dislike.
+    
+    Returns:
+        dict with "success" (bool) and "message" (str)
+    """
     reviews = read_reviews(movie_name)
+    
     for r in reviews:
-        if r["Email"] == email:
-            r["Dislikes"] = str(int(r.get("Dislikes", "0")) + 1)
-            return write_reviews(movie_name, reviews)
-    return False
+        if r["Email"] == review_author_email:
+            # Check if already liked
+            if user_has_voted(r, voter_email, "like"):
+                return {
+                    "success": False,
+                    "message": "You have already liked this review"
+                }
+            
+            # Remove dislike if exists
+            if user_has_voted(r, voter_email, "dislike"):
+                remove_vote(r, voter_email, "dislike")
+            
+            # Add like
+            add_vote(r, voter_email, "like")
+            
+            # Save changes
+            success = write_reviews(movie_name, reviews)
+            return {
+                "success": success,
+                "message": "Review liked successfully" if success else "Failed to like review",
+                "likes": int(r["Likes"]),
+                "dislikes": int(r["Dislikes"])
+            }
+    
+    return {
+        "success": False,
+        "message": "Review not found"
+    }
+
+
+def dislike_review(review_author_email: str, movie_name: str, voter_email: str) -> dict:
+    """
+    Dislike a review. Users can only dislike once, and disliking removes any existing like.
+    
+    Returns:
+        dict with "success" (bool) and "message" (str)
+    """
+    reviews = read_reviews(movie_name)
+    
+    for r in reviews:
+        if r["Email"] == review_author_email:
+            # Check if already disliked
+            if user_has_voted(r, voter_email, "dislike"):
+                return {
+                    "success": False,
+                    "message": "You have already disliked this review"
+                }
+            
+            # Remove like if exists
+            if user_has_voted(r, voter_email, "like"):
+                remove_vote(r, voter_email, "like")
+            
+            # Add dislike
+            add_vote(r, voter_email, "dislike")
+            
+            # Save changes
+            success = write_reviews(movie_name, reviews)
+            return {
+                "success": success,
+                "message": "Review disliked successfully" if success else "Failed to dislike review",
+                "likes": int(r["Likes"]),
+                "dislikes": int(r["Dislikes"])
+            }
+    
+    return {
+        "success": False,
+        "message": "Review not found"
+    }
+
+
+def get_user_vote_status(movie_name: str, review_author_email: str, voter_email: str) -> dict:
+    """
+    Get the current vote status of a user for a specific review.
+    
+    Returns:
+        dict with "has_liked" (bool) and "has_disliked" (bool)
+    """
+    review = get_review_by_email(movie_name, review_author_email)
+    
+    if not review:
+        return {"has_liked": False, "has_disliked": False}
+    
+    return {
+        "has_liked": user_has_voted(review, voter_email, "like"),
+        "has_disliked": user_has_voted(review, voter_email, "dislike")
+    }
 
 
 # ==================== Calculations & Statistics ====================
