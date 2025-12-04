@@ -1,7 +1,7 @@
 # backend/routes/admin_routes.py
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr
-from backend.services import admin_service, user_service
+from backend.services import admin_service, user_service, review_service
 from backend.models.user_model import User
 from backend.models.admin_model import Admin
 from backend.middleware.auth_middleware import verify_admin_token
@@ -25,6 +25,29 @@ class TierUpgrade(BaseModel):
 
 class UserDelete(BaseModel):
     """Request model for deleting users."""
+    email: EmailStr
+
+
+class TokenPenalty(BaseModel):
+    """Request model for removing tokens from a user."""
+    email: EmailStr
+    tokens_to_remove: int
+
+
+class ReviewBan(BaseModel):
+    """Request model for banning/unbanning user from reviews."""
+    email: EmailStr
+    ban: bool = True  # True = ban, False = unban
+
+
+class UserBan(BaseModel):
+    """Request model for banning users permanently."""
+    email: EmailStr
+    reason: str = ""
+
+
+class UserUnban(BaseModel):
+    """Request model for unbanning users."""
     email: EmailStr
 
 
@@ -143,6 +166,240 @@ async def delete_user(
 
     return {
         "message": f"User {user_delete.email} deleted successfully"
+    }
+
+
+@router.post("/users/remove-tokens")
+async def remove_user_tokens(
+    penalty: TokenPenalty,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """Remove tokens from a user as a penalty (admin only)."""
+    if penalty.tokens_to_remove <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token amount must be positive"
+        )
+
+    # Get user to check current balance
+    user = user_service.get_user_by_email(penalty.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Check if user has enough tokens
+    if user.tokens < penalty.tokens_to_remove:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(f"User only has {user.tokens} tokens. ",
+                    f"Cannot remove {penalty.tokens_to_remove}.")
+        )
+
+    # Deduct tokens
+    success = user_service.deduct_tokens_from_user(
+        penalty.email,
+        penalty.tokens_to_remove
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to remove tokens"
+        )
+
+    # Get updated user
+    updated_user = user_service.get_user_by_email(penalty.email)
+
+    return {
+        "message": (
+            f"Removed {penalty.tokens_to_remove} tokens "
+            f"from {penalty.email}"
+        ),
+        "previous_balance": user.tokens,
+        "new_balance": updated_user.tokens,
+        "user": updated_user.to_dict()
+    }
+
+
+@router.post("/users/review-ban")
+async def ban_user_from_reviews(
+    ban_request: ReviewBan,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """
+    Ban or unban a user from writing reviews (admin only).
+    When banned:
+    - User cannot write new reviews
+    - User cannot rate movies
+    - User cannot edit existing reviews
+    - All existing reviews are marked as penalized and hidden
+    """
+    # Check if user exists
+    user = user_service.get_user_by_email(ban_request.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Check current status
+    if ban_request.ban and user.review_banned:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already banned from reviewing"
+        )
+
+    if not ban_request.ban and not user.review_banned:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not currently banned from reviewing"
+        )
+
+    # Update ban status
+    success = user_service.update_review_ban_status(
+        ban_request.email,
+        ban_request.ban
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update review ban status"
+        )
+
+    # If banning, mark all existing reviews as penalized
+    review_result = {"reviews_marked": 0, "movies_affected": []}
+    if ban_request.ban:
+        review_result = review_service.mark_all_reviews_penalized(
+            ban_request.email)
+
+    # Get updated user
+    updated_user = user_service.get_user_by_email(ban_request.email)
+
+    action = "banned from" if ban_request.ban else "unbanned from"
+    message = f"User {ban_request.email} has been {action} writing reviews"
+
+    if ban_request.ban and review_result["reviews_marked"] > 0:
+        message += (
+            f". {review_result['reviews_marked']} "
+            f"existing reviews marked as penalized "
+            f"across {len(review_result['movies_affected'])} movies"
+        )
+
+    return {
+        "message": message,
+        "user": updated_user.to_dict(),
+        "reviews_affected": review_result if ban_request.ban else None
+    }
+
+
+@router.post("/users/ban")
+async def ban_user(
+    ban_request: UserBan,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """
+    Permanently ban a user (admin only).
+    This will:
+    - Add email to permanent blacklist
+    - Delete user account completely
+    - Revoke all active sessions
+    - Mark all reviews as penalized and hidden
+    - Prevent future signups with this email
+    """
+    result = admin_service.ban_user(
+        email=ban_request.email,
+        admin_email=admin.email,
+        reason=ban_request.reason
+    )
+
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["message"]
+        )
+
+    return {
+        "message": result["message"],
+        "details": result["details"]
+    }
+
+
+@router.post("/users/unban")
+async def unban_user(
+    unban_request: UserUnban,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """
+    Remove an email from the ban list (admin only).
+    This allows the email to create a new account.
+    Note: This does NOT restore the deleted account.
+    """
+    # Check if email is actually banned
+    if not admin_service.is_email_banned(unban_request.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is not currently banned"
+        )
+
+    # Get ban info before removing
+    ban_info = admin_service.get_banned_email_info(unban_request.email)
+
+    # Remove from blacklist
+    success = admin_service.remove_banned_email(unban_request.email)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unban email"
+        )
+
+    return {
+        "message": (
+            f"Email {unban_request.email} has been unbanned "
+            f"and can now create a new account"
+        ),
+        "previous_ban_info": ban_info
+    }
+
+
+@router.get("/users/banned")
+async def get_banned_users(admin: Admin = Depends(verify_admin_token)):
+    """
+    Get list of all banned emails (admin only).
+    """
+    banned_emails = admin_service.get_all_banned_emails()
+
+    return {
+        "banned_emails": banned_emails,
+        "total": len(banned_emails)
+    }
+
+
+@router.get("/users/banned/{email}")
+async def check_banned_status(
+    email: str,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """
+    Check if a specific email is banned (admin only).
+    """
+    is_banned = admin_service.is_email_banned(email)
+
+    if not is_banned:
+        return {
+            "email": email,
+            "is_banned": False
+        }
+
+    ban_info = admin_service.get_banned_email_info(email)
+
+    return {
+        "email": email,
+        "is_banned": True,
+        "ban_info": ban_info
     }
 
 

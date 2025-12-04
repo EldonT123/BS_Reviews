@@ -30,11 +30,12 @@ export default function LoginPage() {
       const data = await response.json();
       
       // Save session_id to localStorage
-      localStorage.setItem("sessionId", data.session_id);
+      localStorage.setItem("session_id", data.session_id);
+      localStorage.setItem("user_email", data.user.email);
       
       // Redirect to home page (which now has full functionality)
       router.push("/");
-    } catch (error) {
+    } catch {
       alert("Login error, please try again.");
       setLoading(false);
     }

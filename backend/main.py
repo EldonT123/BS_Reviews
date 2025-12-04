@@ -23,12 +23,14 @@ async def lifespan(app: FastAPI):
     # STARTUP
     # --------------------
     admin_service.ensure_admin_csv_exists()
+    admin_service.ensure_banned_emails_csv_exists()
     print("✅ Admin CSV initialized")
 
     # Run the streaming data updater (non-blocking)
     asyncio.create_task(asyncio.to_thread(generate_streaming_csv.main))
     print("🔄 Streaming CSV update started (background task)")
 
+    print("✅ Banned emails CSV initialized")
     print("🚀 Server started successfully")
 
     yield

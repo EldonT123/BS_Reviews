@@ -21,9 +21,9 @@ def mock_user_data():
     """Mock users dictionary with tokens."""
     return {
         "test@example.com": (
-            "testuser", "hashed_password_123", "snail", 0),
+            "testuser", "hashed_password_123", "snail", 0, "False"),
         "session@example.com": (
-            "sessionuser", "hashed_password_456", "slug", 100)
+            "sessionuser", "hashed_password_456", "slug", 100, "False")
     }
 
 

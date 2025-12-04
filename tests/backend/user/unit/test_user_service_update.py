@@ -16,9 +16,9 @@ from backend.services import user_service
 def mock_users_data():
     """Mock users dictionary as it would be read from CSV - NOW WITH TOKENS."""
     return {
-        "test@example.com": ("testuser", "hashed_password_123", "snail", 0),
-        "another@example.com": ("anotheruser", "hashed_password_456", "slug", 100),
-        "admin@example.com": ("admin", "hashed_password_789", "banana_slug", 500)
+        "test@example.com": ("testuser", "hashed_password_123", "snail", 0, "False"),
+        "another@example.com": ("anotheruser", "hashed_password_456", "slug", 100, "False"),
+        "admin@example.com": ("admin", "hashed_password_789", "banana_slug", 500, "False")
     }
 
 
@@ -58,11 +58,11 @@ class TestUpdateUserProfile:
         
         # Verify CSV writer was called with header
         calls = mock_writer_instance.writerow.call_args_list
-        assert calls[0][0][0] == ["user_email", "username", "user_password", "user_tier", "tokens"]
+        assert calls[0][0][0] == ["user_email", "username", "user_password", "user_tier", "tokens", "review_banned"]
         
         # Verify the updated user data was written
         written_rows = [call[0][0] for call in calls[1:]]
-        assert ["newemail@example.com", "testuser", "hashed_password_123", "snail", 0] in written_rows
+        assert ["newemail@example.com", "testuser", "hashed_password_123", "snail", 0, "False"] in written_rows
     
     @patch('backend.services.user_service.read_users')
     @patch('backend.services.user_service.ensure_user_csv_exists')
@@ -87,7 +87,7 @@ class TestUpdateUserProfile:
         
         # Verify the username was updated in written data
         written_rows = [call[0][0] for call in mock_writer_instance.writerow.call_args_list[1:]]
-        assert ["test@example.com", "newusername", "hashed_password_123", "snail", 0] in written_rows
+        assert ["test@example.com", "newusername", "hashed_password_123", "snail", 0, "False"] in written_rows
     
     @patch('backend.services.user_service.read_users')
     @patch('backend.services.user_service.hash_password')
@@ -115,7 +115,7 @@ class TestUpdateUserProfile:
         
         # Verify the password hash was updated
         written_rows = [call[0][0] for call in mock_writer_instance.writerow.call_args_list[1:]]
-        assert ["test@example.com", "testuser", "new_hashed_password", "snail",0] in written_rows
+        assert ["test@example.com", "testuser", "new_hashed_password", "snail", 0, "False"] in written_rows
     
     @patch('backend.services.user_service.read_users')
     @patch('backend.services.user_service.hash_password')
@@ -144,7 +144,7 @@ class TestUpdateUserProfile:
         
         # Verify all fields were updated
         written_rows = [call[0][0] for call in mock_writer_instance.writerow.call_args_list[1:]]
-        assert ["newemail@example.com", "newusername", "new_hashed_password", "snail",0] in written_rows
+        assert ["newemail@example.com", "newusername", "new_hashed_password", "snail", 0, "False"] in written_rows
     
     @patch('backend.services.user_service.read_users')
     def test_update_nonexistent_user(self, mock_read_users, mock_users_data):
@@ -184,7 +184,7 @@ class TestUpdateUserProfile:
         
         # Verify tier was preserved
         written_rows = [call[0][0] for call in mock_writer_instance.writerow.call_args_list[1:]]
-        assert ["newemail@example.com", "newusername", "hashed_password_123", "snail", 0] in written_rows
+        assert ["newemail@example.com", "newusername", "hashed_password_123", "snail", 0, "False"] in written_rows
 
 
 if __name__ == "__main__":

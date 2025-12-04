@@ -471,7 +471,6 @@ def test_get_review_by_email(isolated_movie_env, test_user):
 def test_like_review_integration(isolated_movie_env, test_user):
     movie_name = "integration_like"
     file_service.create_movie_folder(movie_name)
-
     # Add review
     review_service.add_review(ReviewRequest(
         movie_name=movie_name,
@@ -479,10 +478,20 @@ def test_like_review_integration(isolated_movie_env, test_user):
         comment="Awesome!",
         review_title="Loved it"
     ), test_user)
-
-    # Like review
-    assert review_service.like_review(test_user.email, movie_name) is True
-
+    
+    # Like review - voter can be same as author or different user
+    result = review_service.like_review(
+        review_author_email=test_user.email,
+        movie_name=movie_name,
+        voter_email=test_user.email  # or use a different voter email
+    )
+    
+    # Check the result dictionary
+    assert result["success"] is True
+    assert result["likes"] == 1
+    assert result["dislikes"] == 0
+    
+    # Verify in CSV
     reviews = review_service.read_reviews(movie_name)
     r = next(rev for rev in reviews if rev["Email"] == test_user.email)
     assert r["Likes"] == "1"
@@ -491,7 +500,6 @@ def test_like_review_integration(isolated_movie_env, test_user):
 def test_dislike_review_integration(isolated_movie_env, test_user):
     movie_name = "integration_dislike"
     file_service.create_movie_folder(movie_name)
-
     # Add review
     review_service.add_review(ReviewRequest(
         movie_name=movie_name,
@@ -499,10 +507,20 @@ def test_dislike_review_integration(isolated_movie_env, test_user):
         comment="Not bad",
         review_title="Okay"
     ), test_user)
-
+    
     # Dislike review
-    assert review_service.dislike_review(test_user.email, movie_name) is True
-
+    result = review_service.dislike_review(
+        review_author_email=test_user.email,
+        movie_name=movie_name,
+        voter_email=test_user.email  # or use a different voter email
+    )
+    
+    # Check the result dictionary
+    assert result["success"] is True
+    assert result["likes"] == 0
+    assert result["dislikes"] == 1
+    
+    # Verify in CSV
     reviews = review_service.read_reviews(movie_name)
     r = next(rev for rev in reviews if rev["Email"] == test_user.email)
     assert r["Dislikes"] == "1"
