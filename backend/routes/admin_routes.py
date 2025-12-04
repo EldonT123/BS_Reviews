@@ -193,12 +193,13 @@ async def remove_user_tokens(
     if user.tokens < penalty.tokens_to_remove:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"User only has {user.tokens} tokens. Cannot remove {penalty.tokens_to_remove}."
+            detail=(f"User only has {user.tokens} tokens. ",
+                    f"Cannot remove {penalty.tokens_to_remove}.")
         )
 
     # Deduct tokens
     success = user_service.deduct_tokens_from_user(
-        penalty.email, 
+        penalty.email,
         penalty.tokens_to_remove
     )
 
@@ -212,7 +213,10 @@ async def remove_user_tokens(
     updated_user = user_service.get_user_by_email(penalty.email)
 
     return {
-        "message": f"Removed {penalty.tokens_to_remove} tokens from {penalty.email}",
+        "message": (
+            f"Removed {penalty.tokens_to_remove} tokens "
+            f"from {penalty.email}"
+        ),
         "previous_balance": user.tokens,
         "new_balance": updated_user.tokens,
         "user": updated_user.to_dict()
@@ -255,7 +259,7 @@ async def ban_user_from_reviews(
 
     # Update ban status
     success = user_service.update_review_ban_status(
-        ban_request.email, 
+        ban_request.email,
         ban_request.ban
     )
 

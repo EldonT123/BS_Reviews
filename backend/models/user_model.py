@@ -66,19 +66,22 @@ class User:
         return True
 
     def can_write_reviews(self) -> bool:
-        """Only Slug tier and above can write reviews, and they must not be banned."""
+        """Only Slug tier and above can write reviews,
+        and they must not be banned."""
         if self.review_banned:
             return False
         return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG]
 
     def can_rate_movies(self) -> bool:
-        """Only Slug tier and above can rate movies, and they must not be banned."""
+        """Only Slug tier and above can rate movies,
+        and they must not be banned."""
         if self.review_banned:
             return False
         return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG]
 
     def can_edit_own_reviews(self) -> bool:
-        """Only Slug tier and above can edit their own reviews, and they must not be banned."""
+        """Only Slug tier and above can edit their own reviews,
+        and they must not be banned."""
         if self.review_banned:
             return False
         return self.tier in [self.TIER_SLUG, self.TIER_BANANA_SLUG]
