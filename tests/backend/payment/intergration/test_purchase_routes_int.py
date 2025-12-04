@@ -77,10 +77,10 @@ STATUS_VALIDATION_ERROR = 422
 class InMemoryUserStorage:
     """In-memory storage for user data during tests."""
     def __init__(self):
-        self.users = {}  # email -> (username, password_hash, tier, tokens)
+        self.users = {}  # email -> (username, password_hash, tier, tokens, review_banned)
     
-    def add_user(self, email, username, password_hash, tier, tokens=0):
-        self.users[email.lower()] = (username, password_hash, tier, tokens)
+    def add_user(self, email, username, password_hash, tier, tokens=0, review_banned=False):
+        self.users[email.lower()] = (username, password_hash, tier, tokens, review_banned)
     
     def get_user(self, email):
         return self.users.get(email.lower())
@@ -90,9 +90,9 @@ class InMemoryUserStorage:
     
     def to_csv(self):
         """Convert to CSV format for mocking file reads."""
-        lines = ["user_email,username,user_password,user_tier,tokens\n"]
-        for email, (username, pwd_hash, tier, tokens) in self.users.items():
-            lines.append(f"{email},{username},{pwd_hash},{tier},{tokens}\n")
+        lines = ["user_email,username,user_password,user_tier,tokens,review_banned\n"]
+        for email, (username, pwd_hash, tier, tokens, review_banned) in self.users.items():
+            lines.append(f"{email},{username},{pwd_hash},{tier},{tokens},{review_banned}\n")
         return "".join(lines)
     
     def clear(self):
@@ -157,19 +157,20 @@ def mock_user_csv():
                 password_hash = parts[2]
                 tier = parts[3] if len(parts) > 3 else User.TIER_SNAIL
                 tokens = int(parts[4]) if len(parts) > 4 else 0
-                users[email] = (username, password_hash, tier, tokens)
+                review_banned = parts[5]
+                users[email] = (username, password_hash, tier, tokens, review_banned)
         return users
 
-    def mock_save_user(email, username, password_hash, tier=User.TIER_SNAIL, tokens=0):
-        user_storage.add_user(email, username, password_hash, tier, tokens)
+    def mock_save_user(email, username, password_hash, tier=User.TIER_SNAIL, tokens=0, review_banned=False):
+        user_storage.add_user(email, username, password_hash, tier, tokens, review_banned)
 
     def mock_rewrite_user_csv(users):
         """Mock rewrite_user_csv to update in-memory storage instead of disk."""
         # Clear current storage
         user_storage.clear()
         # Add all users back
-        for email, (username, password_hash, tier, tokens) in users.items():
-            user_storage.add_user(email, username, password_hash, tier, tokens)
+        for email, (username, password_hash, tier, tokens, review_banned) in users.items():
+            user_storage.add_user(email, username, password_hash, tier, tokens, review_banned)
 
     with patch('backend.services.user_service.read_users', side_effect=mock_read_users), \
          patch('backend.services.user_service.save_user', side_effect=mock_save_user), \
