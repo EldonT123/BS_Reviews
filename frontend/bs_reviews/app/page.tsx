@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import TokenBalance from "@/components/TokenBalance";
 
 type User = {
@@ -20,12 +21,14 @@ type Movie = {
 };
 
 export default function Home() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [topMovies, setTopMovies] = useState<Movie[]>([]);
   const [mostCommentedMovies, setMostCommentedMovies] = useState<Movie[]>([]);
   const [loadingTop, setLoadingTop] = useState(true);
   const [loadingComments, setLoadingComments] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function fetchUserData() {
@@ -90,6 +93,13 @@ export default function Home() {
     );
   };
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
   const currentMovie = topMovies[currentIndex];
 
   const upNextMovies = topMovies.length
@@ -124,11 +134,21 @@ export default function Home() {
           </nav>
         </div>
         <div className="flex items-center space-x-4">
-          <input
-            type="search"
-            placeholder="Search movies, TV, actors..."
-            className="bg-gray-800 text-gray-300 placeholder-gray-500 rounded-md px-4 py-2 focus:outline-yellow-400 focus:ring-1 focus:ring-yellow-400 w-48 sm:w-64"
-          />
+          <form onSubmit={handleSearch} className="relative">
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search movies..."
+              className="bg-gray-800 text-gray-300 placeholder-gray-500 rounded-md px-4 py-2 focus:outline-yellow-400 focus:ring-1 focus:ring-yellow-400 w-48 sm:w-64"
+            />
+            <button
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-400 hover:text-yellow-500"
+            >
+              🔍
+            </button>
+          </form>
           {user ? (
             <>
               <TokenBalance tokens={user.tokens || 0} />
