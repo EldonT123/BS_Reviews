@@ -578,6 +578,71 @@ def get_user_vote_status(
     }
 
 
+def mark_all_reviews_penalized(email: str) -> dict:
+    """
+    Mark all reviews by a user as penalized across all movies.
+    This should be called when an admin bans a user from reviewing.
+
+    Returns:
+        {
+            "success": bool,
+            "movies_affected": list[str],
+            "reviews_marked": int
+        }
+    """
+
+    movies_affected = []
+    reviews_marked = 0
+
+    # Get all movie folders
+    data_folder = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../data/movies")
+    )
+
+    if not os.path.exists(data_folder):
+        return {
+            "success": True,
+            "movies_affected": [],
+            "reviews_marked": 0
+        }
+
+    # Iterate through all movie folders
+    for movie_name in os.listdir(data_folder):
+        movie_path = os.path.join(data_folder, movie_name)
+        if not os.path.isdir(movie_path):
+            continue
+
+        reviews_path = os.path.join(movie_path, "movieReviews.csv")
+        if not os.path.exists(reviews_path):
+            continue
+
+        # Read reviews for this movie
+        reviews = read_reviews(movie_name)
+        modified = False
+
+        # Mark user's reviews as penalized
+        for review in reviews:
+            if (
+                review.get("Email") == email
+                and review.get("Penalized") != "Yes"
+            ):
+                review["Penalized"] = "Yes"
+                review["Hidden"] = "Yes"  # Also hide penalized reviews
+                modified = True
+                reviews_marked += 1
+
+        # Write back if any changes were made
+        if modified:
+            write_reviews(movie_name, reviews)
+            movies_affected.append(movie_name)
+
+    return {
+        "success": True,
+        "movies_affected": movies_affected,
+        "reviews_marked": reviews_marked
+    }
+
+
 # ==================== Calculations & Statistics ====================
 
 def recalc_average_rating(movie_name: str) -> float:

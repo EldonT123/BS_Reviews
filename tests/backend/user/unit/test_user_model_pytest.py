@@ -7,6 +7,7 @@ TEST_EMAIL = "test@email.com"
 TEST_USERNAME = "testuser"
 TEST_PASSWORD = "pass123!"
 
+
 def test_user_repr():
     """Unit test - Positive path:
     Test User repr method."""
@@ -15,19 +16,24 @@ def test_user_repr():
         username=TEST_USERNAME,
         password_hash=TEST_PASSWORD,
         tier=User.TIER_SLUG,
-        tokens=0  # ADD THIS
+        tokens=0
     )
-    
+
     # Update expected string to include tokens
-    assert repr(user) == f"User(email={TEST_EMAIL}, username={TEST_USERNAME}, tier=slug, tokens=0)"
+    assert repr(user) == (f"User(email={TEST_EMAIL}, "
+                          f"username={TEST_USERNAME}, "
+                          f"tier=slug, tokens=0, review_banned=False)")
 
 
 def test_user_tier_display():
     """Test tier display names."""
-    snail = User("snail@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SNAIL)
-    slug = User("slug@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
-    banana = User("banana@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_BANANA_SLUG)
-    
+    snail = User("snail@test.com", TEST_USERNAME,
+                 TEST_PASSWORD, User.TIER_SNAIL)
+    slug = User("slug@test.com", TEST_USERNAME,
+                TEST_PASSWORD, User.TIER_SLUG)
+    banana = User("banana@test.com", TEST_USERNAME,
+                  TEST_PASSWORD, User.TIER_BANANA_SLUG)
+
     assert "Snail" in snail.get_tier_display_name()
     assert "Slug" in slug.get_tier_display_name()
     assert "Banana Slug" in banana.get_tier_display_name()
@@ -67,10 +73,13 @@ def test_add_review_permission_denied():
 
 def test_user_tier_checks():
     """Users should correctly report their tier type through helper methods."""
-    snail = User("snail@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SNAIL)
-    slug = User("slug@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
-    banana = User("banana@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_BANANA_SLUG)
-    
+    snail = User("snail@test.com", TEST_USERNAME,
+                 TEST_PASSWORD, User.TIER_SNAIL)
+    slug = User("slug@test.com", TEST_USERNAME,
+                TEST_PASSWORD, User.TIER_SLUG)
+    banana = User("banana@test.com", TEST_USERNAME,
+                  TEST_PASSWORD, User.TIER_BANANA_SLUG)
+
     # Snail checks
     assert snail.is_snail() is True
     assert snail.is_slug() is False
@@ -89,10 +98,13 @@ def test_user_tier_checks():
 
 def test_user_permissions():
     """Permission helpers should enforce the correct rules for each tier."""
-    snail = User("snail@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SNAIL)
-    slug = User("slug@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
-    banana = User("banana@test.com", TEST_USERNAME, TEST_PASSWORD, User.TIER_BANANA_SLUG)
-    
+    snail = User("snail@test.com", TEST_USERNAME,
+                 TEST_PASSWORD, User.TIER_SNAIL)
+    slug = User("slug@test.com", TEST_USERNAME,
+                TEST_PASSWORD, User.TIER_SLUG)
+    banana = User("banana@test.com", TEST_USERNAME,
+                  TEST_PASSWORD, User.TIER_BANANA_SLUG)
+
     # Everyone can browse
     assert snail.can_browse() is True
     assert slug.can_browse() is True
@@ -113,7 +125,7 @@ def test_user_to_dict():
     """Test User to_dict method."""
     user = User(TEST_EMAIL, TEST_USERNAME, TEST_PASSWORD, User.TIER_SLUG)
     user_dict = user.to_dict()
-    
+
     assert user_dict["email"] == TEST_EMAIL
     assert user_dict["username"] == TEST_USERNAME
     assert user_dict["tier"] == User.TIER_SLUG

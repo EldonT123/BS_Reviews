@@ -17,7 +17,9 @@ from backend.services import admin_service
 async def lifespan(app: FastAPI):
     # Startup: runs before the application starts
     admin_service.ensure_admin_csv_exists()
+    admin_service.ensure_banned_emails_csv_exists()
     print("✅ Admin CSV initialized")
+    print("✅ Banned emails CSV initialized")
     print("🚀 Server started successfully")
 
     yield
