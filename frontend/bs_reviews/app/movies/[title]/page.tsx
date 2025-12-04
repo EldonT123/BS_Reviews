@@ -59,23 +59,43 @@ export default function MovieDetailsPage() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  // Check authentication status
+  // Check authentication status with backend verification
   useEffect(() => {
     const checkAuth = async () => {
       const sessionId = localStorage.getItem("session_id");
       const email = localStorage.getItem("user_email");
       
-      if (sessionId && email) {
-        setIsAuthenticated(true);
-        setUserEmail(email);
-      } else {
+      if (!sessionId || !email) {
+        setIsAuthenticated(false);
+        setUserEmail(null);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `http://localhost:8000/api/users/check-session/${sessionId}`
+        );
+        
+        if (response.ok) {
+          setIsAuthenticated(true);
+          setUserEmail(email);
+        } else {
+          localStorage.removeItem("session_id");
+          localStorage.removeItem("user_email");
+          setIsAuthenticated(false);
+          setUserEmail(null);
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
         setIsAuthenticated(false);
         setUserEmail(null);
       }
     };
+    
     checkAuth();
   }, []);
 
+  // Fetch movie details
   useEffect(() => {
     async function fetchMovieDetails() {
       try {
@@ -108,12 +128,14 @@ export default function MovieDetailsPage() {
     }
   }, [params.title]);
 
+  // Fetch reviews (without vote status initially)
   useEffect(() => {
     async function fetchReviews() {
       if (!movie?.title) return;
 
       try {
         setReviewsLoading(true);
+        
         const res = await fetch(
           `http://localhost:8000/api/reviews/${encodeURIComponent(movie.title)}`
         );
@@ -129,34 +151,7 @@ export default function MovieDetailsPage() {
         const data = await res.json();
         const visibleReviews = data.reviews.filter((r: Review) => r.Hidden !== "Yes");
         
-        // Fetch vote status for each review if authenticated
-        if (isAuthenticated) {
-          const reviewsWithStatus = await Promise.all(
-            visibleReviews.map(async (review: Review) => {
-              try {
-                const sessionId = localStorage.getItem("session_id");
-                const statusRes = await fetch(
-                  `http://localhost:8000/api/reviews/${encodeURIComponent(movie.title)}/vote-status/${encodeURIComponent(review.Email)}`,
-                  {
-                    headers: {
-                      Authorization: `Bearer ${sessionId}`,
-                    },
-                  }
-                );
-                if (statusRes.ok) {
-                  const status = await statusRes.json();
-                  return { ...review, hasLiked: status.has_liked, hasDisliked: status.has_disliked };
-                }
-              } catch (err) {
-                console.error("Error fetching vote status:", err);
-              }
-              return review;
-            })
-          );
-          setReviews(reviewsWithStatus);
-        } else {
-          setReviews(visibleReviews);
-        }
+        setReviews(visibleReviews);
       } catch (err) {
         console.error("Error fetching reviews:", err);
         setReviews([]);
@@ -166,11 +161,51 @@ export default function MovieDetailsPage() {
     }
 
     fetchReviews();
-  }, [movie?.title, isAuthenticated]);
+  }, [movie?.title]);
 
+  // Fetch vote status ONLY for displayed reviews
   useEffect(() => {
-    setDisplayedReviews(reviews.slice(0, reviewsToShow));
-  }, [reviews, reviewsToShow]);
+    async function fetchVoteStatus() {
+      if (!isAuthenticated || reviews.length === 0) {
+        setDisplayedReviews(reviews.slice(0, reviewsToShow));
+        return;
+      }
+
+      const sessionId = localStorage.getItem("session_id");
+      const reviewsToDisplay = reviews.slice(0, reviewsToShow);
+
+      const reviewsWithStatus = await Promise.all(
+        reviewsToDisplay.map(async (review: Review) => {
+          try {
+            const statusRes = await fetch(
+              `http://localhost:8000/api/reviews/${encodeURIComponent(movie!.title)}/vote-status/${encodeURIComponent(review.Email)}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${sessionId}`,
+                },
+              }
+            );
+            
+            if (statusRes.ok) {
+              const status = await statusRes.json();
+              return { 
+                ...review, 
+                hasLiked: status.has_liked, 
+                hasDisliked: status.has_disliked 
+              };
+            }
+          } catch (err) {
+            console.error("Error fetching vote status:", err);
+          }
+          return review;
+        })
+      );
+
+      setDisplayedReviews(reviewsWithStatus);
+    }
+
+    fetchVoteStatus();
+  }, [reviews, reviewsToShow, isAuthenticated, movie]);
 
   const showVoteMessage = (message: string) => {
     setVoteMessage(message);
@@ -182,14 +217,12 @@ export default function MovieDetailsPage() {
     
     const sessionId = localStorage.getItem("session_id");
     
-    if (!sessionId) {
+    if (!sessionId || !isAuthenticated) {
       showVoteMessage("Please log in to like reviews");
       return;
     }
 
     try {
-      console.log("Attempting to like review with session:", sessionId);
-      
       const res = await fetch(
         `http://localhost:8000/api/reviews/${encodeURIComponent(movie.title)}/like?review_author_email=${encodeURIComponent(reviewAuthorEmail)}`,
         { 
@@ -201,12 +234,9 @@ export default function MovieDetailsPage() {
         }
       );
 
-      console.log("Like response status:", res.status);
       const result = await res.json();
-      console.log("Like response data:", result);
 
       if (res.ok) {
-        // Update the local state with new counts and vote status
         setReviews((prev) =>
           prev.map((r) =>
             r.Email === reviewAuthorEmail
@@ -222,8 +252,15 @@ export default function MovieDetailsPage() {
         );
         showVoteMessage("Review liked!");
       } else {
-        console.error("Like failed:", result);
-        showVoteMessage(result.detail || "Failed to like review");
+        if (res.status === 401) {
+          localStorage.removeItem("session_id");
+          localStorage.removeItem("user_email");
+          setIsAuthenticated(false);
+          setUserEmail(null);
+          showVoteMessage("Session expired. Please log in again.");
+        } else {
+          showVoteMessage(result.detail || "Failed to like review");
+        }
       }
     } catch (err) {
       console.error("Error liking review:", err);
@@ -236,14 +273,12 @@ export default function MovieDetailsPage() {
     
     const sessionId = localStorage.getItem("session_id");
     
-    if (!sessionId) {
+    if (!sessionId || !isAuthenticated) {
       showVoteMessage("Please log in to dislike reviews");
       return;
     }
 
     try {
-      console.log("Attempting to dislike review with session:", sessionId);
-      
       const res = await fetch(
         `http://localhost:8000/api/reviews/${encodeURIComponent(movie.title)}/dislike?review_author_email=${encodeURIComponent(reviewAuthorEmail)}`,
         { 
@@ -255,12 +290,9 @@ export default function MovieDetailsPage() {
         }
       );
 
-      console.log("Dislike response status:", res.status);
       const result = await res.json();
-      console.log("Dislike response data:", result);
 
       if (res.ok) {
-        // Update the local state with new counts and vote status
         setReviews((prev) =>
           prev.map((r) =>
             r.Email === reviewAuthorEmail
@@ -276,8 +308,15 @@ export default function MovieDetailsPage() {
         );
         showVoteMessage("Review disliked!");
       } else {
-        console.error("Dislike failed:", result);
-        showVoteMessage(result.detail || "Failed to dislike review");
+        if (res.status === 401) {
+          localStorage.removeItem("session_id");
+          localStorage.removeItem("user_email");
+          setIsAuthenticated(false);
+          setUserEmail(null);
+          showVoteMessage("Session expired. Please log in again.");
+        } else {
+          showVoteMessage(result.detail || "Failed to dislike review");
+        }
       }
     } catch (err) {
       console.error("Error disliking review:", err);
@@ -296,7 +335,7 @@ export default function MovieDetailsPage() {
     
     const sessionId = localStorage.getItem("session_id");
     
-    if (!sessionId) {
+    if (!sessionId || !isAuthenticated) {
       showVoteMessage("Please log in to submit a review");
       return;
     }
@@ -336,7 +375,6 @@ export default function MovieDetailsPage() {
       if (res.ok) {
         showVoteMessage(result.message || "Review submitted successfully!");
         
-        // Reset form
         setReviewForm({
           rating: 5,
           reviewTitle: "",
@@ -344,7 +382,6 @@ export default function MovieDetailsPage() {
         });
         setShowReviewForm(false);
         
-        // Refresh reviews
         const reviewsRes = await fetch(
           `http://localhost:8000/api/reviews/${encodeURIComponent(movie.title)}`
         );
@@ -392,7 +429,6 @@ export default function MovieDetailsPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
-      {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 bg-black/90 shadow-md sticky top-0 z-10">
         <Link
           href="/"
@@ -402,16 +438,13 @@ export default function MovieDetailsPage() {
         </Link>
       </header>
 
-      {/* Vote Message Notification */}
       {voteMessage && (
         <div className="fixed top-20 right-8 bg-yellow-400 text-black px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in">
           {voteMessage}
         </div>
       )}
 
-      {/* Movie Details Container */}
       <div className="max-w-6xl mx-auto px-8 py-12">
-        {/* Title Section */}
         <div className="mb-8">
           <h1 className="text-6xl font-bold mb-4">{movie.title}</h1>
           <div className="flex items-center gap-4 text-lg text-gray-300">
@@ -434,7 +467,6 @@ export default function MovieDetailsPage() {
           </div>
         </div>
 
-        {/* Rating Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <div className="bg-gray-800 p-6 rounded-lg">
             <div className="text-yellow-400 text-5xl font-bold mb-2">
@@ -468,13 +500,11 @@ export default function MovieDetailsPage() {
           </div>
         </div>
 
-        {/* Description */}
         <div className="bg-gray-800 p-8 rounded-lg mb-8">
           <h2 className="text-3xl font-semibold mb-4">Overview</h2>
           <p className="text-xl text-gray-300 leading-relaxed">{movie.description}</p>
         </div>
 
-        {/* Credits Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           <div className="bg-gray-800 p-6 rounded-lg">
             <h3 className="text-2xl font-semibold mb-4 text-yellow-400">
@@ -517,7 +547,6 @@ export default function MovieDetailsPage() {
           </div>
         </div>
 
-        {/* Reviews Section */}
         <div className="bg-gray-800 p-8 rounded-lg">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-3xl font-semibold text-yellow-400">
@@ -539,7 +568,6 @@ export default function MovieDetailsPage() {
             )}
           </div>
 
-          {/* Review Form */}
           {showReviewForm && (
             <div className="bg-gray-700 p-6 rounded-lg mb-6 border-2 border-yellow-400">
               <div className="flex items-center justify-between mb-4">
@@ -552,8 +580,7 @@ export default function MovieDetailsPage() {
                 </button>
               </div>
               
-              <form onSubmit={handleSubmitReview} className="space-y-4">
-                {/* Rating */}
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Rating: {reviewForm.rating}/10
@@ -573,7 +600,6 @@ export default function MovieDetailsPage() {
                   </div>
                 </div>
 
-                {/* Review Title */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Review Title *
@@ -588,7 +614,6 @@ export default function MovieDetailsPage() {
                   />
                 </div>
 
-                {/* Review Comment */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Review *
@@ -602,10 +627,9 @@ export default function MovieDetailsPage() {
                   />
                 </div>
 
-                {/* Submit Buttons */}
                 <div className="flex gap-3">
                   <button
-                    type="submit"
+                    onClick={handleSubmitReview}
                     disabled={submitLoading}
                     className={`flex-1 bg-yellow-400 text-black font-semibold px-6 py-3 rounded hover:bg-yellow-500 transition ${
                       submitLoading ? "opacity-50 cursor-not-allowed" : ""
@@ -614,14 +638,13 @@ export default function MovieDetailsPage() {
                     {submitLoading ? "Submitting..." : "Submit Review"}
                   </button>
                   <button
-                    type="button"
                     onClick={() => setShowReviewForm(false)}
                     className="px-6 py-3 bg-gray-600 text-white rounded hover:bg-gray-500 transition"
                   >
                     Cancel
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           )}
 
@@ -678,22 +701,24 @@ export default function MovieDetailsPage() {
                     <div className="flex items-center gap-4 pt-3 border-t border-gray-600">
                       <button
                         onClick={() => handleLike(review.Email)}
+                        disabled={!isAuthenticated}
                         className={`flex items-center gap-2 px-3 py-2 rounded transition text-sm ${
                           review.hasLiked
                             ? "bg-green-600 text-white"
                             : "bg-gray-600 hover:bg-green-600"
-                        }`}
+                        } ${!isAuthenticated ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
                         <span>👍</span>
                         <span>{review.Likes || "0"}</span>
                       </button>
                       <button
                         onClick={() => handleDislike(review.Email)}
+                        disabled={!isAuthenticated}
                         className={`flex items-center gap-2 px-3 py-2 rounded transition text-sm ${
                           review.hasDisliked
                             ? "bg-red-600 text-white"
                             : "bg-gray-600 hover:bg-red-600"
-                        }`}
+                        } ${!isAuthenticated ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
                         <span>👎</span>
                         <span>{review.Dislikes || "0"}</span>
