@@ -1,6 +1,5 @@
-user_email,username,user_password,user_tier,tokens
-testuser@gmail.com,testuser,testuser#123,snail,0
-xbonealpha@gmail.com,xbonealpha,$2b$12$0Xz0dfocSG8abkQu6O2rdeiGWUqmzp9Xf1zP/.BPHRsqqUFcgN1CG,admin,0
-newuser@example.com,newuser,$2b$12$3UggW4EDxfJ834bF4rDaW.ilVzuVtGZr/ES86y4MRnNlle8YmHHQi,snail,0
-ctipto01@student.ubc.ca,Cain,$2b$12$hfJNSGkBisRvLRUoC6rFTOxEMetOfZzPAfgR.EM72r5jG.JjsTMaa,slug,900
-mishayljutt@gmail.com,mishaylj,$2b$12$drMVHYXG5qF/YhmTNSsr/OexiP/r9xtW2VklVhYwaLcFDU9HX.cPu,snail,0
+user_email,username,user_password,user_tier,tokens,review_banned
+testuser@gmail.com,testuser,testuser#123,snail,0,False
+xbonealpha@gmail.com,xbonealpha,$2b$12$0Xz0dfocSG8abkQu6O2rdeiGWUqmzp9Xf1zP/.BPHRsqqUFcgN1CG,admin,0,False
+newuser@example.com,newuser,$2b$12$3UggW4EDxfJ834bF4rDaW.ilVzuVtGZr/ES86y4MRnNlle8YmHHQi,snail,0,False
+ctipto01@student.ubc.ca,Cain,$2b$12$hfJNSGkBisRvLRUoC6rFTOxEMetOfZzPAfgR.EM72r5jG.JjsTMaa,slug,900,False
