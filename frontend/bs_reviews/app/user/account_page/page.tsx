@@ -64,7 +64,7 @@ export default function AccountPage() {
 
   useEffect(() => {
     async function checkSession() {
-      const sessionId = typeof window !== "undefined" ? localStorage.getItem("sessionId") : null;
+      const sessionId = typeof window !== "undefined" ? localStorage.getItem("session_id") : null;
 
       if (!sessionId) {
         router.push("/login");

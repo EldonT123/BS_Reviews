@@ -43,7 +43,7 @@ export default function PaymentPage() {
   useEffect(() => {
     const initPayment = () => {
       // Check if user is logged in
-      const sessionId = localStorage.getItem("sessionId");
+      const sessionId = localStorage.getItem("session_id");
       if (!sessionId) {
         router.push("/login");
         return;
@@ -127,7 +127,7 @@ export default function PaymentPage() {
     setLoading(true);
 
     try {
-      const sessionId = localStorage.getItem("sessionId");
+      const sessionId = localStorage.getItem("session_id");
       
       // Determine if this is a token or CAD purchase
       const isTokenPurchase = purchaseItem!.price_tokens !== undefined && purchaseItem!.price_cad === undefined;

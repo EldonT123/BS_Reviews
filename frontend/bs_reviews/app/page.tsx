@@ -29,7 +29,7 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchUserData() {
-      const sessionId = typeof window !== "undefined" ? localStorage.getItem("sessionId") : null;
+      const sessionId = typeof window !== "undefined" ? localStorage.getItem("session_id") : null;
 
       if (sessionId) {
         try {
@@ -41,7 +41,7 @@ export default function Home() {
             setUser(data.user);
           } else {
             // Invalid session, clear it
-            localStorage.removeItem("sessionId");
+            localStorage.removeItem("session_id");
           }
         } catch (error) {
           console.error("Failed to fetch user data:", error);
