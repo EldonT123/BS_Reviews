@@ -32,7 +32,7 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchUserData() {
-      const sessionId = typeof window !== "undefined" ? localStorage.getItem("sessionId") : null;
+      const sessionId = typeof window !== "undefined" ? localStorage.getItem("session_id") : null;
 
       if (sessionId) {
         try {
@@ -44,7 +44,7 @@ export default function Home() {
             setUser(data.user);
           } else {
             // Invalid session, clear it
-            localStorage.removeItem("sessionId");
+            localStorage.removeItem("session_id");
           }
         } catch (error) {
           console.error("Failed to fetch user data:", error);
@@ -180,44 +180,51 @@ export default function Home() {
 
       {/* Banner + Up Next Side Pane */}
       <section className="max-w-7xl mx-auto my-12 px-4 flex gap-6">
-        {/* Main Poster Section (70% width) */}
-        <div
-          className="relative flex-shrink-0 w-[70%] h-[520px] bg-cover bg-center rounded-lg shadow-lg"
-          style={{
-            backgroundImage: currentMovie
-              ? `url(${currentMovie.posterPath})`
-              : "url('/banners/default_banner.jpg')",
-          }}
-        >
-          {/* Left arrow */}
-          <button
-            onClick={prevMovie}
-            className="absolute top-1/2 left-4 z-20 -translate-y-1/2 bg-black/50 rounded-full p-3 hover:bg-black/70 text-3xl select-none"
-            aria-label="Previous Movie"
-          >
-            ◀
-          </button>
-
-          {/* Right arrow */}
-          <button
-            onClick={nextMovie}
-            className="absolute top-1/2 right-4 z-20 -translate-y-1/2 bg-black/50 rounded-full p-3 hover:bg-black/70 text-3xl select-none"
-            aria-label="Next Movie"
-          >
-            ▶
-          </button>
-
-          {/* Info overlay */}
-          <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-8 text-white rounded-b-lg">
-            <h1 className="text-5xl font-bold">{currentMovie?.title || "Loading..."}</h1>
-            <p className="mt-2 text-xl">
-              {currentMovie ? `Rated ${currentMovie.movieIMDbRating.toFixed(1)} ⭐ on IMDb` : ""}
-            </p>
-            <button className="mt-6 bg-yellow-400 text-black font-semibold px-8 py-3 rounded hover:bg-yellow-500 transition text-lg">
-              Watch Now
-            </button>
+        {loadingTop ? (
+          // Loading state for the entire banner area
+          <div className="flex-shrink-0 w-[70%] h-[520px] bg-gray-800 rounded-lg flex items-center justify-center">
+            <p className="text-zinc-400 text-xl">Loading top movies...</p>
           </div>
-        </div>
+        ) : (
+          // Main Poster Section (70% width)
+          <div
+            className="relative flex-shrink-0 w-[70%] h-[520px] bg-cover bg-center rounded-lg shadow-lg"
+            style={{
+              backgroundImage: currentMovie
+                ? `url(${currentMovie.posterPath})`
+                : "url('/banners/default_banner.jpg')",
+            }}
+          >
+            {/* Left arrow */}
+            <button
+              onClick={prevMovie}
+              className="absolute top-1/2 left-4 z-20 -translate-y-1/2 bg-black/50 rounded-full p-3 hover:bg-black/70 text-3xl select-none"
+              aria-label="Previous Movie"
+            >
+              ◀
+            </button>
+
+            {/* Right arrow */}
+            <button
+              onClick={nextMovie}
+              className="absolute top-1/2 right-4 z-20 -translate-y-1/2 bg-black/50 rounded-full p-3 hover:bg-black/70 text-3xl select-none"
+              aria-label="Next Movie"
+            >
+              ▶
+            </button>
+
+            {/* Info overlay */}
+            <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-8 text-white rounded-b-lg">
+              <h1 className="text-5xl font-bold">{currentMovie?.title || "Loading..."}</h1>
+              <p className="mt-2 text-xl">
+                {currentMovie ? `Rated ${currentMovie.movieIMDbRating.toFixed(1)} ⭐ on IMDb` : ""}
+              </p>
+              <button className="mt-6 bg-yellow-400 text-black font-semibold px-8 py-3 rounded hover:bg-yellow-500 transition text-lg">
+                Watch Now
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Up Next Pane (30% width) */}
         <aside className="w-[30%] bg-gray-800 p-6 rounded-lg shadow-lg flex flex-col gap-6 overflow-y-auto">

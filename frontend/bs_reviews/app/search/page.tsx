@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useSearchParams /*useRouter*/ } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -16,7 +16,7 @@ type Movie = {
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  //const router = useRouter();
   
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -45,14 +45,8 @@ export default function SearchPage() {
     fetchGenres();
   }, []);
 
-  // Perform search when query or filters change
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      performSearch();
-    }
-  }, [searchQuery, selectedGenres, minRating, maxRating, startYear, endYear]);
-
-  const performSearch = async () => {
+  // Fixed: Added all dependencies to useCallback
+  const performSearch = useCallback(async () => {
     setLoading(true);
     try {
       // Build query parameters
@@ -98,7 +92,14 @@ export default function SearchPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, selectedGenres, minRating, maxRating, startYear, endYear]);
+
+  // Fixed: Added performSearch to dependencies
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      performSearch();
+    }
+  }, [searchQuery, selectedGenres, minRating, maxRating, startYear, endYear, performSearch]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
