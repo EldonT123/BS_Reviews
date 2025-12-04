@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
-import { useSearchParams /*useRouter*/ } from "next/navigation";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -14,9 +14,8 @@ type Movie = {
   duration: number;
 };
 
-export default function SearchPage() {
+function SearchPageContent() {
   const searchParams = useSearchParams();
-  //const router = useRouter();
   
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -45,11 +44,9 @@ export default function SearchPage() {
     fetchGenres();
   }, []);
 
-  // Fixed: Added all dependencies to useCallback
   const performSearch = useCallback(async () => {
     setLoading(true);
     try {
-      // Build query parameters
       const params = new URLSearchParams();
       
       if (searchQuery.trim()) {
@@ -94,7 +91,6 @@ export default function SearchPage() {
     }
   }, [searchQuery, selectedGenres, minRating, maxRating, startYear, endYear]);
 
-  // Fixed: Added performSearch to dependencies
   useEffect(() => {
     if (searchQuery.trim()) {
       performSearch();
@@ -368,7 +364,6 @@ export default function SearchPage() {
                       sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
                       className="object-cover"
                       onError={(e) => {
-                        // Hide the image if it fails to load
                         e.currentTarget.style.display = 'none';
                       }}
                     />
@@ -407,5 +402,17 @@ export default function SearchPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center">
+        <div className="text-xl text-gray-400">Loading search...</div>
+      </div>
+    }>
+      <SearchPageContent />
+    </Suspense>
   );
 }
