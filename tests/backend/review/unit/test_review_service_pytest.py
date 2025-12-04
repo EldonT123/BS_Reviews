@@ -614,34 +614,82 @@ class TestLikeDislikeReview:
     @patch('backend.services.review_service.write_reviews')
     def test_like_review_success(self, mock_write, mock_read):
         mock_read.return_value = [{
-            "Email": "a@b.com", "Likes": "0", "Dislikes": "0"
+            "Email": "a@b.com", 
+            "Likes": "0", 
+            "Dislikes": "0",
+            "Liked By": "",
+            "Disliked By": ""
         }]
         mock_write.return_value = True
-
-        result = review_service.like_review("a@b.com", "Test Movie")
-        assert result is True
+        
+        result = review_service.like_review(
+            review_author_email="a@b.com",
+            movie_name="Test Movie",
+            voter_email="voter@test.com"
+        )
+        
+        # Check dictionary response
+        assert result["success"] is True
+        assert result["message"] == "Review liked successfully"
+        assert result["likes"] == 1
+        assert result["dislikes"] == 0
+        
+        # Verify the review was updated
         assert mock_read.return_value[0]["Likes"] == "1"
+        assert "voter@test.com" in mock_read.return_value[0]["Liked By"]
         mock_write.assert_called_once()
 
     @patch('backend.services.review_service.read_reviews')
     @patch('backend.services.review_service.write_reviews')
     def test_dislike_review_success(self, mock_write, mock_read):
         mock_read.return_value = [{
-            "Email": "a@b.com", "Likes": "0", "Dislikes": "0"
+            "Email": "a@b.com", 
+            "Likes": "0", 
+            "Dislikes": "0",
+            "Liked By": "",
+            "Disliked By": ""
         }]
         mock_write.return_value = True
-
-        result = review_service.dislike_review("a@b.com", "Test Movie")
-        assert result is True
+        
+        result = review_service.dislike_review(
+            review_author_email="a@b.com",
+            movie_name="Test Movie",
+            voter_email="voter@test.com"
+        )
+        
+        # Check dictionary response
+        assert result["success"] is True
+        assert result["message"] == "Review disliked successfully"
+        assert result["likes"] == 0
+        assert result["dislikes"] == 1
+        
+        # Verify the review was updated
         assert mock_read.return_value[0]["Dislikes"] == "1"
+        assert "voter@test.com" in mock_read.return_value[0]["Disliked By"]
         mock_write.assert_called_once()
+
 
     @patch('backend.services.review_service.read_reviews')
     def test_review_not_found(self, mock_read):
         mock_read.return_value = []
-
-        assert review_service.like_review("x@y.com", "Test Movie") is False
-        assert review_service.dislike_review("x@y.com", "Test Movie") is False
+        
+        # Test like_review
+        like_result = review_service.like_review(
+            review_author_email="x@y.com",
+            movie_name="Test Movie",
+            voter_email="voter@test.com"
+        )
+        assert like_result["success"] is False
+        assert like_result["message"] == "Review not found"
+        
+        # Test dislike_review
+        dislike_result = review_service.dislike_review(
+            review_author_email="x@y.com",
+            movie_name="Test Movie",
+            voter_email="voter@test.com"
+        )
+        assert dislike_result["success"] is False
+        assert dislike_result["message"] == "Review not found"
 
 
 # ==================== Calculations & Statistics Tests ====================
