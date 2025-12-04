@@ -1,8 +1,7 @@
 # tests/test_review_service.py
 """Unit tests for review service with proper mocking."""
 import pytest
-from unittest.mock import patch, mock_open, MagicMock
-from datetime import datetime
+from unittest.mock import patch, mock_open
 from backend.services import review_service
 from backend.models.user_model import User
 from backend.models.review_model import ReviewRequest
@@ -113,7 +112,8 @@ class TestReadReviews:
         new_callable=mock_open,
         read_data=(
             "Date of Review,Email,Username,Dislikes,Likes,"
-            "User's Rating out of 10,Review Title,Review,Reported,Report Reason\n"
+            "User's Rating out of 10,Review Title,Review,Reported,Report "
+            "Reason\n"
             "2024-01-15,alice@example.com,alice,0,10,8.5,Great!,Love it,,\n"
         )
     )
@@ -201,7 +201,7 @@ class TestAddReview:
             comment="Great film!",
             review_title="Loved it"
         )
-        
+
         result = review_service.add_review(review, slug_user)
 
         assert result is True
@@ -225,7 +225,7 @@ class TestAddReview:
             comment="Pretty good",
             review_title="Good"
         )
-        
+
         result = review_service.add_review(review, slug_user)
 
         assert result is True
@@ -249,7 +249,7 @@ class TestAddReview:
             comment="",  # No comment, just rating
             review_title="Rating only"
         )
-        
+
         result = review_service.add_review(review, slug_user)
 
         assert result is True
@@ -275,7 +275,7 @@ class TestAddReview:
             comment="Good",
             review_title="Nice"
         )
-        
+
         result = review_service.add_review(review, slug_user)
 
         assert result is True
@@ -296,7 +296,7 @@ class TestUpdateReview:
             comment="Updated",
             review_title="Updated Title"
         )
-        
+
         result = review_service.update_review(review, slug_user)
 
         assert result is False
@@ -318,14 +318,16 @@ class TestUpdateReview:
             comment="Even better on rewatch!",
             review_title="Updated title"
         )
-        
+
         result = review_service.update_review(review, slug_user)
 
         assert result is True
         mock_write.assert_called_once()
 
     @patch('backend.services.review_service.read_reviews')
-    def test_update_review_user_not_found(self, mock_read, sample_reviews, slug_user):
+    def test_update_review_user_not_found(
+        self, mock_read, sample_reviews, slug_user
+    ):
         """Should return False if user hasn't reviewed."""
         mock_read.return_value = sample_reviews
 
@@ -335,7 +337,7 @@ class TestUpdateReview:
             comment="Nope",
             review_title="Bad"
         )
-        
+
         result = review_service.update_review(review, slug_user)
 
         assert result is False
@@ -416,7 +418,7 @@ class TestReportReview:
         self, mock_write, mock_read, sample_reviews
     ):
         """Should successfully mark a review as reported and rewrite file."""
-        mock_read.return_value = sample_reviews.copy()
+        mock_read.return_value = [r.copy() for r in sample_reviews]
         mock_write.return_value = True
 
         result = review_service.report_review(
@@ -428,14 +430,43 @@ class TestReportReview:
         assert result is True
         mock_write.assert_called_once()
 
-        # Verify the review had fields added
+        # Verify the review had fields updated
         review = next(
             r for r in mock_read.return_value
             if r["Email"] == "alice@example.com"
         )
-
         assert review["Reported"] == "Yes"
         assert review["Report Reason"] == "Offensive language"
+        assert int(review["Report Count"]) == 1
+
+    @patch('backend.services.review_service.read_reviews')
+    @patch('backend.services.review_service.write_reviews')
+    def test_report_review_multiple_reasons_and_threshold(
+        self, mock_write, mock_read, sample_reviews
+    ):
+        """Should append reasons and hide review if threshold reached."""
+        reported_review = sample_reviews[0].copy()
+        reported_review["Report Count"] = (
+            str(review_service.REPORT_THRESHOLD - 1)
+        )
+        reported_review["Report Reason"] = "Spam"
+        mock_read.return_value = [reported_review]
+        mock_write.return_value = True
+
+        result = review_service.report_review(
+            email=reported_review["Email"],
+            movie_name="Test Movie",
+            reason="Offensive language"
+        )
+
+        assert result is True
+        review = next(
+            r for r in mock_read.return_value
+            if r["Email"] == reported_review["Email"]
+        )
+        assert review["Report Count"] == str(review_service.REPORT_THRESHOLD)
+        assert review["Report Reason"] == "Spam;Offensive language"
+        assert review["Hidden"] == "Yes"
 
 
 class TestHandleReportedReview:
@@ -446,54 +477,122 @@ class TestHandleReportedReview:
     def test_handle_reported_review_remove_success(
         self, mock_read, mock_delete, sample_reviews
     ):
-        """Should successfully remove a reported review."""
-        # Mark a review as reported in the sample
-        reported_review = sample_reviews.copy()[0]
-        reported_review["Reported"] = "Yes"
-        reported_review["Report Reason"] = "Offensive language"
+        """Should successfully remove a reported review when penalized."""
+        reported_review = sample_reviews[0].copy()
+        reported_review.update({
+            "Reported": "Yes",
+            "Report Reason": "Offensive language",
+            "Penalized": "Yes"
+        })
 
-        mock_read.return_value = [reported_review] + sample_reviews[1:]
+        mock_read.return_value = [reported_review]
         mock_delete.return_value = True
 
-        # Call the handle_reported_review function
         result = review_service.handle_reported_review(
-            email="alice@example.com",
+            email=reported_review["Email"],
             movie_name="Test Movie",
-            action="remove"
+            remove=True
         )
 
-        assert result is True
-        mock_delete.assert_called_once_with("alice@example.com", "Test Movie")
+        assert result["success"] is True
+        assert "deleted" in result["message"].lower()
+        mock_delete.assert_called_once_with(
+            reported_review["Email"], "Test Movie"
+        )
+
+    @patch('backend.services.review_service.read_reviews')
+    def test_handle_reported_review_remove_not_penalized(
+        self, mock_read, sample_reviews
+    ):
+        """Should not remove a review if user is not penalized."""
+        reported_review = sample_reviews[0].copy()
+        reported_review.update({
+            "Reported": "Yes",
+            "Report Reason": "Spam",
+            "Penalized": "No"
+        })
+        mock_read.return_value = [reported_review]
+
+        result = review_service.handle_reported_review(
+            email=reported_review["Email"],
+            movie_name="Test Movie",
+            remove=True
+        )
+
+        assert result["success"] is False
+        assert "penalized" in result["message"].lower()
 
     @patch('backend.services.review_service.read_reviews')
     @patch('backend.services.review_service.write_reviews')
     def test_handle_reported_review_keep_success(
         self, mock_write, mock_read, sample_reviews
     ):
-        """Should mark a reported review as handled without removing it."""
-        reported_review = sample_reviews.copy()[0]
-        reported_review["Reported"] = "Yes"
-        reported_review["Report Reason"] = "Spam"
+        """Should reset report info for a reported review if not penalized."""
+        reported_review = sample_reviews[0].copy()
+        reported_review.update({
+            "Reported": "Yes",
+            "Report Reason": "Spam",
+            "Penalized": "No"
+        })
 
-        mock_read.return_value = [reported_review] + sample_reviews[1:]
+        mock_read.return_value = [reported_review]
         mock_write.return_value = True
 
         result = review_service.handle_reported_review(
-            email="alice@example.com",
+            email=reported_review["Email"],
             movie_name="Test Movie",
-            action="keep"
+            remove=False
         )
 
-        assert result is True
-        mock_write.assert_called_once()
-
-        # The review should no longer be marked as reported
-        updated_review = next(
-            r for r in mock_read.return_value
-            if r["Email"] == "alice@example.com"
+        assert result["success"] is True
+        review = (
+            next(r for r in mock_read.return_value
+                 if r["Email"] == reported_review["Email"])
         )
-        assert updated_review.get("Reported") == ""
-        assert updated_review.get("Report Reason") == ""
+        assert review["Reported"] == "No"
+        assert review["Report Reason"] == ""
+        assert review["Report Count"] == "0"
+        assert review["Hidden"] == "No"
+
+    @patch('backend.services.review_service.read_reviews')
+    def test_handle_reported_review_keep_penalized(
+        self, mock_read, sample_reviews
+    ):
+        """Should not allow resetting a penalized review."""
+        reported_review = sample_reviews[0].copy()
+        reported_review.update({
+            "Reported": "Yes",
+            "Report Reason": "Spam",
+            "Penalized": "Yes"
+        })
+        mock_read.return_value = [reported_review]
+
+        result = review_service.handle_reported_review(
+            email=reported_review["Email"],
+            movie_name="Test Movie",
+            remove=False
+        )
+
+        assert result["success"] is False
+        assert "penalized" in result["message"].lower()
+
+    @patch('backend.services.review_service.read_reviews')
+    def test_handle_reported_review_not_reported(
+        self, mock_read, sample_reviews
+    ):
+        """Should return False if review exists but is not reported."""
+        normal_review = sample_reviews[0].copy()
+        normal_review.update({"Reported": "No"})
+        mock_read.return_value = [normal_review]
+
+        result = review_service.handle_reported_review(
+            email=normal_review["Email"],
+            movie_name="Test Movie",
+            remove=False
+        )
+
+        assert result["success"] is False
+        assert "reported" in result["message"].lower()
 
     @patch('backend.services.review_service.read_reviews')
     def test_handle_reported_review_not_found(self, mock_read):
@@ -503,13 +602,50 @@ class TestHandleReportedReview:
         result = review_service.handle_reported_review(
             email="nobody@example.com",
             movie_name="Test Movie",
-            action="remove"
+            remove=True
         )
 
-        assert result is False
+        assert result["success"] is False
+        assert "no reviews" in result["message"].lower()
+
+
+class TestLikeDislikeReview:
+    @patch('backend.services.review_service.read_reviews')
+    @patch('backend.services.review_service.write_reviews')
+    def test_like_review_success(self, mock_write, mock_read):
+        mock_read.return_value = [{
+            "Email": "a@b.com", "Likes": "0", "Dislikes": "0"
+        }]
+        mock_write.return_value = True
+
+        result = review_service.like_review("a@b.com", "Test Movie")
+        assert result is True
+        assert mock_read.return_value[0]["Likes"] == "1"
+        mock_write.assert_called_once()
+
+    @patch('backend.services.review_service.read_reviews')
+    @patch('backend.services.review_service.write_reviews')
+    def test_dislike_review_success(self, mock_write, mock_read):
+        mock_read.return_value = [{
+            "Email": "a@b.com", "Likes": "0", "Dislikes": "0"
+        }]
+        mock_write.return_value = True
+
+        result = review_service.dislike_review("a@b.com", "Test Movie")
+        assert result is True
+        assert mock_read.return_value[0]["Dislikes"] == "1"
+        mock_write.assert_called_once()
+
+    @patch('backend.services.review_service.read_reviews')
+    def test_review_not_found(self, mock_read):
+        mock_read.return_value = []
+
+        assert review_service.like_review("x@y.com", "Test Movie") is False
+        assert review_service.dislike_review("x@y.com", "Test Movie") is False
 
 
 # ==================== Calculations & Statistics Tests ====================
+
 
 class TestCalculations:
     """Tests for rating calculations."""

@@ -5,6 +5,8 @@ from backend.services import review_service
 from backend.dependencies.auth import require_slug_tier
 from backend.models.user_model import User
 from backend.models.review_model import ReviewRequest
+from backend.models.admin_model import Admin
+from backend.middleware.auth_middleware import verify_admin_token
 
 router = APIRouter()
 
@@ -174,3 +176,64 @@ async def get_average_rating(movie_name: str):
         "movie": movie_name,
         "average_rating": round(avg_rating, 2)
     }
+
+
+@router.post("/{movie_name}/report")
+async def report_review_route(
+    movie_name: str,
+    email: str,  # email of the user being reported
+    reason: str = "",
+    current_user: User = Depends(require_slug_tier)
+):
+    """
+    Report a review for a movie.
+    Requires: Authentication + Slug tier or above.
+    """
+    # Ensure the review exists
+    if not review_service.user_has_reviewed(movie_name, email):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Review to report not found"
+        )
+
+    # Call the service method
+    result = review_service.report_review(email, movie_name, reason)
+    return result  # Already a dict {success: bool, message: str}
+
+
+@router.put("/{movie_name}/reported")
+async def handle_reported_review_route(
+    movie_name: str,
+    email: str,  # email of the review being handled
+    remove: bool = False,
+    current_admin: Admin = Depends(verify_admin_token)
+):
+    """
+    Admin handles a reported review.
+    remove=True -> attempt to delete the review
+    remove=False -> attempt to keep (reset) the review
+    Only admins can perform this action.
+    """
+    result = review_service.handle_reported_review(email, movie_name, remove)
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["message"]
+        )
+    return result
+
+
+@router.post("/reviews/{movie_name}/like")
+def route_like_review(movie_name: str, email: str):
+    success = review_service.like_review(email, movie_name)
+    if not success:
+        raise HTTPException(status_code=404, detail="Review not found.")
+    return {"success": True, "message": "Review liked."}
+
+
+@router.post("/reviews/{movie_name}/dislike")
+def route_dislike_review(movie_name: str, email: str):
+    success = review_service.dislike_review(email, movie_name)
+    if not success:
+        raise HTTPException(status_code=404, detail="Review not found.")
+    return {"success": True, "message": "Review disliked."}
