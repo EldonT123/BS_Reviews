@@ -180,8 +180,14 @@ export default function Home() {
 
       {/* Banner + Up Next Side Pane */}
       <section className="max-w-7xl mx-auto my-12 px-4 flex gap-6">
-        {/* Main Poster Section (70% width) */}
-        <div
+        {loadingTop ? (
+          // Loading state for the entire banner area
+          <div className="flex-shrink-0 w-[70%] h-[520px] bg-gray-800 rounded-lg flex items-center justify-center">
+            <p className="text-zinc-400 text-xl">Loading top movies...</p>
+          </div>
+        ) : (
+          // Main Poster Section (70% width)
+          <div
           className="relative flex-shrink-0 w-[70%] h-[520px] bg-cover bg-center rounded-lg shadow-lg"
           style={{
             backgroundImage: currentMovie
@@ -225,6 +231,7 @@ export default function Home() {
             </button>
           </div>
         </div>
+        )}
 
         {/* Up Next Pane (30% width) */}
         <aside className="w-[30%] bg-gray-800 p-6 rounded-lg shadow-lg flex flex-col gap-6 overflow-y-auto">

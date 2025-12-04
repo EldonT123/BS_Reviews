@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 type StreamingData = {
   name: string;
@@ -102,7 +103,7 @@ export default function MovieDetailsPage() {
       <div className="px-4 py-12 flex flex-col items-center">
         {/* Poster */}
         <div className="relative mb-8">
-          <img
+          <Image 
             src={data.poster_url}
             alt={data.movie_name}
             className="w-48 sm:w-56 md:w-64 rounded-lg shadow-2xl mx-auto"
