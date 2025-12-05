@@ -146,14 +146,12 @@ def get_user_reviews(user_email: str) -> List[Dict]:
     Get all reviews written by a specific user across all movies.
     Returns a list of reviews with movie names attached.
     """
-    from backend.services import file_service
-
     user_reviews = []
 
     # Get all movie folders
-    movies_dir = file_service.MOVIES_FOLDER
-    if not os.path.exists(movies_dir):
-        return []
+    movies_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../database/archive")
+    )
 
     # Iterate through all movie folders
     for movie_folder in os.listdir(movies_dir):

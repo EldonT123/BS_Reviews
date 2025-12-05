@@ -40,12 +40,16 @@ async def get_reviews(movie_name: str):
 @router.post("/{movie_name}")
 async def post_review(
     review: ReviewRequest,
-    current_user: User = Depends(require_slug_tier)
+    current_user: User = Depends(get_current_user)
 ):
     """
     Add a review to a movie.
     Requires: Authentication + Slug tier or above.
     """
+
+    # Add a debug check here
+    print(f"User tier: {current_user.tier}")
+    print(f"Can write reviews: {current_user.can_write_reviews()}")
 
     # User is already authenticated and has Slug tier via dependency
     # Use authenticated user's email instead of trusting client input
