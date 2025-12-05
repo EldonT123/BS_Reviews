@@ -59,7 +59,7 @@ Banana_Slugs/
 │   ├── services/
 │   ├── models/
 │   └── middleware/
-├── frontend/
+├── frontend/bs_reviews
 │   ├── app/
 │   ├── public/
 │   └── package.json
@@ -85,7 +85,7 @@ To be done in the root directory of the project.
 docker build -f .docker/frontend.dockerfile -t banana-slugs-frontend .
 ```
 
-**Build Time**: Expect abotu 20 seconds for the backend image and 2-3 minutes for the frontend container.
+**Build Time**: Expect about 20 seconds for the backend image and 2-3 minutes for the frontend container.
 
 ---
 
@@ -106,15 +106,13 @@ database/
 |       |- purchase_history.csv
 |       |- user_bookmarks.csv
 |       |- user_infromation.csv
+|       └── banned_emails.csv
 |       
 └── archive/
-    ├── [Movie Name]/
-    │   ├── metadata.json
-    │   ├── movieReviews.csv
-    │   └── streamingData.csv
-    ├── user_information.csv
-    ├── admin_information.csv
-    └── banned_emails.csv
+    └── [Movie Name]/
+        ├── metadata.json
+        ├── movieReviews.csv
+        └── streamingData.csv
 ```
 
 ## Running the Application
@@ -171,7 +169,7 @@ npm run dev
 ### Step 1: User Signup Process
 
 1. Navigate to `http://localhost:3000`
-2. Click the **"Login"** button in the top navigation
+2. Click the **"Login"** or **"Sign Up"** button in the top navigation
 3. On the login page, click **"Sign Up"** at the bottom
 4. Fill out the signup form with the following requirements:
    - **Email**: Valid email format (e.g., `user@test.com`)
@@ -203,7 +201,7 @@ Password: TestUser123!
    - **Password**: Your password
 3. Click **"Sign In"**
 4. Upon successful login, you'll be redirected to the home page
-5. You should now see your username in the top navigation bar
+5. You should now see **Account** in the top navigation bar
 
 **Verification**:
 - Your session is now active (stored in localStorage)
@@ -251,7 +249,7 @@ The system supports two payment methods:
 #### Option B: Cash Payment (Credit-card)
 1. Click **"Purchase"** on a tier card
 2. If you don't have enough tokens, you'll see the cash price option
-3. Click **"Pay with Card"**
+3. Click **"Pay with Card"** (doesn't actually charge a card)
 4. Enter payment details:
    - Card number: `4242 4242 4242 4242` (test card)
    - Expiry: Any future date (e.g., `12/25`)
@@ -314,10 +312,17 @@ The system supports two payment methods:
 3. Click **Like** to agree with a review (like count increases)
 4. Click **Dislike** if you disagree (dislike count increases)
 
+#### Reporting Reviews:
+1. Scroll through the reviews on a movie page
+2. Each review has a **Report** button
+3. Click **Report** to report a review
+4. Add your report reason, a report will be sent to the administrators (see admin section)
+
 **Rules**:
 - You can only vote once per review
 - Clicking **Like** removes any previous **Dislike** (and vice versa)
 - You cannot like/dislike your own reviews
+- Your account must not be banned from reviewing
 
 #### Review Display Order:
 - **Banana Slug Tier** reviews appear **first** (priority placement, not fully implemented)
@@ -333,6 +338,7 @@ The system supports two payment methods:
 - **Username**: Your display name
 - **Tier**: Current tier level with icon (🐌 Snail, 🐌 Slug, or 🍌 Banana Slug)
 - **Tokens**: Current token balance
+- **Account Status**: Shows if you have been banned from reviewing 
 
 #### Review History:
 - List of all your submitted reviews
@@ -401,31 +407,37 @@ The system supports two payment methods:
 
 ### Step 9: Create Admin Account
 
-1. Navigate to `http://localhost:3000/admin/login`
-2. Click **"Sign Up"** at the bottom of the admin login page
+Admins can only be created by other admins or by using the Swagger FastAPI endpoints
+
+#### Option A: Sign up using endpoints
+
+1. Navigate to `http://localhost:8000/docs`
+2. Click the **"Sign Up"** endpoint
 3. Fill out the admin signup form:
    - **Email**: Use a dedicated admin email
    - **Password**: Strong password meeting all requirements
-4. Click **"Create Admin Account"**
-5. **Important**: Save these credentials securely in a password manager
+4. Click **"Execute"**
 
-**Recommended Admin Credentials** (change after first login):
-```
-Email: admin@bananaslugs.com
-Password: AdminSecure123!
-```
+**Note**: Admin accounts are separate from user accounts and stored in a different database file. An admin can have a separate user account on the same email.
 
-**Note**: Admin accounts are separate from user accounts and stored in a different database file.
+#### Option B: Sign up using admin dashboard
+
+1. Log into admin dashboard (See step 10)
+2. Navigate to **"Users"** page on left
+3. Press make admin on any existing user.
+4. Enter your admin password to authenticate. This will make a new admin account with the same credentials as the existing user.
+5. Log in with new admin account (See step 10)
 
 ### Step 10: Admin Login and Dashboard Access
 
 1. Log in using your admin credentials at `/admin/login`
 2. Upon successful login, you'll access the **Admin Dashboard**
 3. Dashboard sections:
-   - **User Management**: View, upgrade, ban users
-   - **Movie Management**: Add, edit, delete movies
-   - **Review Moderation**: Handle reported reviews
-   - **System Statistics**: View platform metrics
+   - **Dashboard**: View platform metrics
+   - **Users**: View, upgrade, delete users
+   - **Penalities**: Apply penalties to users, review ban, token removal, complete ban
+   - **Movies**: Add, edit, delete movies
+   - **Reviews**: Handle reported reviews
 
 ### Step 11: User Management (Admin)
 
@@ -435,9 +447,6 @@ Password: AdminSecure123!
    - Email
    - Username
    - Current tier
-   - Token balance
-   - Account status (active/banned)
-   - Review permissions
 
 #### Manually Upgrade User Tiers:
 1. Find the user in the user list
