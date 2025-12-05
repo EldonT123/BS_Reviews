@@ -265,7 +265,7 @@ export default function Home() {
 
       {/* Most Commented Movies Section */}
       <section className="px-8 py-12 max-w-7xl mx-auto">
-        <h2 className="text-2xl font-semibold mb-6">Most Commented Movies</h2>
+        <h2 className="text-2xl font-semibold mb-6">Popular Movies</h2>
 
         {loadingComments ? (
           <p className="text-zinc-400">Loading most commented movies...</p>
@@ -286,9 +286,6 @@ export default function Home() {
                 />
                 <div className="p-3">
                   <h3 className="font-semibold text-lg">{movie.title}</h3>
-                  <p className="text-yellow-400">
-                    💬 {movie.commentCount ?? 0} comments
-                  </p>
                 </div>
               </Link>
             ))}
