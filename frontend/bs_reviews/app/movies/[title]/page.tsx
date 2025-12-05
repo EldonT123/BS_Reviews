@@ -111,8 +111,19 @@ export default function MovieDetailsPage() {
 
   // Helper function to check if user can write reviews
   const canWriteReviews = useCallback(() => {
-    return userTier === "slug" || userTier === "banana_slug";
+    if (!userTier) {
+      console.log('No userTier set');
+      return false;
+    }
+    const canWrite = userTier === "slug" || userTier === "banana_slug";
+    console.log(`userTier: ${userTier}, canWrite: ${canWrite}`);
+    return canWrite;
   }, [userTier]);
+
+  useEffect(() => {
+    console.log('Current userTier:', userTier);
+    console.log('Can write reviews:', canWriteReviews());
+  }, [userTier, canWriteReviews]);
 
   // Fetch movie details
   useEffect(() => {
