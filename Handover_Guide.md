@@ -463,14 +463,12 @@ Admins can only be created by other admins or by using the Swagger FastAPI endpo
 - `slug@test.com` → Upgrade to Slug tier
 - `banana@test.com` → Upgrade to Banana Slug tier
 
-#### Grant Tokens to Users:
-1. Click **"Manage Tokens"** next to a user
-2. Enter token amount to add (e.g., 500)
-3. Click **"Grant Tokens"**
-4. Useful for:
-   - Testing token purchases
-   - Rewarding active users
-   - Compensating for issues
+### Step 12: Penlty Management (Admin)
+
+#### Remove Tokens to Users:
+1. Click **"Remove Tokens"** next to a user
+2. Enter token amount to remove (e.g., 500)
+3. Click **"Remove Tokens"**
 
 #### Ban/Unban Users:
 1. Click **"Ban User"** next to a problematic user
@@ -489,7 +487,7 @@ Admins can only be created by other admins or by using the Swagger FastAPI endpo
 4. Existing reviews are marked as penalized and hidden
 5. To unban from reviews: Click **"Unban from Reviews"**
 
-### Step 12: Movie Management (Admin)
+### Step 13: Movie Management (Admin)
 
 #### Add New Movies:
 1. Navigate to **Admin Dashboard** → **Movie Management**
@@ -497,12 +495,8 @@ Admins can only be created by other admins or by using the Swagger FastAPI endpo
 3. Fill out the movie form:
 
 **Required Fields**:
-- **Movie Name**: `test_movie` (used for folder name, no special characters)
-- **Display Title**: `Test Movie` (shown to users)
-- **Director**: `Test Director`
-- **Genre**: Select from dropdown or enter (e.g., `Action, Drama`)
-- **Release Year**: `2024`
-- **IMDb Rating**: `7.5` (0-10 scale)
+- **Movie Name(Folder)**: `test_movie` (used for folder name, no special characters)
+- **Title**: `Test Movie` (shown to users)
 
 **Optional Fields**:
 - **Description**: Movie plot summary
@@ -510,13 +504,10 @@ Admins can only be created by other admins or by using the Swagger FastAPI endpo
 - **Cast**: Main actors
 - **Total Rating Count**: Number of IMDb ratings
 - **Metascore**: Metacritic score
-
-4. Click **"Upload Poster"** to add movie poster image
-   - Accepted formats: JPG, PNG
-   - Recommended size: 500x750px
-   - Max file size: 5MB
-5. Click **"Create Movie"**
-6. Movie will appear on the home page immediately
+- **Director**: `Test Director`
+- **Genre**: Select from dropdown or enter (e.g., `Action, Drama`)
+- **Release Year**: `2024`
+- **IMDb Rating**: `7.5` (0-10 scale)
 
 **Important**: Movie names with special characters are automatically sanitized:
 - "Spider-Man: No Way Home" → stored as "SpiderMan No Way Home"
@@ -563,40 +554,11 @@ Admins can only be created by other admins or by using the Swagger FastAPI endpo
 - Reporter is not notified
 
 **Option B: Remove Review (Violates Policy)**
-- First, click **"Penalize User"** to mark the user
+- First, **"Penalize User"** using penalize page
 - Then click **"Delete Review"**
 - Review is permanently removed
 - User receives a warning
 - Can lead to review ban if repeated
-
-**Option C: Review Ban User**
-- Click **"Ban from Reviews"**
-- User's review privileges are revoked
-- All their reviews are hidden
-- User can still browse the site
-
-#### Auto-Hiding Reviews:
-- Reviews are **automatically hidden** after **3 reports**
-- Admin must review and decide to keep or remove
-- Prevents inappropriate content from being widely visible
-
-### Step 14: System Statistics and Monitoring (Admin)
-
-1. Navigate to **Admin Dashboard** → **Statistics**
-2. View platform metrics:
-   - Total users by tier
-   - Total movies in database
-   - Total reviews submitted
-   - Revenue from tier upgrades
-   - Most reviewed movies
-   - Most active users
-   - Recent signups
-
-**Use Cases**:
-- Monitor platform growth
-- Identify popular content
-- Detect unusual activity
-- Plan feature development
 
 ---
 
