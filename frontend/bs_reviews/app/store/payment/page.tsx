@@ -209,7 +209,7 @@ export default function PaymentPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 bg-black/90 shadow-md sticky top-0 z-10">
         <div className="flex items-center space-x-4">
-          <Link href="/">
+          <Link href="/" className="flex items-center space-x-2">
             <Image
               src="/bs_reviews_logo.png"
               alt="BS Reviews Logo"
@@ -217,7 +217,12 @@ export default function PaymentPage() {
               height={20}
               className="cursor-pointer"
             />
+            <span className="text-lg font-semibold text-white">
+              Home
+            </span>
           </Link>
+          <nav className="hidden md:flex space-x-6 text-sm font-semibold uppercase tracking-wider">
+          </nav>
         </div>
         <Link
           href="/store"
