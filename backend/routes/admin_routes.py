@@ -1,7 +1,9 @@
 # backend/routes/admin_routes.py
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from pydantic import BaseModel, EmailStr
-from backend.services import admin_service, user_service, review_service
+from typing import Optional, List
+from backend.services import admin_service, user_service
+from backend.services import review_service, file_service
 from backend.models.user_model import User
 from backend.models.admin_model import Admin
 from backend.middleware.auth_middleware import verify_admin_token
@@ -26,6 +28,52 @@ class TierUpgrade(BaseModel):
 class UserDelete(BaseModel):
     """Request model for deleting users."""
     email: EmailStr
+
+
+class MovieCreate(BaseModel):
+    """Request model for creating movies with full metadata."""
+    movie_name: str
+    title: str
+    director: Optional[str] = ""
+    directors: Optional[List[str]] = []
+    genre: Optional[str] = ""
+    movieGenres: Optional[List[str]] = []
+    year: Optional[str] = ""
+    datePublished: Optional[str] = ""
+    imdb_rating: Optional[float] = 0.0
+    description: Optional[str] = ""
+    duration: Optional[int] = 0
+    creators: Optional[List[str]] = []
+    mainStars: Optional[List[str]] = []
+    totalRatingCount: Optional[int] = 0
+    totalUserReviews: Optional[str] = "0"
+    totalCriticReviews: Optional[str] = "0"
+    metaScore: Optional[str] = "0"
+
+
+class MovieUpdate(BaseModel):
+    """Request model for updating movies with full metadata."""
+    title: Optional[str] = None
+    director: Optional[str] = None
+    directors: Optional[List[str]] = None
+    genre: Optional[str] = None
+    movieGenres: Optional[List[str]] = None
+    year: Optional[str] = None
+    datePublished: Optional[str] = None
+    imdb_rating: Optional[float] = None
+    description: Optional[str] = None
+    duration: Optional[int] = None
+    creators: Optional[List[str]] = None
+    mainStars: Optional[List[str]] = None
+    totalRatingCount: Optional[int] = None
+    totalUserReviews: Optional[str] = None
+    totalCriticReviews: Optional[str] = None
+    metaScore: Optional[str] = None
+
+
+class MovieDelete(BaseModel):
+    """Request model for deleting movies."""
+    movie_name: str
 
 
 class TokenPenalty(BaseModel):
@@ -102,8 +150,6 @@ async def admin_login(admin: AdminAuth):
 @router.post("/logout")
 async def admin_logout(admin: Admin = Depends(verify_admin_token)):
     """Logout admin by revoking token."""
-    # Note: Token is extracted from header in dependency
-    # For full implementation, you'd need to pass the token to revoke_token
     return {
         "message": "Admin logged out successfully"
     }
@@ -166,6 +212,265 @@ async def delete_user(
 
     return {
         "message": f"User {user_delete.email} deleted successfully"
+    }
+
+
+# ==================== Movie Management (Protected) ====================
+
+@router.get("/movies")
+async def get_all_movies(admin: Admin = Depends(verify_admin_token)):
+    """Get all movies with full metadata (admin only)."""
+    try:
+        movies = file_service.get_all_movies()
+        return {
+            "movies": movies,
+            "total": len(movies)
+        }
+    except Exception as e:
+        print(f"Error in get_all_movies: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching movies: {str(e)}"
+        )
+
+
+@router.post("/movies")
+async def create_movie(
+    movie: MovieCreate,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """Create a new movie with full metadata (admin only)."""
+    try:
+        # Check if movie already exists
+        if file_service.movie_exists(movie.movie_name):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Movie with this name already exists"
+            )
+
+        # Handle genres - prefer movieGenres array, fallback to genre string
+        genres = movie.movieGenres if movie.movieGenres else (
+            [g.strip() for g in movie.genre.split(",")] if movie.genre else []
+        )
+
+        # Handle directors - prefer directors array,
+        # fallback to director string
+        directors = movie.directors if movie.directors else (
+            [movie.director] if movie.director else []
+        )
+
+        # Handle date - prefer datePublished, fallback to year
+        date_published = movie.datePublished if movie.datePublished else (
+            f"{movie.year}-01-01" if movie.year else ""
+        )
+
+        # Create movie using file_service
+        success = file_service.create_movie_with_metadata(
+            movie_name=movie.movie_name,
+            title=movie.title,
+            directors=directors,
+            genres=genres,
+            date_published=date_published,
+            imdb_rating=movie.imdb_rating or 0.0,
+            description=movie.description or "",
+            duration=movie.duration or 0,
+            creators=movie.creators or [],
+            main_stars=movie.mainStars or [],
+            total_rating_count=movie.totalRatingCount or 0,
+            total_user_reviews=movie.totalUserReviews or "0",
+            total_critic_reviews=movie.totalCriticReviews or "0",
+            meta_score=movie.metaScore or "0"
+        )
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create movie"
+            )
+
+        # Get the created movie metadata
+        metadata = file_service.get_movie_metadata(movie.movie_name)
+
+        return {
+            "message": f"Movie '{movie.title}' created successfully",
+            "movie": metadata
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error creating movie: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating movie: {str(e)}"
+        )
+
+
+@router.put("/movies/{movie_name}")
+async def update_movie(
+    movie_name: str,
+    movie_update: MovieUpdate,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """Update a movie's metadata with all fields (admin only)."""
+    try:
+        # Check if movie exists
+        if not file_service.movie_exists(movie_name):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Movie not found"
+            )
+
+        # Prepare updates dictionary
+        updates = {}
+
+        if movie_update.title is not None:
+            updates["title"] = movie_update.title
+
+        if movie_update.imdb_rating is not None:
+            updates["movieIMDbRating"] = movie_update.imdb_rating
+
+        if movie_update.totalRatingCount is not None:
+            updates["totalRatingCount"] = movie_update.totalRatingCount
+
+        if movie_update.totalUserReviews is not None:
+            updates["totalUserReviews"] = movie_update.totalUserReviews
+
+        if movie_update.totalCriticReviews is not None:
+            updates["totalCriticReviews"] = movie_update.totalCriticReviews
+
+        if movie_update.metaScore is not None:
+            updates["metaScore"] = movie_update.metaScore
+
+        # Handle genres
+        if movie_update.movieGenres is not None:
+            updates["movieGenres"] = movie_update.movieGenres
+        elif movie_update.genre is not None:
+            updates["movieGenres"] = (
+                [g.strip() for g in movie_update.genre.split(",")]
+                if movie_update.genre
+                else []
+            )
+
+        # Handle directors
+        if movie_update.directors is not None:
+            updates["directors"] = movie_update.directors
+        elif movie_update.director is not None:
+            updates["directors"] = (
+                [movie_update.director] if movie_update.director else []
+            )
+
+        # Handle date
+        if movie_update.datePublished is not None:
+            updates["datePublished"] = movie_update.datePublished
+        elif movie_update.year is not None:
+            updates["datePublished"] = (
+                f"{movie_update.year}-01-01" if movie_update.year else ""
+            )
+
+        if movie_update.creators is not None:
+            updates["creators"] = movie_update.creators
+
+        if movie_update.mainStars is not None:
+            updates["mainStars"] = movie_update.mainStars
+
+        if movie_update.description is not None:
+            updates["description"] = movie_update.description
+
+        if movie_update.duration is not None:
+            updates["duration"] = movie_update.duration
+
+        # Update using file_service
+        success = file_service.update_movie_metadata(movie_name, updates)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update movie"
+            )
+
+        # Get updated metadata
+        metadata = file_service.get_movie_metadata(movie_name)
+
+        return {
+            "message": f"Movie '{movie_name}' updated successfully",
+            "movie": metadata
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating movie: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating movie: {str(e)}"
+        )
+
+
+@router.delete("/movies/{movie_name}")
+async def delete_movie(
+    movie_name: str,
+    admin: Admin = Depends(verify_admin_token)
+):
+    """Delete a movie (admin only)."""
+    try:
+        # Check if movie exists
+        if not file_service.movie_exists(movie_name):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Movie not found"
+            )
+
+        # Delete using file_service
+        message = file_service.delete_movie_folder(movie_name)
+
+        return {
+            "message": message
+        }
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+    except Exception as e:
+        print(f"Error deleting movie: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting movie: {str(e)}"
+        )
+
+
+@router.post("/movies/{movie_name}/poster")
+async def upload_poster(
+    movie_name: str,
+    file: UploadFile = File(...),
+    admin: Admin = Depends(verify_admin_token)
+):
+    """Upload a poster for a movie (admin only)."""
+    # Check if movie exists
+    if not file_service.movie_exists(movie_name):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found"
+        )
+
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be an image"
+        )
+
+    # Save poster using file_service
+    poster_data = await file.read()
+    success = file_service.save_poster(movie_name, poster_data)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save poster"
+        )
+
+    return {
+        "message": f"Poster uploaded successfully for '{movie_name}'"
     }
 
 
@@ -353,7 +658,7 @@ async def unban_user(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to unban email"
+            detail="Failed to save poster"
         )
 
     return {

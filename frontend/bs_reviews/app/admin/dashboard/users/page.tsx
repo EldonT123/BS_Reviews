@@ -22,7 +22,9 @@ export default function UsersManagementPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showMakeAdminModal, setShowMakeAdminModal] = useState(false);
   const [newTier, setNewTier] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
   const [processingAction, setProcessingAction] = useState(false);
 
   const fetchUsers = useCallback(async () => {
@@ -85,7 +87,7 @@ export default function UsersManagementPage() {
       setShowUpgradeModal(false);
       setSelectedUser(null);
       setNewTier("");
-      fetchUsers(); // Refresh the list
+      fetchUsers();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred";
       setError(errorMessage);
@@ -121,7 +123,42 @@ export default function UsersManagementPage() {
       setSuccessMessage(`Successfully deleted user ${selectedUser.email}`);
       setShowDeleteModal(false);
       setSelectedUser(null);
-      fetchUsers(); // Refresh the list
+      fetchUsers();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      setError(errorMessage);
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
+  const handleMakeAdmin = async () => {
+    if (!selectedUser || !adminPassword) return;
+
+    setProcessingAction(true);
+    setError("");
+
+    try {
+      const response = await fetch("http://localhost:8000/api/admin/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: selectedUser.email,
+          password: adminPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const data: ErrorResponse = await response.json();
+        throw new Error(data.detail || "Failed to create admin");
+      }
+
+      setSuccessMessage(`Successfully created admin account for ${selectedUser.email}`);
+      setShowMakeAdminModal(false);
+      setSelectedUser(null);
+      setAdminPassword("");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred";
       setError(errorMessage);
@@ -231,6 +268,15 @@ export default function UsersManagementPage() {
                       <button
                         onClick={() => {
                           setSelectedUser(user);
+                          setShowMakeAdminModal(true);
+                        }}
+                        className="text-purple-400 hover:text-purple-300 mr-4 transition-colors"
+                      >
+                        Make Admin
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedUser(user);
                           setShowDeleteModal(true);
                         }}
                         className="text-red-400 hover:text-red-300 transition-colors"
@@ -266,7 +312,7 @@ export default function UsersManagementPage() {
               >
                 <option value="snail">🐌 Snail (Free)</option>
                 <option value="slug">🐛 Slug ($9.99/mo)</option>
-                <option value="banana_slug">🍌 Banana Slug ($19.99/mo)</option>
+                <option value="banana_slug">🌼 Banana Slug ($19.99/mo)</option>
               </select>
             </div>
 
@@ -288,6 +334,57 @@ export default function UsersManagementPage() {
                 className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
               >
                 {processingAction ? "Processing..." : "Upgrade"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Make Admin Modal */}
+      {showMakeAdminModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full border border-gray-700">
+            <h2 className="text-xl font-bold text-white mb-4">Create Admin Account</h2>
+            <p className="text-gray-400 mb-4">
+              Create an admin account for{" "}
+              <strong className="text-white">{selectedUser.email}</strong>
+            </p>
+            <p className="text-sm text-yellow-400 mb-6">
+              ⚠️ This will create a separate admin account with the same email. Set a password
+              for their admin access.
+            </p>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Admin Password
+              </label>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder="Enter admin password"
+                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowMakeAdminModal(false);
+                  setSelectedUser(null);
+                  setAdminPassword("");
+                }}
+                className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                disabled={processingAction}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMakeAdmin}
+                disabled={processingAction || !adminPassword}
+                className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              >
+                {processingAction ? "Creating..." : "Create Admin"}
               </button>
             </div>
           </div>
