@@ -708,6 +708,16 @@ export default function MovieDetailsPage() {
       <div className="max-w-6xl mx-auto px-8 py-12">
         <div className="mb-8">
           <h1 className="text-6xl font-bold mb-4">{movie.title}</h1>
+          <button
+              onClick={() =>
+                router.push(
+                  `/movies/movie_details_page/${encodeURIComponent(movie.title || "")}`
+                )
+              }
+              className="mt-6 bg-yellow-400 text-black font-semibold px-8 py-3 rounded hover:bg-yellow-500 transition text-lg"
+            >
+              Watch Now
+            </button>
           <div className="flex items-center gap-4 text-lg text-gray-300">
             <span>{releaseYear}</span>
             <span>•</span>
