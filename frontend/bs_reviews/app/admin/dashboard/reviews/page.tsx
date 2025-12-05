@@ -27,6 +27,10 @@ export default function ReviewsModerationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"count" | "date">("count");
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<ReportedReview | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   // Check admin authentication
   useEffect(() => {
@@ -96,6 +100,52 @@ export default function ReviewsModerationPage() {
       setLoading(false);
     }
   }, []);
+  
+  const handleReportedReview = async (remove: boolean) => {
+    if (!selectedReview) return;
+
+    const adminToken = localStorage.getItem("adminToken");
+    setActionLoading(true);
+    setActionMessage(null);
+
+    try {
+      const res = await fetch(
+        `http://localhost:8000/api/reviews/${encodeURIComponent(selectedReview.movie_name)}/reported?email=${encodeURIComponent(selectedReview.Email)}&remove=${remove}`,
+        {
+          method: "PUT",
+          headers: {
+            "Authorization": `Bearer ${adminToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const result = await res.json();
+
+      if (res.ok) {
+        setActionMessage(result.message);
+        // Refresh the reviews after 1.5 seconds
+        setTimeout(() => {
+          if (adminToken) fetchReportedReviews(adminToken);
+          setShowActionModal(false);
+          setSelectedReview(null);
+        }, 1500);
+      } else {
+        setActionMessage(result.detail || "Failed to process action");
+      }
+    } catch (err) {
+      console.error("Error handling reported review:", err);
+      setActionMessage("Error processing action");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const openActionModal = (review: ReportedReview) => {
+    setSelectedReview(review);
+    setShowActionModal(true);
+    setActionMessage(null);
+  };
 
   const sortedReviews = [...reportedReviews].sort((a, b) => {
     if (sortBy === "count") {
@@ -304,9 +354,109 @@ export default function ReviewsModerationPage() {
                     ))}
                   </div>
                 </div>
+                {/* Action Buttons */}
+                <div className="mt-4 pt-4 border-t border-gray-700">
+                  <button
+                    onClick={() => openActionModal(review)}
+                    className="w-full bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition text-sm font-medium"
+                  >
+                    Handle Report
+                  </button>
+                </div>
               </div>
             );
           })}
+        </div>
+      )}
+      {/* Action Modal */}
+      {showActionModal && selectedReview && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full border-2 border-purple-500">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-white">Handle Reported Review</h3>
+              <button
+                onClick={() => {
+                  setShowActionModal(false);
+                  setSelectedReview(null);
+                  setActionMessage(null);
+                }}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-gray-300 text-sm mb-2">
+                Review by <span className="font-semibold">{selectedReview.Email}</span>
+              </p>
+              <p className="text-gray-300 text-sm mb-2">
+                Movie: <span className="font-semibold">{selectedReview.movie_name}</span>
+              </p>
+              <p className="text-gray-300 text-sm">
+                Reports: <span className="font-semibold text-yellow-400">{selectedReview["Report Count"]}</span>
+              </p>
+              {selectedReview.Penalized === "Yes" && (
+                <div className="mt-3 p-2 bg-red-500/20 border border-red-500 rounded text-xs text-red-400">
+                  ⚠️ This user is penalized. You must remove the penalty before keeping the review.
+                </div>
+              )}
+            </div>
+
+            {actionMessage && (
+              <div className={`mb-4 p-3 rounded ${
+                actionMessage.includes("success") || actionMessage.includes("kept") || actionMessage.includes("deleted")
+                  ? "bg-green-500/20 border border-green-500 text-green-400"
+                  : "bg-red-500/20 border border-red-500 text-red-400"
+              }`}>
+                {actionMessage}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <button
+                onClick={() => handleReportedReview(false)}
+                disabled={actionLoading || selectedReview.Penalized === "Yes"}
+                className={`w-full px-4 py-3 rounded font-medium transition ${
+                  selectedReview.Penalized === "Yes"
+                    ? "bg-gray-600 cursor-not-allowed text-gray-400"
+                    : "bg-green-600 hover:bg-green-700 text-white"
+                } ${actionLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {actionLoading ? "Processing..." : "Keep Review (Reset Reports)"}
+              </button>
+              
+              <button
+                onClick={() => handleReportedReview(true)}
+                disabled={actionLoading}
+                className={`w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded font-medium transition ${
+                  actionLoading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                {actionLoading ? "Processing..." : "Delete Review"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowActionModal(false);
+                  setSelectedReview(null);
+                  setActionMessage(null);
+                }}
+                disabled={actionLoading}
+                className="w-full px-4 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded font-medium transition"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="mt-4 p-3 bg-gray-900 rounded text-xs text-gray-400">
+              <p className="font-semibold mb-2">Notes:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li><strong>Keep Review:</strong> Resets report count to 0, unhides review (only if not penalized)</li>
+                <li><strong>Delete Review:</strong> Permanently removes the review (only if user is penalized)</li>
+              </ul>
+            </div>
+          </div>
         </div>
       )}
     </div>
