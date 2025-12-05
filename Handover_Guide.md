@@ -79,12 +79,6 @@ To be done in the root directory of the project.
 docker build -f .docker/backend.dockerfile -t banana-slugs-backend .
 ```
 
-#### Frontend Image (if applicable)
-To be done in the root directory of the project.
-```bash
-docker build -f .docker/frontend.dockerfile -t banana-slugs-frontend .
-```
-
 **Build Time**: Expect about 20 seconds for the backend image and 2-3 minutes for the frontend container.
 
 ---
@@ -124,14 +118,9 @@ database/
 docker run -p 8000:8000 banana-slugs-backend
 ```
 
-#### Start Frontend (in a separate terminal)
+#### Using Docker Compose (Starts front and back end)
 ```bash
-docker run -p 3000:3000 banana-slugs-frontend
-```
-
-#### Using Docker Compose (if configured)
-```bash
-docker-compose up -d
+docker-compose up --build
 ```
 
 ### Option 2: Local Development
