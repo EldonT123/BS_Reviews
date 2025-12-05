@@ -600,43 +600,6 @@ Date of Review,Email,Username,Dislikes,Likes,User's Rating out of 10,Review Titl
 2024-01-01,user@test.com,testuser,0,5,8.5,Great Movie,Loved it!,No,,0,No,No,,
 ```
 
-### External API Configuration
-
-#### TMDB API (The Movie Database)
-**Purpose**: Fetching movie metadata and posters
-
-**Setup**:
-1. Create account at https://www.themoviedb.org/
-2. Navigate to Settings → API
-3. Request API key (free tier available)
-4. Add to `.env` file:
-   ```env
-   TMDB_API_KEY=your_api_key_here
-   ```
-
-**Usage Notes**:
-- Free tier: 40 requests per 10 seconds
-- Movie data was pre-fetched during development and stored in database
-- Poster fetching is done on-demand (free)
-- **Recommendation**: Cache all data locally to minimize API calls
-
-**Rate Limiting**:
-```python
-# backend/services/tmdb_service.py
-import time
-
-def fetch_with_rate_limit():
-    time.sleep(0.25)  # 4 requests per second max
-    # API call here
-```
-
-#### Future API Integrations
-If adding new APIs:
-1. Document API keys in `.env.example`
-2. Add rate limiting
-3. Implement error handling
-4. Cache responses when possible
-
 ### Monitoring and Logs
 
 #### View Docker Logs
@@ -652,19 +615,6 @@ docker logs -f <frontend-container-id>
 - Backend errors: Check Docker logs
 - Database operations: Console output during runtime
 - Failed logins: Check `backend/logs/` (if implemented)
-
-### Security Maintenance
-
-#### Regular Security Tasks
-
-1. **Weekly**: Review banned users list
-2. **Monthly**: 
-   - Check for suspicious review activity
-   - Review admin access logs
-   - Update dependencies
-3. **Quarterly**:
-   - Rotate admin passwords
-   - Security audit
 
 #### Dependency Updates
 
@@ -689,17 +639,6 @@ npm update
 npm audit fix
 ```
 
-### Performance Optimization
-
-#### Database Optimization
-- **Reviews per movie**: Limit to 10,000 reviews per movie
-- **Image sizes**: Compress posters to max 500KB
-- **Cleanup**: Remove reviews from deleted users quarterly
-
-#### Caching Strategy
-- Movie metadata: Cache for 24 hours
-- User sessions: Cache for 1 hour
-- Poster images: Cache indefinitely
 
 ---
 
@@ -707,18 +646,6 @@ npm audit fix
 
 ### Common Issues
 
-#### Issue: Port Already in Use
-```bash
-# Error: Port 8000 is already allocated
-
-# Solution: Find and kill process
-# Windows:
-netstat -ano | findstr :8000
-taskkill /PID <process-id> /F
-
-# Linux/Mac:
-lsof -ti:8000 | xargs kill -9
-```
 
 #### Issue: Docker Build Fails
 ```bash
@@ -738,43 +665,12 @@ touch database/admin_information.csv
 touch database/banned_emails.csv
 ```
 
-#### Issue: CORS Errors
-```javascript
-// frontend/app/api-config.ts
-// Update CORS origins in backend
-// backend/main.py
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Add your frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-```
-
 #### Issue: Reviews Not Showing
 **Cause**: Movie folder name mismatch (special characters)
 
 **Solution**: Movie names with special characters are sanitized:
 - "Spider-Man: No Way Home" → "SpiderMan No Way Home"
 - Use the sanitized name when accessing reviews
-
-### Getting Help
-
-#### Support Contacts
-- **Technical Issues**: [Your support email]
-- **Bug Reports**: [GitHub Issues URL]
-- **Documentation**: [Documentation URL]
-
-#### Log Collection for Support
-```bash
-# Collect logs for troubleshooting
-docker logs banana-slugs-backend > backend-logs.txt
-docker logs banana-slugs-frontend > frontend-logs.txt
-
-# Include these files when requesting support
-```
 
 ---
 
@@ -794,36 +690,6 @@ Before deploying to production:
 - [ ] Create admin accounts for team members
 - [ ] Test disaster recovery procedures
 
----
-
-## Additional Resources
-
-### Useful Commands
-
-```bash
-# View running containers
-docker ps
-
-# Stop all containers
-docker stop $(docker ps -aq)
-
-# Remove all containers
-docker rm $(docker ps -aq)
-
-# View container resource usage
-docker stats
-
-# Access container shell
-docker exec -it <container-id> /bin/bash
-```
-
-### Directory Permissions
-
-Ensure proper permissions for database directory:
-```bash
-chmod -R 755 database/
-chown -R <your-user>:<your-group> database/
-```
 
 ---
 
@@ -832,15 +698,6 @@ chown -R <your-user>:<your-group> database/
 - **v1.0.0** (2024-12-04): Initial deployment guide
 - Document updated by: [Your team name]
 - Last reviewed: December 4, 2024
-
----
-
-## Contact Information
-
-**Development Team**: Banana Slugs  
-**Email**: [team-email@example.com]  
-**Repository**: [GitHub URL]  
-**Documentation**: [Docs URL]
 
 ---
 
