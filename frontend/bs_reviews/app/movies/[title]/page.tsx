@@ -63,6 +63,10 @@ export default function MovieDetailsPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userHasReview, setUserHasReview] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportingReview, setReportingReview] = useState<Review | null>(null);
+  const [reportReason, setReportReason] = useState("");
+  const [reportLoading, setReportLoading] = useState(false);
 
   // Check authentication status and user tier
   useEffect(() => {
@@ -401,6 +405,79 @@ export default function MovieDetailsPage() {
     }
   };
 
+  const handleReportClick = (review: Review) => {
+    if (!isAuthenticated) {
+      showVoteMessage("Please log in to report reviews");
+      return;
+    }
+    
+    if (!canWriteReviews()) {
+      showVoteMessage("Upgrade to Slug tier to report reviews!");
+      return;
+    }
+    
+    setReportingReview(review);
+    setShowReportModal(true);
+    setReportReason("");
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportingReview || !movie?.title) return;
+    
+    const sessionId = localStorage.getItem("session_id");
+    
+    if (!sessionId || !isAuthenticated) {
+      showVoteMessage("Please log in to report reviews");
+      return;
+    }
+
+    if (!reportReason.trim()) {
+      showVoteMessage("Please provide a reason for reporting");
+      return;
+    }
+
+    try {
+      setReportLoading(true);
+      
+      const res = await fetch(
+        `http://localhost:8000/api/reviews/${encodeURIComponent(movie.title)}/report?email=${encodeURIComponent(reportingReview.Email)}&reason=${encodeURIComponent(reportReason)}`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${sessionId}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const result = await res.json();
+
+      if (res.ok) {
+        showVoteMessage("Review reported successfully. Admins will review it.");
+        setShowReportModal(false);
+        setReportingReview(null);
+        setReportReason("");
+      } else {
+        if (res.status === 401) {
+          localStorage.removeItem("session_id");
+          localStorage.removeItem("user_email");
+          setIsAuthenticated(false);
+          setUserEmail(null);
+          showVoteMessage("Session expired. Please log in again.");
+        } else if (res.status === 403) {
+          showVoteMessage("Upgrade to Slug tier to report reviews!");
+        } else {
+          showVoteMessage(result.detail || "Failed to report review");
+        }
+      }
+    } catch (err) {
+      console.error("Error reporting review:", err);
+      showVoteMessage("Error reporting review");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const loadMore = () => {
     setReviewsToShow((prev) => prev + 5);
   };
@@ -557,6 +634,74 @@ export default function MovieDetailsPage() {
       {voteMessage && (
         <div className="fixed top-20 right-8 bg-yellow-400 text-black px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in">
           {voteMessage}
+        </div>
+      )}
+
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full border-2 border-orange-500">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-white">Report Review</h3>
+              <button
+                onClick={() => {
+                  setShowReportModal(false);
+                  setReportingReview(null);
+                  setReportReason("");
+                }}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-gray-300 text-sm mb-2">
+                Reporting review by <span className="font-semibold">{reportingReview?.Username}</span>
+              </p>
+              <p className="text-gray-400 text-xs">
+                Please provide a reason for reporting this review. Abuse of the report system may result in account restrictions.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Reason for Report *
+              </label>
+              <textarea
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                placeholder="Explain why this review should be reported (e.g., spam, offensive content, etc.)"
+                rows={4}
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 resize-none"
+                maxLength={500}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                {reportReason.length}/500 characters
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleSubmitReport}
+                disabled={reportLoading || !reportReason.trim()}
+                className={`flex-1 bg-orange-600 text-white font-semibold px-6 py-3 rounded hover:bg-orange-700 transition ${
+                  (reportLoading || !reportReason.trim()) ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                {reportLoading ? "Reporting..." : "Submit Report"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowReportModal(false);
+                  setReportingReview(null);
+                  setReportReason("");
+                }}
+                className="px-6 py-3 bg-gray-600 text-white rounded hover:bg-gray-500 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -876,6 +1021,17 @@ export default function MovieDetailsPage() {
                         >
                           <span>👎</span>
                           <span>{review.Dislikes || "0"}</span>
+                        </button>
+                        <button
+                          onClick={() => handleReportClick(review)}
+                          disabled={!isAuthenticated || isOwnReview}
+                          className={`flex items-center gap-2 px-3 py-2 rounded transition text-sm bg-gray-600 hover:bg-orange-600 ${
+                            (!isAuthenticated || isOwnReview) ? "opacity-50 cursor-not-allowed" : ""
+                          }`}
+                          title={isOwnReview ? "You can't report your own review" : "Report this review"}
+                        >
+                          <span>🚩</span>
+                          <span>Report</span>
                         </button>
                       </div>
                     </div>
