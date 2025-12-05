@@ -11,6 +11,7 @@ type User = {
   tier: string;
   tier_display_name: string;
   tokens?: number;
+  review_banned?: boolean;
 };
 
 type UserReview = {
@@ -204,7 +205,7 @@ export default function AccountPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 bg-black/90 shadow-md sticky top-0 z-10">
         <div className="flex items-center space-x-4">
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href="/">
             <Image
               src="/bs_reviews_logo.png"
               alt="BS Reviews Logo"
@@ -212,11 +213,20 @@ export default function AccountPage() {
               height={20}
               className="cursor-pointer"
             />
-            <span className="text-lg font-semibold text-white">
-              Home
-            </span>
           </Link>
           <nav className="hidden md:flex space-x-6 text-sm font-semibold uppercase tracking-wider">
+            <a href="#" className="hover:text-yellow-400 transition">
+              Movies
+            </a>
+            <a href="#" className="hover:text-yellow-400 transition">
+              TV Shows
+            </a>
+            <a href="#" className="hover:text-yellow-400 transition">
+              Celebs
+            </a>
+            <a href="#" className="hover:text-yellow-400 transition">
+              Awards
+            </a>
           </nav>
         </div>
         <div className="flex items-center space-x-4">
@@ -258,6 +268,31 @@ export default function AccountPage() {
             </div>
           </div>
 
+          {/* Penalty Notifications */}
+          {user.review_banned && (
+            <div className="mb-6 bg-red-500/10 border-2 border-red-500 rounded-lg p-6">
+              <div className="flex items-start gap-4">
+                <div className="text-3xl">⚠️</div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-red-400 mb-2">
+                    Review Ban Active
+                  </h3>
+                  <p className="text-gray-300 mb-2">
+                    Your account has been banned from writing reviews due to violations of our community guidelines.
+                  </p>
+                  <ul className="list-disc list-inside text-gray-400 text-sm space-y-1">
+                    <li>You cannot write new reviews</li>
+                    <li>You cannot edit existing reviews</li>
+                    <li>You cannot rate movies</li>
+                    <li>Your existing reviews are hidden</li>
+                  </ul>
+                  <p className="text-gray-400 text-sm mt-3">
+                    If you believe this is an error, please contact support.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {/* User Info Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {/* Email Card */}
@@ -285,6 +320,33 @@ export default function AccountPage() {
                 {user.tier_display_name}
               </p>
               <p className="text-xs text-gray-100 mt-2">Click to learn more</p>
+            </div>
+          </div>
+
+          {/* Account Status Card */}
+          <div className="bg-gray-700 rounded-lg p-6 mb-8">
+            <h3 className="text-xl font-semibold mb-4 text-yellow-400">Account Status</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between bg-gray-800 rounded p-4">
+                <div>
+                  <p className="text-gray-400 text-sm">Review Permissions</p>
+                  <p className={`text-lg font-semibold ${user.review_banned ? "text-red-400" : "text-green-400"}`}>
+                    {user.review_banned ? "Banned" : "Active"}
+                  </p>
+                </div>
+                <div className="text-3xl">
+                  {user.review_banned ? "🚫" : "✅"}
+                </div>
+              </div>
+              <div className="flex items-center justify-between bg-gray-800 rounded p-4">
+                <div>
+                  <p className="text-gray-400 text-sm">Token Balance</p>
+                  <p className="text-lg font-semibold text-yellow-400">
+                    {user.tokens || 0} tokens
+                  </p>
+                </div>
+                <div className="text-3xl">🪙</div>
+              </div>
             </div>
           </div>
 
