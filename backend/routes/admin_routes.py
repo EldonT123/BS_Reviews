@@ -2,7 +2,8 @@
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
-from backend.services import admin_service, user_service, review_service, file_service
+from backend.services import admin_service, user_service
+from backend.services import review_service, file_service
 from backend.models.user_model import User
 from backend.models.admin_model import Admin
 from backend.middleware.auth_middleware import verify_admin_token
@@ -73,6 +74,8 @@ class MovieUpdate(BaseModel):
 class MovieDelete(BaseModel):
     """Request model for deleting movies."""
     movie_name: str
+
+
 class TokenPenalty(BaseModel):
     """Request model for removing tokens from a user."""
     email: EmailStr
@@ -459,10 +462,17 @@ async def upload_poster(
     # Save poster using file_service
     poster_data = await file.read()
     success = file_service.save_poster(movie_name, poster_data)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save poster"
+        )
     
     return {
         "message": f"Poster uploaded successfully for '{movie_name}'"
     }
+
 
 @router.post("/users/remove-tokens")
 async def remove_user_tokens(
