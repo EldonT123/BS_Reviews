@@ -1,0 +1,17 @@
+# --- BACKEND ---
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/venv
+.git
+.env
+*.pyc
+.DS_Store
+
+# --- FRONTEND ---
+node_modules
+.next
+.vscode
+dist
+build
+npm-debug.log

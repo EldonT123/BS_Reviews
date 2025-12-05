@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: .       # root of project
+      dockerfile: .docker/backend.dockerfile
+    volumes:
+      - ./backend:/app/backend
+      - ./database:/app/database
+    ports:
+      - "8000:8000"
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: .                     # root of project
+      dockerfile: .docker/frontend.dockerfile
+    volumes:
+      - ./frontend/bs_reviews:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
