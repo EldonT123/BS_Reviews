@@ -6,7 +6,7 @@ import json
 import csv
 import shutil
 
-DATABASE_PATH = "/app/database/archive"
+DATABASE_PATH = "database/archive"
 
 REVIEWS_HEADERS = [
     "Date of Review", "Email", "Username", "Dislikes",
