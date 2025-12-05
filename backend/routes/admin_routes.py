@@ -468,7 +468,7 @@ async def upload_poster(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save poster"
         )
-    
+
     return {
         "message": f"Poster uploaded successfully for '{movie_name}'"
     }
