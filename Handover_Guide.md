@@ -567,16 +567,20 @@ Admins can only be created by other admins or by using the Swagger FastAPI endpo
 ### Account Management
 
 #### Admin Accounts
-- **Location**: `database/admin_information.csv`
+- **Location**: `database/admins/admin_information.csv`
 - **Credentials**: Store admin passwords in a secure password manager
-- **Backup**: Create weekly backups of admin credentials
 
 #### User Management
-- **Location**: `database/user_information.csv`
+- **Locations**: 
+   - `database/users/user_information.csv`
+   - `database/admins/banned_emails.csv`
+   - `database/users/purchase_history.csv`
+   - `database/users/user_bookmarks.csv`
 - **Tasks**:
   - Monitor user signups
   - Upgrade user tiers as needed
   - Ban problematic users via admin panel
+  - Save user purchases and bookmarks
 
 ### Database Management
 
