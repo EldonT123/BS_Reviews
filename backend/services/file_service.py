@@ -51,7 +51,7 @@ def create_movie_folder(movie_name):
         reviews_path = os.path.join(folder_path, "movieReviews.csv")
         with open(reviews_path, "w", encoding='utf-8', newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([REVIEWS_HEADERS])
+            writer.writerow(REVIEWS_HEADERS)
     return folder_path
 
 

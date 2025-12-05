@@ -462,8 +462,7 @@ async def upload_poster(
     
     return {
         "message": f"Poster uploaded successfully for '{movie_name}'"
-            detail="Failed to unban email"
-        )
+    }
 
 @router.post("/users/remove-tokens")
 async def remove_user_tokens(
