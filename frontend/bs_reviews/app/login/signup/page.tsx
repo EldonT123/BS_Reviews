@@ -59,23 +59,23 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
+    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-900">
       {/* Header Home Button */}
       <Link
         href="/"
-        className="absolute top-4 left-4 bg-gray-200 text-black text-sm px-3 py-1 rounded-md 
-        hover:bg-gray-300 border border-gray-400"
+        className="absolute top-4 left-4 bg-gray-700 text-white text-sm px-3 py-1 rounded-md 
+        hover:bg-gray-600 border border-gray-600"
       >
         Home
       </Link>
 
       <div className="w-full max-w-md">
-        <h1 className="text-4xl font-bold mb-8 text-center">Sign Up</h1>
+        <h1 className="text-4xl font-bold mb-8 text-center text-white">Sign Up</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Email input */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-2">
+            <label htmlFor="email" className="block text-sm font-medium mb-2 text-gray-200">
               Email
             </label>
             <input
@@ -83,14 +83,14 @@ export default function SignupPage() {
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 border rounded-md"
+              className="w-full p-2 border border-gray-600 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
               required
             />
           </div>
 
           {/* Username input */}
           <div>
-            <label htmlFor="username" className="block text-sm font-medium mb-2">
+            <label htmlFor="username" className="block text-sm font-medium mb-2 text-gray-200">
               Username
             </label>
             <input
@@ -98,21 +98,21 @@ export default function SignupPage() {
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full p-2 border rounded-md"
+              className="w-full p-2 border border-gray-600 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
               required
               minLength={3}
             />
             {username && !isUsernameValid && (
-              <p className="text-red-500 text-sm mt-1">Username must be at least 3 characters</p>
+              <p className="text-red-400 text-sm mt-1">Username must be at least 3 characters</p>
             )}
             {username && isUsernameValid && (
-              <p className="text-green-600 text-sm mt-1">✓ Username valid</p>
+              <p className="text-green-400 text-sm mt-1">✓ Username valid</p>
             )}
           </div>
 
           {/* Password input */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-2">
+            <label htmlFor="password" className="block text-sm font-medium mb-2 text-gray-200">
               Password
             </label>
             <input
@@ -120,25 +120,25 @@ export default function SignupPage() {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 border rounded-md"
+              className="w-full p-2 border border-gray-600 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
               required
             />
 
             {password && (
               <ul className="text-sm mt-2 space-y-1">
-                <li className={checks.hasMinLength ? "text-green-600" : "text-red-500"}>
+                <li className={checks.hasMinLength ? "text-green-400" : "text-red-400"}>
                   • At least 8 characters
                 </li>
-                <li className={checks.hasUpper ? "text-green-600" : "text-red-500"}>
+                <li className={checks.hasUpper ? "text-green-400" : "text-red-400"}>
                   • Contains uppercase letter
                 </li>
-                <li className={checks.hasLower ? "text-green-600" : "text-red-500"}>
+                <li className={checks.hasLower ? "text-green-400" : "text-red-400"}>
                   • Contains lowercase letter
                 </li>
-                <li className={checks.hasNumber ? "text-green-600" : "text-red-500"}>
+                <li className={checks.hasNumber ? "text-green-400" : "text-red-400"}>
                   • Contains a number
                 </li>
-                <li className={checks.hasSpecial ? "text-green-600" : "text-red-500"}>
+                <li className={checks.hasSpecial ? "text-green-400" : "text-red-400"}>
                   • Contains a special character
                 </li>
               </ul>
@@ -147,7 +147,7 @@ export default function SignupPage() {
 
           {/* Confirm password */}
           <div>
-            <label htmlFor="confirm" className="block text-sm font-medium mb-2">
+            <label htmlFor="confirm" className="block text-sm font-medium mb-2 text-gray-200">
               Confirm Password
             </label>
             <input
@@ -155,11 +155,11 @@ export default function SignupPage() {
               id="confirm"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="w-full p-2 border rounded-md"
+              className="w-full p-2 border border-gray-600 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
               required
             />
             {confirm && !passwordsMatch && (
-              <p className="text-red-500 text-sm mt-1">Passwords do not match</p>
+              <p className="text-red-400 text-sm mt-1">Passwords do not match</p>
             )}
           </div>
 
@@ -170,16 +170,16 @@ export default function SignupPage() {
             className={`w-full p-2 rounded-md text-white ${
               isPasswordValid && passwordsMatch && isUsernameValid && !loading
                 ? "bg-green-600 hover:bg-green-700"
-                : "bg-gray-400 cursor-not-allowed"
+                : "bg-gray-600 cursor-not-allowed"
             }`}
           >
             {loading ? "Signing up..." : "Sign Up"}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm">
+        <p className="mt-4 text-center text-sm text-gray-300">
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 hover:underline">
+          <Link href="/login" className="text-blue-400 hover:underline">
             Login
           </Link>
         </p>

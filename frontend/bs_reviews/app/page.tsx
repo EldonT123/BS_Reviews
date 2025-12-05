@@ -113,24 +113,19 @@ export default function Home() {
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 bg-black/90 shadow-md sticky top-0 z-10">
         <div className="flex items-center space-x-4">
-          <Link href="/">
+          <Link href="/" className="flex items-center space-x-2">
             <Image
               src="/bs_reviews_logo.png"
               alt="BS Reviews Logo"
               width={50}
               height={20}
+              className="cursor-pointer"
             />
+            <span className="text-lg font-semibold text-white">
+              Home
+            </span>
           </Link>
           <nav className="hidden md:flex space-x-6 text-sm font-semibold uppercase tracking-wider">
-            <Link href="/movies" className="hover:text-yellow-400 transition">
-              Movies
-            </Link>
-            <Link href="/users" className="hover:text-yellow-400 transition">
-              Users
-            </Link>
-            <Link href="/reviews" className="hover:text-yellow-400 transition">
-              Reviews
-            </Link>
           </nav>
         </div>
         <div className="flex items-center space-x-4">
